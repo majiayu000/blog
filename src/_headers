@@ -1,9 +1,17 @@
 # Cloudflare Pages 缓存策略。
-# CSS 和 pagefind-ui.js 文件名没有内容指纹，不能设 immutable —— 改了内容 URL 不变，
-# 长缓存会让访客拿到旧文件且无失效手段。等将来给资源加了哈希文件名再放长。
+#
+# 注意：Pages 的规则是「叠加」不是「覆盖」。同一个 header 在 /* 和更具体的
+# 路径里都写，两条会被拼成一行（如 "max-age=0, must-revalidate, max-age=3600"），
+# 浏览器取第一个，具体路径那条就白写了。所以 /* 只放安全头，Cache-Control
+# 一律按具体路径写，互不重叠。
+#
+# HTML 不在这里设 Cache-Control，用 Pages 自己的默认值（max-age=0,
+# must-revalidate）—— 发文后立刻可见，正是想要的。
+#
+# CSS 和 pagefind-ui.js 的文件名没有内容指纹，所以只设短缓存、不设 immutable：
+# 改了内容 URL 不变，长缓存会让访客拿到旧文件且无失效手段。
 
 /*
-  Cache-Control: public, max-age=0, must-revalidate
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
 

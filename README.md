@@ -66,9 +66,14 @@ Site details come from environment variables (see `src/_data/site.js`):
 
 Cloudflare Pages, connected to this repository:
 
-- Build command: `bun run build`
+- Build command: `bun install --frozen-lockfile && bun run build`
 - Output directory: `_site`
+- Environment variable: `BUN_VERSION=1.3.14`
 - Custom domain: `blog.silencestar.com`
+
+The install step is spelled out on purpose: the Pages build image installs the
+Bun runtime but does not install dependencies on its own for this project, so a
+bare `bun run build` fails with `eleventy: command not found`.
 
 `src/_headers` ships the cache policy. CSS and `pagefind-ui.js` have no content
 hash in their filenames, so they deliberately use a short max-age instead of
