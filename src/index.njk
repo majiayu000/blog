@@ -1,6 +1,80 @@
 ---
 layout: shell.njk
+navKey: home
 ---
-{% set items = blog.posts %}
-{% set emptyText = "还没有文章。往 src/posts/<slug>/index.html 放一篇 HTML 就会出现在这里。" %}
-{% include "post-list.njk" %}
+<section class="hero" aria-labelledby="home-heading">
+  <div class="content-frame">
+    <p class="eyebrow">// SILENT·STAR — 关于 AI AGENT 的公开笔记<span class="cursor" aria-hidden="true"></span></p>
+    <h1 id="home-heading">我在公开构建<br>AI Agent。</h1>
+    <p class="hero__english" lang="en">Building AI agents in public.</p>
+    <p class="hero__copy">深度长文、代码教程与项目拆解，把我做 Agent 时踩过的坑、想明白的事，一篇篇写下来。</p>
+    <p class="hero__aside" lang="en">Deep dives · tutorials · teardowns · source notes.</p>
+    <div class="hero__actions">
+      <a class="button button--primary" href="/archive/">浏览全部文章 <span aria-hidden="true">→</span></a>
+      <a class="button button--secondary" href="/feed.xml">订阅 RSS</a>
+    </div>
+    <div class="hero__metrics">
+      <span>文章 {{ blog.posts.length }}</span>
+      <span aria-hidden="true">·</span>
+      <span>自 2026 起写作</span>
+    </div>
+  </div>
+</section>
+
+<section class="home-section">
+  <div class="content-frame">
+    <header class="section-heading">
+      <div>
+        <p class="eyebrow">// FEATURED</p>
+        <h2>精选 <span lang="en">Featured</span></h2>
+      </div>
+      <a href="/archive/">全部 →</a>
+    </header>
+    {% set items = blog.posts %}
+    {% set featuredList = true %}
+    {% set emptyText = "还没有文章。往 src/posts/<slug>/index.html 放一篇 HTML 就会出现在这里。" %}
+    {% include "post-list.njk" %}
+  </div>
+</section>
+
+<section class="home-section home-section--topics">
+  <div class="content-frame">
+    <header class="section-heading">
+      <div>
+        <p class="eyebrow">// TOPICS</p>
+        <h2>按主题浏览 <span lang="en">Browse by topic</span></h2>
+      </div>
+    </header>
+    <ul class="topic-grid">
+      {% for group in blog.tags %}
+      <li>
+        <a href="/tags/{{ group.tag | tagPath | urlencode }}/">
+          <i aria-hidden="true"></i>
+          <span><strong>{{ group.tag }}</strong><small>Topic {{ loop.index }}</small></span>
+          <b>{{ group.posts.length }}</b>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+<section class="about-section" id="about">
+  <div class="content-frame about-grid">
+    <div class="about-mark" aria-hidden="true">{{ site.title | upper }}</div>
+    <div>
+      <p class="eyebrow">// ABOUT</p>
+      <h2>Lif</h2>
+    </div>
+    <div class="about-copy">
+      <p>专注 AI Agent 开发的全栈工程师与开源贡献者。正在构建客服 Agent、Text-to-SQL 数据分析 Agent 和 AI 漫画生产流水线，长期实践 Claude Code、Vercel AI SDK 与 RAG。</p>
+      <p>也持续参与 Haystack、Pydantic AI、Fyrox 等开源项目，技术栈覆盖 React、Next.js、Vue、Python、Go 与 Bun。</p>
+      <p class="about-copy__english" lang="en">AI Agent Developer &amp; Open Source Contributor. Building useful agents in public.</p>
+      <div class="about-links">
+        <a href="https://www.silencestar.com/about">完整介绍 ↗</a>
+        <a href="https://github.com/majiayu000">GitHub ↗</a>
+        <a href="/feed.xml">RSS ↗</a>
+      </div>
+    </div>
+  </div>
+</section>

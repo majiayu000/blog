@@ -1,0 +1,189 @@
+/* Footer, motion, and responsive overrides for the generated blog shell. */
+
+.site-footer {
+  border-top: 1px solid var(--line);
+}
+
+.site-footer__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  width: min(100% - 3rem, 70rem);
+  min-height: 7rem;
+  margin-inline: auto;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.footer-brand strong {
+  color: var(--fg);
+  font-family: var(--display);
+  font-size: 0.9rem;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.footer-links a:hover {
+  color: var(--accent);
+}
+
+@keyframes blink {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(0.8rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 48rem) {
+  .content-frame,
+  .page-shell,
+  .site-header__inner,
+  .site-footer__inner {
+    width: min(100% - 2rem, 70rem);
+  }
+
+  .site-header__inner {
+    grid-template-columns: 1fr auto;
+    gap: 0.75rem 1rem;
+    padding-block: 0.65rem;
+  }
+
+  .site-header nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    overflow-x: auto;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--line);
+    scrollbar-width: none;
+  }
+
+  .site-header nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-actions {
+    justify-self: end;
+  }
+
+  .header-control {
+    min-height: 2rem;
+    padding: 0.35rem 0.55rem;
+  }
+
+  .hero .content-frame {
+    padding-block: 4.2rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.9rem, 15vw, 4.4rem);
+  }
+
+  .posts--featured .post-card {
+    grid-template-columns: 1fr;
+  }
+
+  .artifact-preview {
+    min-height: 14rem;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .artifact-preview__body {
+    min-height: calc(14rem - 2.8rem);
+  }
+
+  .about-grid {
+    grid-template-columns: auto 1fr;
+  }
+
+  .about-copy {
+    grid-column: 1 / -1;
+  }
+
+  .site-footer__inner {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    padding-block: 2rem;
+  }
+
+  .footer-links {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 30rem) {
+  .site-title strong {
+    font-size: 1.12rem;
+  }
+
+  .site-header nav a {
+    padding-inline: 0.58rem;
+  }
+
+  .header-control {
+    font-size: 0.64rem;
+  }
+
+  .header-control span {
+    display: none;
+  }
+
+  .hero__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .post-card__content {
+    padding: 1.25rem;
+  }
+
+  .about-mark {
+    width: 4.8rem;
+    height: 4.8rem;
+  }
+}

@@ -2,15 +2,23 @@
 layout: shell.njk
 title: 归档
 permalink: /archive/
+navKey: archive
 ---
-<h1>归档</h1>
+<div class="page-shell">
+  <header class="page-heading">
+    <p class="eyebrow">// WRITING</p>
+    <h1>文章归档 <span lang="en">All writing</span></h1>
+    <p>按时间浏览所有公开笔记、技术拆解与源码文章。</p>
+  </header>
 
-{% if blog.years.length %}
-  {% for group in blog.years %}
-    <div class="section-label">{{ group.year }}</div>
-    {% set items = group.posts %}
-    {% include "post-list.njk" %}
-  {% endfor %}
-{% else %}
-  <p class="empty">还没有文章。</p>
-{% endif %}
+  {% if blog.years.length %}
+    {% for group in blog.years %}
+      <div class="section-label">{{ group.year }}</div>
+      {% set items = group.posts %}
+      {% set featuredList = false %}
+      {% include "post-list.njk" %}
+    {% endfor %}
+  {% else %}
+    <p class="empty">还没有文章。</p>
+  {% endif %}
+</div>

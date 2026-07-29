@@ -1,13 +1,37 @@
 {% if items.length %}
-<ul class="posts">
+<ul class="posts{% if featuredList %} posts--featured{% endif %}">
   {% for post in items %}
-  <li>
-    <h2><a class="title" href="{{ post.url }}">{{ post.title }}</a></h2>
-    {% if post.description %}<p>{{ post.description }}</p>{% endif %}
-    <div class="meta">
-      <time datetime="{{ post.date }}">{{ post.date | cnDate }}</time>
-      {% for tag in post.tags %}<a href="/tags/{{ tag | tagPath | urlencode }}/">{{ tag }}</a>{% endfor %}
+  <li class="post-card">
+    <div class="post-card__content">
+      <div class="post-card__top">
+        <span class="post-card__type">ARTICLE</span>
+        {% if post.tags.length %}<span class="post-card__topic"><i aria-hidden="true"></i>{{ post.tags[0] }}</span>{% endif %}
+      </div>
+      <h2><a class="title" href="{{ post.url }}">{{ post.title }}</a></h2>
+      {% if post.description %}<p class="post-card__description">{{ post.description }}</p>{% endif %}
+      {% if post.tags.length %}
+      <div class="post-card__tags">
+        {% for tag in post.tags %}<a href="/tags/{{ tag | tagPath | urlencode }}/">#{{ tag }}</a>{% endfor %}
+      </div>
+      {% endif %}
+      <div class="post-card__meta">
+        <time datetime="{{ post.date }}">{{ post.date | cnDate }}</time>
+        <a class="post-card__read" href="{{ post.url }}">读全文 <span aria-hidden="true">→</span></a>
+      </div>
     </div>
+    {% if featuredList %}
+    <div class="artifact-preview" aria-hidden="true">
+      <div class="artifact-preview__bar">
+        <span class="window-dots"><i></i><i></i><i></i></span>
+        <span>{{ post.slug }}.html</span>
+        <b>● LIVE</b>
+      </div>
+      <div class="artifact-preview__body">
+        <span>▦ 自包含 HTML 文章</span>
+        <small>view the source artifact</small>
+      </div>
+    </div>
+    {% endif %}
   </li>
   {% endfor %}
 </ul>

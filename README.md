@@ -49,16 +49,14 @@ site that silently shows wrong metadata.
 never injected into posts — that is the price of keeping them byte-for-byte
 untouched — so a post without its own back link is a dead end for readers.
 
-`src/posts/how-posts-work/` is a working example.
-
 ## Configuration
 
 Site details come from environment variables (see `src/_data/site.js`):
 
 | Variable | Default |
 |---|---|
-| `SITE_TITLE` | `Blog` |
-| `SITE_DESCRIPTION` | empty |
+| `SITE_TITLE` | `Silent Star` |
+| `SITE_DESCRIPTION` | `关于 AI 工具、Agent 架构与工程实践的独立记录。` |
 | `SITE_URL` | `https://blog.silencestar.com` |
 | `SITE_AUTHOR` | empty |
 | `SITE_LANG` | `zh-CN` |

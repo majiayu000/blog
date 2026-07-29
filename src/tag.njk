@@ -5,12 +5,20 @@ pagination:
   size: 1
   alias: group
 permalink: "/tags/{{ group.tag | tagPath }}/"
+navKey: tags
 eleventyComputed:
   title: "标签：{{ group.tag }}"
 ---
-<h1>{{ group.tag }}</h1>
+<div class="page-shell">
+  <header class="page-heading">
+    <p class="eyebrow">// TOPIC</p>
+    <h1>{{ group.tag }}</h1>
+    <p>{{ group.posts.length }} 篇相关记录。</p>
+  </header>
 
-{% set items = group.posts %}
-{% include "post-list.njk" %}
+  {% set items = group.posts %}
+  {% set featuredList = false %}
+  {% include "post-list.njk" %}
 
-<a class="back-link" href="/tags/">← 所有标签</a>
+  <a class="back-link" href="/tags/">← 所有主题</a>
+</div>

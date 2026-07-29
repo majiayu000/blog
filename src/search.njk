@@ -2,17 +2,24 @@
 layout: shell.njk
 title: 搜索
 permalink: /search/
+navKey: search
 extraHead: '<link rel="stylesheet" href="/pagefind/pagefind-ui.css">'
 ---
-<h1>搜索</h1>
+<div class="page-shell">
+  <header class="page-heading">
+    <p class="eyebrow">// SEARCH</p>
+    <h1>搜索文章 <span lang="en">Find a note</span></h1>
+    <p>按标题、正文或主题查找内容。</p>
+  </header>
 
-<div id="search"></div>
+  <div id="search"></div>
 
-<script src="/pagefind/pagefind-ui.js"></script>
-<script>
-  new PagefindUI({ element: "#search", showSubResults: true, translations: {
-    placeholder: "搜索文章", zero_results: "没有找到 [SEARCH_TERM] 相关的内容",
-  }});
-</script>
+  <script src="/pagefind/pagefind-ui.js"></script>
+  <script>
+    new PagefindUI({ element: "#search", showSubResults: true, translations: {
+      placeholder: "搜索文章", zero_results: "没有找到 [SEARCH_TERM] 相关的内容",
+    }});
+  </script>
 
-<noscript><p class="empty">搜索需要 JavaScript，你也可以直接看<a href="/archive/">归档</a>。</p></noscript>
+  <noscript><p class="empty">搜索需要 JavaScript，你也可以直接看<a href="/archive/">归档</a>。</p></noscript>
+</div>
