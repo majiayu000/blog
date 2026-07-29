@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>三方上下文压缩机制对比 · 附完整源码</title>
+<meta name="date" content="2026-07-29">
+<meta name="description" content="Claude Code、Codex、Pi 三者的上下文压缩，差异不在参数，而在缓存、结构、边界三个取舍上——参数趋同只是表象。">
+<meta name="tags" content="Claude Code, 上下文压缩, Agent 架构">
+<style>
+  :root{--bg:#0e1014;--panel:#14171e;--card:#191d26;--soft:#1e232e;--line:#2a303c;
+    --ink:#e6e9f0;--ink2:#c3c9d6;--muted:#8b93a4;--faint:#616a7c;
+    --acc:#7aa2ff;--acc2:#4fd1a5;--warn:#e0a458;--danger:#ef6f8b;--mag:#c88bff;
+    --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
+    --sans:'PingFang SC','Microsoft YaHei',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;}
+  @media (prefers-color-scheme:light){:root{--bg:#fbfbfc;--panel:#fff;--card:#fff;--soft:#f4f5f8;--line:#e4e7ee;
+    --ink:#161a22;--ink2:#2f3644;--muted:#5b6473;--faint:#8a92a2;
+    --acc:#3a63d6;--acc2:#0c9a72;--warn:#b3701a;--danger:#cf3a5c;--mag:#8a3fd0;}}
+  :root[data-theme="dark"]{--bg:#0e1014;--panel:#14171e;--card:#191d26;--soft:#1e232e;--line:#2a303c;
+    --ink:#e6e9f0;--ink2:#c3c9d6;--muted:#8b93a4;--faint:#616a7c;
+    --acc:#7aa2ff;--acc2:#4fd1a5;--warn:#e0a458;--danger:#ef6f8b;--mag:#c88bff;}
+  :root[data-theme="light"]{--bg:#fbfbfc;--panel:#fff;--card:#fff;--soft:#f4f5f8;--line:#e4e7ee;
+    --ink:#161a22;--ink2:#2f3644;--muted:#5b6473;--faint:#8a92a2;
+    --acc:#3a63d6;--acc2:#0c9a72;--warn:#b3701a;--danger:#cf3a5c;--mag:#8a3fd0;}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink2);font-family:var(--sans);line-height:1.68;font-size:16px;-webkit-font-smoothing:antialiased}
+  a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+  .top{border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:20}
+  .top .in{max-width:1200px;margin:0 auto;padding:13px 24px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .top b{color:var(--ink);font-weight:650;font-size:15px}
+  .top .tag{font-family:var(--mono);font-size:11px;color:var(--faint);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+  .shell{max-width:1200px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:220px 1fr;gap:44px;align-items:start}
+  nav{position:sticky;top:64px;padding:34px 0;font-size:13.5px;max-height:calc(100vh - 64px);overflow:auto}
+  nav a{display:block;color:var(--muted);padding:5px 0 5px 12px;border-left:2px solid var(--line);line-height:1.4}
+  nav a:hover{color:var(--ink);border-left-color:var(--acc);text-decoration:none}
+  nav .g{color:var(--faint);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 6px;padding-left:12px}
+  main{padding:30px 0 90px;min-width:0;max-width:820px}
+  .herowrap{margin:6px 0 30px;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.4)}
+  .herowrap svg{display:block;width:100%;height:auto}
+  @media(max-width:820px){.herowrap{overflow-x:auto}.herowrap svg{min-width:660px}}
+  h1{font-size:clamp(24px,3.4vw,32px);line-height:1.2;letter-spacing:-.01em;color:var(--ink);font-weight:680;margin:6px 0 14px}
+  h2{font-size:22px;color:var(--ink);font-weight:660;margin:52px 0 6px;padding-top:12px;scroll-margin-top:64px;border-top:1px solid var(--line)}
+  h2:first-of-type{border-top:none}
+  span[id]{display:block;scroll-margin-top:70px}
+  h3{font-size:16.5px;color:var(--ink);font-weight:640;margin:28px 0 8px}
+  h4{font-size:13.5px;color:var(--ink2);font-weight:600;margin:18px 0 6px;font-family:var(--mono)}
+  p{margin:11px 0;color:var(--muted)}
+  strong{color:var(--ink);font-weight:640}
+  ul{padding-left:20px;margin:11px 0}li{margin:6px 0}li::marker{color:var(--faint)}
+  code{font-family:var(--mono);font-size:.85em;background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:.08em .38em;color:var(--ink)}
+  .code{position:relative;margin:14px 0}
+  .code .lang{position:absolute;top:0;right:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);background:var(--soft);border:1px solid var(--line);border-bottom-left-radius:8px;border-top-right-radius:11px;padding:3px 9px;z-index:1}
+  pre{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:15px 17px;overflow-x:auto;margin:0;font-size:12.5px;line-height:1.62}
+  pre code{background:none;border:none;padding:0;color:var(--ink2);font-size:12.5px}
+  blockquote{margin:14px 0;padding:12px 16px;background:var(--soft);border-left:3px solid var(--acc2);border-radius:0 10px 10px 0;color:var(--ink2);font-size:14.5px}
+  hr{border:none;border-top:1px solid var(--line);margin:30px 0 0;opacity:0}
+  .tw{overflow-x:auto;margin:14px 0}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);font-weight:600}
+  td:first-child{color:var(--ink)}
+  @media(max-width:900px){.shell{grid-template-columns:1fr}nav{display:none}}
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <b>三方上下文压缩机制对比</b>
+  <span class="tag">附完整源码</span>
+  <span class="tag">Claude Code · Pi · Codex</span>
+</div></div>
+<div class="shell">
+<nav>
+  <div class="g">金字塔</div>
+  <a href="#top">核心结论</a>
+  <a href="#p1">支柱一 · 缓存取舍</a>
+  <a href="#p2">支柱二 · 结构取舍</a>
+  <a href="#p3">支柱三 · 边界取舍</a>
+  <a href="#minor">次级事实归位</a>
+  <div class="g">附录</div>
+  <a href="#appendix">A · 纵向完整机制</a>
+  <a href="#boundary">B · 证据边界</a></nav>
+<main>
+<div class="herowrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" font-family="'PingFang SC','Microsoft YaHei','Hiragino Sans GB',system-ui,sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f1319"/>
+      <stop offset="1" stop-color="#171d27"/>
+    </linearGradient>
+    <linearGradient id="apex" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e8975a"/>
+      <stop offset="0.5" stop-color="#4fd0a0"/>
+      <stop offset="1" stop-color="#6ea0f5"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <rect width="1280" height="720" fill="none"/>
+
+  <!-- Header -->
+  <text x="56" y="82" fill="#eef1f6" font-size="46" font-weight="700" letter-spacing="0.5">三方上下文压缩机制</text>
+  <text x="56" y="118" fill="#9aa4b4" font-size="19">参数趋同是表象,本质是三个取舍上的不同下注</text>
+
+  <!-- legend -->
+  <g font-size="14" font-weight="600">
+    <circle cx="878" cy="70" r="6" fill="#e8975a"/><text x="892" y="75" fill="#cdd4de">Claude Code</text>
+    <circle cx="1010" cy="70" r="6" fill="#4fd0a0"/><text x="1024" y="75" fill="#cdd4de">Pi</text>
+    <circle cx="1070" cy="70" r="6" fill="#6ea0f5"/><text x="1084" y="75" fill="#cdd4de">Codex</text>
+  </g>
+  <text x="1224" y="112" text-anchor="end" fill="#6b7480" font-size="13" font-family="ui-monospace,Menlo,monospace">源码级对比 · 金字塔原理</text>
+
+  <!-- Apex bar (conclusion-first) -->
+  <rect x="56" y="146" width="1168" height="52" rx="10" fill="#12171f" stroke="#2a323f"/>
+  <rect x="56" y="146" width="6" height="52" rx="3" fill="url(#apex)"/>
+  <text x="80" y="178" fill="#eef1f6" font-size="18" font-weight="600">本质差异 = 三个根本取舍:<tspan fill="#e8975a">缓存</tspan> · <tspan fill="#4fd0a0">结构</tspan> · <tspan fill="#6ea0f5">边界</tspan>  —  参数(触发阈值 / token 估算 / 摘要格式)三家高度趋同</text>
+
+  <!-- three pillar columns -->
+  <!-- geometry: x0=56 w=373 gap=24 -->
+  <g>
+    <!-- Pillar headers -->
+    <g font-size="18" font-weight="700">
+      <rect x="56"  y="228" width="373" height="40" rx="9" fill="#1c2431"/>
+      <text x="76"  y="254" fill="#eef1f6">支柱一 · 缓存取舍</text>
+      <text x="413" y="254" fill="#6b7480" font-size="12" text-anchor="end" font-weight="500">影响面最大</text>
+
+      <rect x="453" y="228" width="373" height="40" rx="9" fill="#1c2431"/>
+      <text x="473" y="254" fill="#eef1f6">支柱二 · 结构取舍</text>
+      <text x="810" y="254" fill="#6b7480" font-size="12" text-anchor="end" font-weight="500">能力天花板</text>
+
+      <rect x="850" y="228" width="373" height="40" rx="9" fill="#1c2431"/>
+      <text x="870" y="254" fill="#eef1f6">支柱三 · 边界取舍</text>
+      <text x="1207" y="254" fill="#6b7480" font-size="12" text-anchor="end" font-weight="500">谁能演进</text>
+    </g>
+
+    <!-- Cards: rows = CC / Pi / Codex (fixed order) ; y: 282,398,514 ; h=104 gap=12 -->
+    <!-- ROW helper via repeated groups -->
+
+    <!-- ===== Column 1: 缓存 ===== -->
+    <g>
+      <!-- CC -->
+      <rect x="56" y="282" width="373" height="104" rx="11" fill="#191f28" stroke="#2a323f" filter="url(#sh)"/>
+      <rect x="56" y="282" width="5" height="104" rx="2.5" fill="#e8975a"/>
+      <text x="78" y="312" fill="#e8975a" font-size="14" font-weight="700">Claude Code</text>
+      <text x="78" y="342" fill="#eef1f6" font-size="21" font-weight="700">全力复用</text>
+      <text x="78" y="370" fill="#9aa4b4" font-size="14">fork 共享前缀,压缩也命中(省 98% miss)</text>
+      <!-- Pi -->
+      <rect x="56" y="398" width="373" height="104" rx="11" fill="#191f28" stroke="#2a323f" filter="url(#sh)"/>
+      <rect x="56" y="398" width="5" height="104" rx="2.5" fill="#4fd0a0"/>
+      <text x="78" y="428" fill="#4fd0a0" font-size="14" font-weight="700">Pi</text>
+      <text x="78" y="458" fill="#eef1f6" font-size="21" font-weight="700">主动放弃</text>
+      <text x="78" y="486" fill="#9aa4b4" font-size="14">cacheRetention:"none",一次性 prompt</text>
+      <!-- Codex -->
+      <rect x="56" y="514" width="373" height="104" rx="11" fill="#191f28" stroke="#2a323f" filter="url(#sh)"/>
+      <rect x="56" y="514" width="5" height="104" rx="2.5" fill="#6ea0f5"/>
+      <text x="78" y="544" fill="#6ea0f5" font-size="14" font-weight="700">Codex</text>
+      <text x="78" y="574" fill="#eef1f6" font-size="21" font-weight="700">前缀保护</text>
+      <text x="78" y="602" fill="#9aa4b4" font-size="14">超限从头部删,保后续 turn 缓存</text>
+    </g>
+
+    <!-- ===== Column 2: 结构 ===== -->
+    <g>
+      <rect x="453" y="282" width="373" height="104" rx="11" fill="#191f28" stroke="#2a323f" filter="url(#sh)"/>
+      <rect x="453" y="282" width="5" height="104" rx="2.5" fill="#e8975a"/>
+      <text x="475" y="312" fill="#e8975a" font-size="14" font-weight="700">Claude Code</text>
+      <text x="475" y="342" fill="#eef1f6" font-size="21" font-weight="700">线性</text>
+      <text x="475" y="370" fill="#9aa4b4" font-size="14">一条链 + compact boundary 打点</text>
+
+      <rect x="453" y="398" width="373" height="104" rx="11" fill="#161f1c" stroke="#2f6b57" filter="url(#sh)"/>
+      <rect x="453" y="398" width="5" height="104" rx="2.5" fill="#4fd0a0"/>
+      <text x="475" y="428" fill="#4fd0a0" font-size="14" font-weight="700">Pi  ★ 唯一</text>
+      <text x="475" y="458" fill="#eef1f6" font-size="21" font-weight="700">树 + 分支摘要</text>
+      <text x="475" y="486" fill="#9aa4b4" font-size="14">切分支时保留被抛弃分支的上下文</text>
+
+      <rect x="453" y="514" width="373" height="104" rx="11" fill="#191f28" stroke="#2a323f" filter="url(#sh)"/>
+      <rect x="453" y="514" width="5" height="104" rx="2.5" fill="#6ea0f5"/>
+      <text x="475" y="544" fill="#6ea0f5" font-size="14" font-weight="700">Codex</text>
+      <text x="475" y="574" fill="#eef1f6" font-size="21" font-weight="700">线性</text>
+      <text x="475" y="602" fill="#9aa4b4" font-size="14">rollout + UUIDv7 窗口谱系</text>
+    </g>
+
+    <!-- ===== Column 3: 边界 ===== -->
+    <g>
+      <rect x="850" y="282" width="373" height="104" rx="11" fill="#191f28" stroke="#2a323f" filter="url(#sh)"/>
+      <rect x="850" y="282" width="5" height="104" rx="2.5" fill="#e8975a"/>
+      <text x="872" y="312" fill="#e8975a" font-size="14" font-weight="700">Claude Code</text>
+      <text x="872" y="342" fill="#eef1f6" font-size="21" font-weight="700">单体</text>
+      <text x="872" y="370" fill="#9aa4b4" font-size="14">四层 + 熔断,能力最全但改不动</text>
+
+      <rect x="850" y="398" width="373" height="104" rx="11" fill="#191f28" stroke="#2a323f" filter="url(#sh)"/>
+      <rect x="850" y="398" width="5" height="104" rx="2.5" fill="#4fd0a0"/>
+      <text x="872" y="428" fill="#4fd0a0" font-size="14" font-weight="700">Pi</text>
+      <text x="872" y="458" fill="#eef1f6" font-size="21" font-weight="700">可插拔</text>
+      <text x="872" y="486" fill="#9aa4b4" font-size="14">钩子可换模型 / 换策略 / 取消</text>
+
+      <rect x="850" y="514" width="373" height="104" rx="11" fill="#191f28" stroke="#2a323f" filter="url(#sh)"/>
+      <rect x="850" y="514" width="5" height="104" rx="2.5" fill="#6ea0f5"/>
+      <text x="872" y="544" fill="#6ea0f5" font-size="14" font-weight="700">Codex</text>
+      <text x="872" y="574" fill="#eef1f6" font-size="21" font-weight="700">分派</text>
+      <text x="872" y="602" fill="#9aa4b4" font-size="14">四路,能推服务端就推</text>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <line x1="56" y1="652" x2="1224" y2="652" stroke="#2a323f"/>
+  <text x="56" y="684" fill="#cdd4de" font-size="15" font-weight="600">选型:<tspan fill="#e8975a">成本敏感 → Claude Code</tspan>   ·   <tspan fill="#4fd0a0">要分支/要定制 → Pi</tspan>   ·   <tspan fill="#6ea0f5">要外推后端 → Codex</tspan></text>
+  <text x="1224" y="684" text-anchor="end" fill="#6b7480" font-size="12" font-family="ui-monospace,Menlo,monospace">Claude Code(leaked) · earendil-works/pi · openai/codex</text>
+</svg>
+</div>
+<h1>三方上下文压缩机制对比 · 金字塔结构 + 完整源码</h1>
+<blockquote>严谨科技报告。按<strong>金字塔原理</strong>组织:结论先行 → 三支柱(MECE)→ 每支柱附三方核心函数完整源码 → 次级事实归位 → 纵向附录。</blockquote>
+<blockquote>对比对象:</blockquote>
+<blockquote>- <strong>Claude Code</strong> — <code>@anthropic-ai/claude-code@0.0.0-leaked</code>(2026-03-31 泄露),<code>src/services/compact/</code></blockquote>
+<blockquote>- <strong>Pi</strong> — <code>earendil-works/pi</code>(TypeScript),<code>packages/coding-agent/src/core/compaction/</code></blockquote>
+<blockquote>- <strong>Codex</strong> — <code>openai/codex</code>(Rust),<code>codex-rs/core/src/</code></blockquote>
+<blockquote>代码块头部标注 <code>来源: 仓库 · 路径:行号</code>,均从源码原样摘取(Pi/Codex 经 <code>gh api</code> 拉取,Claude Code 为本地泄露仓库)。</blockquote>
+<hr>
+<h2>目录</h2>
+<ul>
+<li><a href="#top">引子(SCQA)与核心结论</a></li>
+<li><a href="#p1">支柱一 · 缓存取舍</a></li>
+<li><a href="#p2">支柱二 · 结构取舍</a></li>
+<li><a href="#p3">支柱三 · 边界取舍</a></li>
+<li><a href="#minor">次级事实归位(MECE 校验)</a></li>
+<li><a href="#appendix">附录 A · 三系统纵向完整机制</a></li>
+<li><a href="#boundary">附录 B · 证据边界</a></li>
+</ul>
+<hr>
+<span id="top"></span>
+<h2>引子与核心结论</h2>
+<p><strong>情境(S)</strong>:LLM 上下文窗口有限,长会话必然溢出。Claude Code、Pi、Codex 三个编码 agent 都实现了上下文压缩来续命。</p>
+<p><strong>冲突(C)</strong>:三者压缩的<strong>参数</strong>看起来大同小异——都是「窗口 − 预留」触发、都用 char/4 估算、都生成结构化摘要,容易让人以为压缩「就那么回事」。</p>
+<p><strong>疑问(Q)</strong>:三者的压缩到底有没有本质区别?区别在哪?</p>
+<p><strong>回答(A)</strong>:</p>
+<blockquote><strong>核心结论(金字塔顶):三者的压缩差异不在参数,而在三个根本问题上的不同下注:缓存、结构、边界。参数趋同是表象;这三个取舍决定了各自的能力天花板。</strong></blockquote>
+<p>下文三支柱<strong>相互独立、完全穷尽</strong>(MECE),按影响面从大到小排列;每支柱先给论点,再给三方<strong>完整源码</strong>证据。</p>
+<hr>
+<span id="p1"></span>
+<h2>支柱一 · 缓存取舍:压缩要不要迁就 prompt 缓存?</h2>
+<blockquote><strong>论点</strong>:三者对「压缩时是否保护 prompt 前缀缓存」给出三种互斥答案,这决定了各自的成本模型与代码复杂度。这是影响面最大的一个取舍——Claude Code 几乎每个压缩动作都在回答「会不会破前缀」,复杂度最高;Pi 因放弃缓存,实现最干净。</blockquote>
+<div class="tw"><table>
+<tr><th>Agent</th><th>下注</th><th>一句话</th></tr>
+<tr><td>Claude Code</td><td><strong>全力复用</strong></td><td>压缩调用本身也要命中缓存</td></tr>
+<tr><td>Codex</td><td><strong>前缀保护</strong></td><td>压缩请求不追求命中,但删历史从头删以保后续 turn</td></tr>
+<tr><td>Pi</td><td><strong>主动放弃</strong></td><td>压缩是一次性 prompt,复用无价值,索性关掉</td></tr>
+</table></div>
+<h3>1.1 Claude Code — fork 复用主对话前缀(省 98% miss)</h3>
+<p><strong>机制讲清楚</strong>:Claude Code 生成摘要,不是在主对话里直接调一次模型,而是 <strong>fork 出一个子 agent</strong> 去做这件事。要让这次「子调用」也命中缓存,它的请求就得和主对话的前缀<strong>完全一致</strong>——Anthropic 的缓存键由五样东西拼成:<code>system prompt</code> + <code>tools</code> + <code>model</code> + <code>messages 前缀</code> + <code>thinking config</code>。<code>CacheSafeParams</code> 这个结构体就是把前四样打包传给 fork,保证一致。</p>
+<p><strong>有一个反直觉的坑</strong>:如果顺手给 fork 设了 <code>maxOutputTokens</code>,它会连带把 <code>budget_tokens</code> 也改掉(claude.ts 里有个 <code>Math.min</code> 钳制),而 <code>budget_tokens</code> 属于 thinking config、又恰恰是缓存键的一部分——于是缓存<strong>瞬间失效</strong>。所以这条压缩路径<strong>绝不能设 maxOutputTokens</strong>。下面代码块里的注释就是在警告这一点:</p>
+<div class="code"><span class="lang">TypeScript</span><pre><code>// 来源: claude-code · src/utils/forkedAgent.ts:46-103(节选)
+/**
+ * Parameters that must be identical between the fork and parent API requests
+ * to share the parent's prompt cache. The Anthropic API cache key is composed of:
+ * system prompt, tools, model, messages (prefix), and thinking config.
+ */
+export type CacheSafeParams = {
+  systemPrompt: SystemPrompt
+  userContext: { [k: string]: string }
+  systemContext: { [k: string]: string }
+  toolUseContext: ToolUseContext
+  forkContextMessages: Message[]
+}
+// maxOutputTokens 文档警告:
+//   CAUTION: setting this changes both max_tokens AND budget_tokens (via clamping
+//   in claude.ts). If the fork uses cacheSafeParams to share the parent's prompt
+//   cache, a different budget_tokens will invalidate the cache — thinking config
+//   is part of the cache key. Only set this when cache sharing is not a goal.</code></pre></div>
+<p><strong>第二个机制讲清楚</strong>:压缩把历史变短了,那么下一次请求命中缓存的 <code>cache_read</code> token 自然会下降。而 Claude Code 有一个「缓存断裂检测」一直在盯着 <code>cache_read</code>——一旦发现它掉了,就怀疑是缓存被意外破坏并报警。但压缩造成的下降是<strong>合法的</strong>,不该报警。所以每次压缩后必须主动调 <code>notifyCompaction</code>,把检测的基线 <code>prevCacheReadTokens</code> 清成 <code>null</code>,让下一次的下降不被误判。注释里记着:漏调这一步曾导致 <strong>20% 的缓存断裂事件是误报</strong>:</p>
+<div class="code"><span class="lang">TypeScript</span><pre><code>// 来源: claude-code · src/services/api/promptCacheBreakDetection.ts:684-698
+/**
+ * Call after compaction to reset the cache read baseline.
+ * Compaction legitimately reduces message count, so cache read tokens
+ * will naturally drop on the next call — that's not a break.
+ */
+export function notifyCompaction(querySource: QuerySource, agentId?: AgentId): void {
+  const key = getTrackingKey(querySource, agentId)
+  const state = key ? previousStateBySource.get(key) : undefined
+  if (state) {
+    state.prevCacheReadTokens = null
+  }
+}</code></pre></div>
+<blockquote>实验数据(compact.ts:431-434):关闭 fork 缓存共享 → <strong>98% cache miss</strong>,占全队 cache_creation 约 0.76%(~380 亿 token/天)。这是「全力复用」这一下注的量化收益。</blockquote>
+<h3>1.2 Codex — 超限从头部删,保护前缀缓存</h3>
+<p><strong>机制讲清楚</strong>:Codex 压缩历史时,可能连「压缩请求」本身都还超上下文。这时它的选择是<strong>删掉最旧的那一项、然后重试</strong>,而不是删最新的。为什么删头不删尾?因为服务端 prompt 缓存<strong>按前缀匹配</strong>——只要开头不变,后面就能复用;而删尾会让整段后缀的缓存全部作废。删头既腾出了空间,又保住了前缀缓存。下面的 <code>remove_first_item()</code> 就是这个动作,注释直接点明「preserve cache (prefix-based)」:</p>
+<div class="code"><span class="lang">Rust</span><pre><code>// 来源: codex · codex-rs/core/src/compact.rs:309-324
+Err(e) if matches!(e.details(), CodexErrorDetails::ContextWindowExceeded) =&gt; {
+    if turn_input_len &gt; 1 {
+        // Trim from the beginning to preserve cache (prefix-based) and keep recent messages intact.
+        error!("Context window exceeded while compacting; removing oldest history item. Error: {e}");
+        history.remove_first_item();
+        retries = 0;
+        continue;
+    }
+    // ... 只剩一项仍超限则报错 ...
+}</code></pre></div>
+<p>压缩这一整个 turn 里可能重试很多次。Codex <strong>复用同一个 client session</strong>,让 sticky routing、websocket 增量追踪这些 turn 级状态跨重试存活(否则每次重试都新建连接、丢掉路由粘性):</p>
+<div class="code"><span class="lang">Rust</span><pre><code>// 来源: codex · codex-rs/core/src/compact.rs:260-264
+let mut client_session = sess.services.model_client.new_session();
+// Reuse one client session so turn-scoped state (sticky routing, websocket incremental
+// request tracking)
+// survives retries within this compact turn.</code></pre></div>
+<h3>1.3 Pi — 直接关闭缓存(退出这场博弈)</h3>
+<p><strong>机制讲清楚</strong>:Pi 的判断很干脆——摘要是<strong>一次性请求</strong>,几乎不会有第二次一模一样的调用来复用它的缓存,那么「写缓存」本身反而是浪费(占额度、还徒增复杂度)。于是它给摘要请求设两个东西:<code>cacheRetention:"none"</code>(明确不写 prompt cache)+ 一个全新的 <code>sessionId</code>(把这次请求的路由和主对话隔离开)。<strong>一行配置,直接退出缓存博弈</strong>——这也是为什么 Pi 的压缩代码是三家里最短的:</p>
+<div class="code"><span class="lang">TypeScript</span><pre><code>// 来源: pi · packages/coding-agent/src/core/compaction/compaction.ts:562-581
+export async function completeSummarization(
+	model: Model&lt;any&gt;, context: Context, options: SimpleStreamOptions,
+	streamFn?: StreamFn, retry?: RetryPolicy, callbacks?: RetryCallbacks,
+): Promise&lt;AssistantMessage&gt; {
+	// Summaries are standalone requests, so isolate routing and avoid cache writes that cannot be reused.
+	const requestOptions: SimpleStreamOptions = {
+		...options,
+		cacheRetention: "none",
+		sessionId: uuidv7(),
+	};
+	const produce = async (): Promise&lt;AssistantMessage&gt; =&gt;
+		streamFn
+			? (await streamFn(model, context, requestOptions)).result()
+			: completeSimple(model, context, requestOptions);
+	return retryAssistantCall(produce, retry, requestOptions.signal, callbacks);
+}</code></pre></div>
+<h3>1.4 支柱一小结</h3>
+<p><strong>这是三者最深刻的分歧,也是复杂度差异的根源。</strong> 同样一件事(压缩),CC 为「压缩这次调用也命中缓存」付出了 microcompact 的 <code>cache_edits</code>、fork 的 maxOutputTokens 禁令、两阶段断裂检测三重复杂度;Codex 折中(只保后续 turn 前缀);Pi 一行 <code>cacheRetention:"none"</code> 甩掉整个问题。<strong>下注不同 → 成本模型不同 → 代码复杂度差一个数量级。</strong></p>
+<hr>
+<span id="p2"></span>
+<h2>支柱二 · 结构取舍:会话是线性还是树?</h2>
+<blockquote><strong>论点</strong>:Pi 把会话建模成<strong>树</strong>,CC/Codex 是<strong>线性</strong>。这一个结构选择,决定了「能不能保留探索过的分支上下文」——这不是参数问题,是结构问题。Pi 的一切独特性(分支摘要、跨分支累计追踪)都长在树上。</blockquote>
+<div class="tw"><table>
+<tr><th>Agent</th><th>结构</th><th>由此得到的能力</th></tr>
+<tr><td>Claude Code / Codex</td><td>线性链</td><td>简单、易做前缀缓存;切走的思路只能丢弃</td></tr>
+<tr><td><strong>Pi</strong></td><td><strong>树</strong></td><td>唯一拥有「分支摘要」:切分支时保留被抛弃分支的上下文</td></tr>
+</table></div>
+<h3>2.1 Pi — 保留原始消息 + 树上的分支摘要</h3>
+<p><strong>机制讲清楚</strong>:Pi 压缩的做法是「摘要旧的、原样保留近期」——关键是<strong>从哪切</strong>。<code>findCutPoint</code> 从最新消息往回走,把每条消息的估算 token 累加,直到累计够了 <code>keepRecentTokens</code>(默认 20k)就停下;停下的位置再往后找最近的一个<strong>合法切点</strong>。什么是合法切点?user / assistant / bash 等都可以,<strong>唯独 <code>tool_result</code> 不行</strong>——因为 tool_result 必须紧跟它对应的 tool call,切在它们中间会让 API 报「tool_use/tool_result 不配对」的错。切点确定后,切点<strong>之前</strong>的消息拿去摘要,切点<strong>之后</strong>的原始消息原样保留(reload 时从 <code>firstKeptEntryId</code> 重放)。下面两段代码:先是「哪些能当切点」的判定,再是完整的往回累加算法:</p>
+<div class="code"><span class="lang">TypeScript</span><pre><code>// 来源: pi · compaction.ts:308-321
+function isCutPointMessage(message: AgentMessage): boolean {
+	switch (message.role) {
+		case "user":
+		case "assistant":
+		case "bashExecution":
+		case "custom":
+		case "branchSummary":
+		case "compactionSummary":
+			return true;
+		case "toolResult":
+			return false; // must follow their tool call
+	}
+	return false;
+}</code></pre></div>
+<div class="code"><span class="lang">TypeScript</span><pre><code>// 来源: pi · compaction.ts:403-461
+export function findCutPoint(
+	entries: SessionEntry[], startIndex: number, endIndex: number, keepRecentTokens: number,
+): CutPointResult {
+	const cutPoints = findValidCutPoints(entries, startIndex, endIndex);
+	if (cutPoints.length === 0) {
+		return { firstKeptEntryIndex: startIndex, turnStartIndex: -1, isSplitTurn: false };
+	}
+	// Walk backwards from newest, accumulating estimated message sizes
+	let accumulatedTokens = 0;
+	let cutIndex = cutPoints[0];
+	for (let i = endIndex - 1; i &gt;= startIndex; i--) {
+		const entry = entries[i];
+		const messageTokens = sessionEntryToContextMessages(entry).reduce(
+			(sum, message) =&gt; sum + estimateTokens(message), 0);
+		if (messageTokens === 0) continue;
+		accumulatedTokens += messageTokens;
+		if (accumulatedTokens &gt;= keepRecentTokens) {
+			for (let c = 0; c &lt; cutPoints.length; c++) {
+				if (cutPoints[c] &gt;= i) { cutIndex = cutPoints[c]; break; }
+			}
+			break;
+		}
+	}
+	// Scan backwards to include adjacent metadata entries that do not affect context.
+	while (cutIndex &gt; startIndex) {
+		const prevEntry = entries[cutIndex - 1];
+		if (prevEntry.type === "compaction" || sessionEntryToContextMessages(prevEntry).length &gt; 0) break;
+		cutIndex--;
+	}
+	const cutEntry = entries[cutIndex];
+	const startsTurn = isTurnStartEntry(cutEntry);
+	const turnStartIndex = startsTurn ? -1 : findTurnStartIndex(entries, cutIndex, startIndex);
+	return { firstKeptEntryIndex: cutIndex, turnStartIndex, isSplitTurn: !startsTurn &amp;&amp; turnStartIndex !== -1 };
+}</code></pre></div>
+<p><strong>树才能做的事——分支摘要,机制讲清楚</strong>:Pi 的会话是一棵树,你可以在多条思路间跳。当你从分支 A(old leaf)切到分支 B(target),<code>collectEntriesForBranchSummary</code> 做三步:① 找 A 和 B 的<strong>最深公共祖先</strong>(两条路径都经过的最后一个节点);② 从 A 的叶子沿 <code>parentId</code> 一路回溯到那个祖先,把途中所有 entry 收集起来;③ 反转成时间序,交给模型总结,再把这段摘要注入 B。于是你在 B 里还「记得」刚才在 A 探索过什么。<strong>CC/Codex 是线性链,根本没有「另一条分支」可回溯,所以这个机制它们结构上就不存在</strong>:</p>
+<div class="code"><span class="lang">TypeScript</span><pre><code>// 来源: pi · branch-summarization.ts:108-146
+export function collectEntriesForBranchSummary(
+	session: ReadonlySessionManager, oldLeafId: string | null, targetId: string,
+): CollectEntriesResult {
+	if (!oldLeafId) return { entries: [], commonAncestorId: null };
+	// Find common ancestor (deepest node that's on both paths)
+	const oldPath = new Set(session.getBranch(oldLeafId).map((e) =&gt; e.id));
+	const targetPath = session.getBranch(targetId);
+	let commonAncestorId: string | null = null;
+	for (let i = targetPath.length - 1; i &gt;= 0; i--) {
+		if (oldPath.has(targetPath[i].id)) { commonAncestorId = targetPath[i].id; break; }
+	}
+	// Collect entries from old leaf back to common ancestor
+	const entries: SessionEntry[] = [];
+	let current: string | null = oldLeafId;
+	while (current &amp;&amp; current !== commonAncestorId) {
+		const entry = session.getEntry(current);
+		if (!entry) break;
+		entries.push(entry);
+		current = entry.parentId;
+	}
+	entries.reverse(); // chronological
+	return { entries, commonAncestorId };
+}</code></pre></div>
+<h3>2.2 Codex — 线性:仅保留 ≤20k tokens 的近期 user 消息</h3>
+<p><strong>机制讲清楚</strong>:在线性结构下,Codex 本地压缩是三家里<strong>最激进</strong>的——它把历史里所有的 assistant 回复、工具调用、reasoning <strong>全部丢掉</strong>,只从最新往旧挑「用户消息」,挑到累计 <code>COMPACT_USER_MESSAGE_MAX_TOKENS</code>(20k)为止;超出预算的那一条按 token 截断塞进去。最后把生成的摘要作为一条 user 消息接在末尾。为什么敢这么狠?因为它赌「摘要 + 用户原话」已经够下一轮继续,assistant 的中间过程可以由摘要概括掉。下面是这个「填预算 + 追加摘要」的完整函数:</p>
+<div class="code"><span class="lang">Rust</span><pre><code>// 来源: codex · codex-rs/core/src/compact.rs:56, 624-685(节选)
+const COMPACT_USER_MESSAGE_MAX_TOKENS: usize = 20_000;
+
+fn build_compacted_history_with_limit(
+    mut history: Vec&lt;ResponseItem&gt;,
+    user_messages: &amp;[CompactedUserMessage],
+    summary_text: &amp;str,
+    max_tokens: usize,
+) -&gt; Vec&lt;ResponseItem&gt; {
+    let mut selected_messages: Vec&lt;CompactedUserMessage&gt; = Vec::new();
+    if max_tokens &gt; 0 {
+        let mut remaining = max_tokens;
+        for message in user_messages.iter().rev() {          // 从新往旧
+            if remaining == 0 { break; }
+            let tokens = approx_token_count(&amp;message.message);
+            if tokens &lt;= remaining {
+                selected_messages.push(message.clone());
+                remaining = remaining.saturating_sub(tokens);
+            } else {
+                let truncated = truncate_text(&amp;message.message, TruncationPolicy::Tokens(remaining));
+                selected_messages.push(CompactedUserMessage { message: truncated, .. });
+                break;
+            }
+        }
+        selected_messages.reverse();
+    }
+    for message in &amp;selected_messages {
+        history.push(ResponseItem::Message { role: "user".to_string(), /* ... */ });
+    }
+    // 末尾追加摘要(空则 "(no summary available)")
+    history.push(ResponseItem::Message { role: "user".to_string(),
+        content: vec![ContentItem::InputText { text: summary_text.into() }], /* ... */ });
+    history
+}</code></pre></div>
+<h3>2.3 Claude Code — 线性:近期消息 + 摘要 + 从头截断重试</h3>
+<p><strong>机制讲清楚</strong>:这段处理的是一个边界情况——<strong>压缩本身也是一次 API 调用</strong>,那如果要压缩的历史太长,连「压缩请求」都超上下文了怎么办?CC 的兜底是 <code>truncateHeadForPTLRetry</code>(PTL = Prompt Too Long),步骤是:</p>
+<ul class="ol">
+<li>先把消息按 <strong>API 轮次</strong>(一次请求-响应)分组;</li>
+<li>从<strong>最老的组</strong>开始丢——丢多少?如果错误信息里给了「超了多少 token」(<code>tokenGap</code>),就一组组累加、丢到刚好够;给不了就<strong>丢 20%</strong>;</li>
+<li>至少留 1 组(不能全丢光);</li>
+<li>丢完如果剩下的第一条变成了 <code>assistant</code>(而 API 要求历史首条必须是 <code>user</code>),就补一条合成的 user 占位消息 <code>PTL_RETRY_MARKER</code>。</li>
+</ul>
+<p>注意方向:CC 这里是<strong>从头丢</strong>(丢最老的),这和反应式路径里 reactive compact「从尾部剥离」是互补的两条兜底。下面是完整实现:</p>
+<div class="code"><span class="lang">TypeScript</span><pre><code>// 来源: claude-code · src/services/compact/compact.ts:243-291(节选)
+export function truncateHeadForPTLRetry(
+  messages: Message[], ptlResponse: AssistantMessage,
+): Message[] | null {
+  const groups = groupMessagesByApiRound(input);
+  if (groups.length &lt; 2) return null;
+  const tokenGap = getPromptTooLongTokenGap(ptlResponse);
+  let dropCount: number;
+  if (tokenGap !== undefined) {
+    let acc = 0; dropCount = 0;
+    for (const g of groups) { acc += roughTokenCountEstimationForMessages(g); dropCount++; if (acc &gt;= tokenGap) break; }
+  } else {
+    dropCount = Math.max(1, Math.floor(groups.length * 0.2)); // 丢 20%
+  }
+  dropCount = Math.min(dropCount, groups.length - 1); // 至少留 1 组
+  const sliced = groups.slice(dropCount).flat();
+  if (sliced[0]?.type === 'assistant') {
+    return [createUserMessage({ content: PTL_RETRY_MARKER, isMeta: true }), ...sliced];
+  }
+  return sliced;
+}</code></pre></div>
+<h3>2.4 支柱二小结</h3>
+<p><strong>结构决定能力上限。</strong> Pi 的 <code>collectEntriesForBranchSummary</code> 之所以存在,是因为它的会话是树——沿 <code>parentId</code> 回溯、求公共祖先。CC/Codex 的线性链上没有「另一条分支」可回溯,<strong>结构上就不可能有分支摘要</strong>。这也解释了保留策略的差异:Pi 保留原始消息(树可重放)、CC/Codex 只能保留近期片段(线性丢弃)。</p>
+<hr>
+<span id="p3"></span>
+<h2>支柱三 · 边界取舍:压缩逻辑放在哪、谁能改?</h2>
+<blockquote><strong>论点</strong>:三者把压缩的<strong>控制权</strong>放在不同位置,对应三种产品定位。这决定了「谁能演进压缩」——用户?框架?还是只有厂商?</blockquote>
+<div class="tw"><table>
+<tr><th>Agent</th><th>边界形态</th><th>谁掌控</th><th>定位</th></tr>
+<tr><td>Claude Code</td><td>重客户端<strong>单体</strong></td><td>内部 feature flag(用户改不动)</td><td>开箱即用的最优</td></tr>
+<tr><td><strong>Pi</strong></td><td><strong>可插拔框架</strong></td><td>扩展钩子(换模型/换策略/取消)</td><td>可二次开发的工具包</td></tr>
+<tr><td>Codex</td><td>按 provider <strong>分派</strong></td><td>四条路径,能推给服务端就推</td><td>与自家后端深度集成</td></tr>
+</table></div>
+<h3>3.1 Codex — 按 provider/flag 分派四条路径</h3>
+<p><strong>机制讲清楚</strong>:Codex 的「边界」体现在一个 <strong>dispatch 决策树</strong>——压缩逻辑放在哪、用哪种,完全由运行环境决定,而不是写死一套。判定顺序是:① 开了 <code>TokenBudget</code> feature → 纯丢弃(不摘要,直接装新窗口);② 否则,如果 provider 支持远程压缩(OpenAI / Azure)→ 走<strong>服务端压缩</strong>(再按 <code>RemoteCompactionV2</code> flag 分 v2 流式 / v1 endpoint);③ 都不是(第三方 API)→ 本地模型摘要。哲学是「<strong>能把重活推给自家后端就推</strong>」,客户端只在没有服务端能力时才自己扛。下面就是这棵决策树:</p>
+<div class="code"><span class="lang">Rust</span><pre><code>// 来源: codex · codex-rs/core/src/tasks/compact.rs:36-78
+if ctx.config.features.enabled(Feature::TokenBudget) {
+    crate::compact_token_budget::run_manual_compact_task(session, ctx).await?;   // 纯丢弃
+    return Ok(None);
+}
+let result = if crate::compact::should_use_remote_compact_task(ctx.provider.info()) {
+    if ctx.config.features.enabled(codex_features::Feature::RemoteCompactionV2) {
+        crate::compact_remote_v2::run_remote_compact_task(session.clone(), ctx).await   // 服务端流式
+    } else {
+        crate::compact_remote::run_remote_compact_task(session.clone(), ctx).await       // 服务端 endpoint
+    }
+} else {
+    let input = vec![UserInput::Text {
+        text: ctx.config.compact_prompt.as_deref()
+            .unwrap_or(crate::compact::SUMMARIZATION_PROMPT).to_string(),          // 本地摘要
+        text_elements: Vec::new(),
+    }];
+    crate::compact::run_compact_task(session.clone(), ctx, input).await
+};</code></pre></div>
+<h3>3.2 Pi — 摘要调用可被扩展换模型/换策略</h3>
+<p><strong>机制讲清楚</strong>:Pi 把摘要函数的关键依赖<strong>全部做成参数</strong>——<code>model</code>、<code>apiKey</code>、<code>streamFn</code>(流式实现)、<code>customInstructions</code>(聚焦指令)、<code>previousSummary</code>(上一次的摘要)。这意味着扩展可以传入<strong>任意模型</strong>(官方示例就用便宜的 <code>gemini-2.5-flash</code> 来压缩,省钱)、任意 prompt、任意流式实现。此外有 <code>previousSummary</code> 时会自动切到「增量更新」prompt(把上次摘要 + 新消息合并),而不是从头重写。<strong>这就是「可插拔」的具体形态:压缩的每个可变部分都从外面注入</strong>。下面节选展示这些可注入的参数:</p>
+<div class="code"><span class="lang">TypeScript</span><pre><code>// 来源: pi · compaction.ts:622-668(节选,展示可注入的模型/prompt/自定义指令)
+export async function generateSummaryWithUsage(
+	currentMessages: AgentMessage[],
+	model: Model&lt;any&gt;,                    // ← 可换成任意便宜模型
+	reserveTokens: number,
+	apiKey: string | undefined,
+	/* ... */ customInstructions?: string,
+	previousSummary?: string,             // ← 有则走 UPDATE 增量 prompt
+	/* ... */ streamFn?: StreamFn,        // ← 可注入自定义流式函数
+): Promise&lt;{ text: string; usage: Usage }&gt; {
+	const maxTokens = Math.min(Math.floor(0.8 * reserveTokens), model.maxTokens &gt; 0 ? model.maxTokens : Infinity);
+	let basePrompt = previousSummary ? UPDATE_SUMMARIZATION_PROMPT : SUMMARIZATION_PROMPT;
+	if (customInstructions) basePrompt = `${basePrompt}\n\nAdditional focus: ${customInstructions}`;
+	const conversationText = serializeConversation(convertToLlm(currentMessages));
+	let promptText = `&lt;conversation&gt;\n${conversationText}\n&lt;/conversation&gt;\n\n`;
+	if (previousSummary) promptText += `&lt;previous-summary&gt;\n${previousSummary}\n&lt;/previous-summary&gt;\n\n`;
+	promptText += basePrompt;
+	/* ... completeSummarization(...) ... */
+}</code></pre></div>
+<blockquote>Pi 的可插拔进一步体现在 <code>session_before_compact</code> / <code>session_before_tree</code> 扩展事件(可 <code>{cancel:true}</code> 或提供自定义 <code>{compaction:{summary,...}}</code>),官方示例 <code>custom-compaction.ts</code> 用 <code>gemini-2.5-flash</code> 换模型压缩。</blockquote>
+<h3>3.3 Claude Code — 单体:能力最全,但锁在客户端</h3>
+<p><strong>机制讲清楚</strong>:和 Pi 相反,CC 的压缩是四层递进的<strong>单体</strong>——所有能力(微压缩、自动压缩、全量摘要、重建)都编译进客户端,用内部 feature flag(ant-only)门控,普通用户改不了一行,也换不了压缩模型。连摘要 prompt 都是内嵌的常量。下面贴 <code>NO_TOOLS_PREAMBLE</code> 作为例子,顺带讲一个细节:CC 全量压缩用 <code>maxTurns:1</code>、而 fork 会继承主对话的<strong>全套工具</strong>,于是模型有时会「手贱」去调工具——一调就废掉了它唯一的一轮、拿不到摘要。所以这个 prompt 开头用极强的措辞(「工具调用会被拒绝、你会失败」)把模型摁住。这既展示了「单体内嵌、用户改不动」,也展示了单体为了自洽要处理的边角:</p>
+<div class="code"><span class="lang">TypeScript</span><pre><code>// 来源: claude-code · src/services/compact/prompt.ts:19-26
+const NO_TOOLS_PREAMBLE = `CRITICAL: Respond with TEXT ONLY. Do NOT call any tools.
+
+- Do NOT use Read, Bash, Grep, Glob, Edit, Write, or ANY other tool.
+- You already have all the context you need in the conversation above.
+- Tool calls will be REJECTED and will waste your only turn — you will fail the task.
+- Your entire response must be plain text: an &lt;analysis&gt; block followed by a &lt;summary&gt; block.
+`</code></pre></div>
+<h3>3.4 支柱三小结</h3>
+<p><strong>边界决定演进权。</strong> Codex 的 dispatch 是「厂商预设四条路,按环境选一条」,把重活推给服务端;Pi 的 <code>generateSummaryWithUsage</code> 把 model/prompt/streamFn 全暴露成参数,「用户可以拿自己的模型来压缩」;CC 把最全的能力(四层 + 熔断 + 重建)编译进单体,换来开箱即用但用户改不动。</p>
+<hr>
+<span id="minor"></span>
+<h2>次级事实归位(MECE 校验)</h2>
+<p>金字塔原理要求「以上统下」:下面这些看似独立的参数/机制,其实都<strong>归属</strong>于上面三支柱,不构成新的差异维度。逐一归位以证明三支柱<strong>完全穷尽</strong>:</p>
+<div class="tw"><table>
+<tr><th>次级事实</th><th>三方情况</th><th>归属支柱</th><th>为何不是独立差异</th></tr>
+<tr><td><strong>触发阈值</strong></td><td>CC 有效窗口−13k / Pi window−16384 / Codex 90%</td><td>—</td><td><strong>参数趋同</strong>,都是「窗口−预留」,本身无本质分歧</td></tr>
+<tr><td><strong>token 计数</strong></td><td>三家都是尾部真实 usage + 其后 char/4 粗估</td><td>—</td><td><strong>完全趋同</strong>,已是事实标准(见下代码)</td></tr>
+<tr><td><strong>摘要格式</strong></td><td>CC 9 段 / Pi Goal-Progress / Codex handoff</td><td>支柱三</td><td>详尽度差异服务于各自定位(单体求全/框架求简/集成求快)</td></tr>
+<tr><td><strong>保留策略</strong></td><td>Pi 原始消息 / Codex 仅 20k user / CC 近期+文件</td><td>支柱一 + 支柱二</td><td>保留越多越难维持缓存(一);树才能 replay 原始消息(二)</td></tr>
+<tr><td><strong>工具结果截断</strong></td><td>Pi 序列化截 2000 字符 / CC 冷缓存整块替换 / Codex token 截断</td><td>支柱一</td><td>都是为控制发送体积以配合各自缓存策略</td></tr>
+<tr><td><strong>熔断器</strong></td><td>仅 CC(3 次)</td><td>支柱三</td><td>单体自带的运维保护,别家把责任外推</td></tr>
+<tr><td><strong>压缩后警告</strong></td><td>仅 Codex</td><td>支柱三</td><td>厂商集成视角下的 UX 决策</td></tr>
+<tr><td><strong>分支摘要</strong></td><td>仅 Pi</td><td>支柱二</td><td>树结构的直接产物</td></tr>
+</table></div>
+<p><strong>token 计数趋同的代码证据</strong>(三家算法几乎一致,仅常量不同):</p>
+<div class="code"><span class="lang">TypeScript</span><pre><code>// 来源: pi · compaction.ts:202-230 —— 尾部真实 usage + 其后粗估
+export function estimateContextTokens(messages: AgentMessage[]): ContextUsageEstimate {
+	const usageInfo = getLastAssistantUsageInfo(messages);
+	if (!usageInfo) { /* 全部估算 */ }
+	const usageTokens = calculateContextTokens(usageInfo.usage);
+	let trailingTokens = 0;
+	for (let i = usageInfo.index + 1; i &lt; messages.length; i++) {
+		trailingTokens += estimateTokens(messages[i]);   // char/4
+	}
+	return { tokens: usageTokens + trailingTokens, /* ... */ };
+}</code></pre></div>
+<p>Claude Code 的 <code>tokenCountWithEstimation</code>(tokens.ts:226-261)、Codex 的 <code>context_manager/history.rs:297-315</code> 是<strong>同一思路</strong>:找最后一次 API 的权威 usage,加上其后新增消息的字符/字节粗估。差异仅在常量(CC 对 JSON 用 /2、Pi 图片按 4800 字符、Codex 字节下界)。</p>
+<blockquote><strong>MECE 结论</strong>:三支柱<strong>相互独立</strong>(缓存/结构/边界互不重叠),<strong>完全穷尽</strong>(以上全部次级事实均可归入其一或判定为趋同,无遗漏)。金字塔成立。</blockquote>
+<hr>
+<span id="appendix"></span>
+<h2>附录 A · 三系统纵向完整机制(参考)</h2>
+<p>金字塔是横向论证(按支柱);此处补纵向(按系统),供需要完整脉络时查阅。</p>
+<h3>A.1 Claude Code</h3>
+<p>四层递进:① microcompact(删工具结果,三条路:cached MC / time-based / API-native)② autocompact(阈值+熔断,先试 session memory)③ 全量 compact(fork 缓存共享 + 9 段摘要 + PTL 重试)④ 压缩后重建(恢复 5 文件/50k、skill/plan/tool delta)。运行时编排:主动链 <code>snip→microcompact→collapse→autocompact</code>;反应式链 <code>413→collapse drain→reactive compact→抛错</code>。详见 01/05/06。</p>
+<h3>A.2 Pi</h3>
+<p>单一滑动 checkpoint:<code>shouldCompact</code>(window−16384 触发)→ <code>findCutPoint</code>(从新往回留 20k)→ 生成结构化摘要 → append <code>CompactionEntry{summary, firstKeptEntryId}</code> → reload。特色:树状会话 + 分支摘要、split-turn 双摘要、迭代 update prompt、累计文件追踪、可插拔钩子、关闭缓存。两套平行实现(agent 用 <code>retainedTail</code> / coding-agent 用 reload)。详见 07 §1.B。</p>
+<h3>A.3 Codex</h3>
+<p>四路分派:TokenBudget(纯丢弃)/ remote v1(服务端 endpoint)/ remote v2(服务端流式,保 64k)/ 本地(LLM handoff 摘要,保 20k user)。触发 90%/95%,无熔断。rollout JSONL 内嵌完整 <code>replacement_history</code>,resume 无需重跑模型。特色:初始上下文重注入、<code>x-codex-turn-state</code> 有状态延续、压缩后警告用户、跨模型 fallback。详见 07 §1.C。</p>
+<hr>
+<span id="boundary"></span>
+<h2>附录 B · 证据边界</h2>
+<ul>
+<li><strong>Claude Code</strong>:泄露版可读代码全覆盖;4 个 feature-gated 模块(cachedMicrocompact/reactiveCompact/contextCollapse/snip)实现被 DCE,只见接口;最新版仅二进制字符串验证(见 04)。</li>
+<li><strong>Pi</strong>:开源完整可读;仓库有两套平行实现(<code>packages/agent</code> / <code>packages/coding-agent</code>),本文代码以 coding-agent 版为准。</li>
+<li><strong>Codex</strong>:开源完整可读;每模型真实 <code>context_window</code> 来自后端 <code>/models</code> 运行时返回,源码只有 272k fallback,故 90%/95% 绝对 token 值是推断;remote v1/v2 的服务端压缩逻辑不在客户端源码内。</li>
+</ul>
+<hr>
+<p>*金字塔结构:结论先行(核心结论)→ 三支柱 MECE(缓存/结构/边界,各附完整源码)→ 次级事实归位(MECE 校验)→ 纵向附录。逐维度旧版见 git 历史;分析描述见 <code>07</code>,金字塔执行摘要见 <code>09</code>。*</p>
+
+</main>
+</div>
+</body>
+</html>
