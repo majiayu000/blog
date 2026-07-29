@@ -12,10 +12,11 @@
 <body>
 <header class="site-header">
   <a class="site-title" href="/">{{ site.title }}</a>
+  {% if site.description %}<p class="site-desc">{{ site.description }}</p>{% endif %}
   <nav>
-    <a href="/archive/">归档</a>
-    <a href="/tags/">标签</a>
-    <a href="/search/">搜索</a>
+    <a href="/archive/">Archive</a>
+    <a href="/tags/">Tags</a>
+    <a href="/search/">Search</a>
     <a href="/feed.xml">RSS</a>
   </nav>
 </header>
@@ -25,7 +26,7 @@
 </main>
 
 <footer class="site-footer">
-  {% if site.author %}<span>{{ site.author }}</span>{% endif %}
+  {% if site.author %}{{ site.author }} · {% endif %}{{ site.title }}
 </footer>
 </body>
 </html>

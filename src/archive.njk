@@ -7,7 +7,7 @@ permalink: /archive/
 
 {% if blog.years.length %}
   {% for group in blog.years %}
-    <h2>{{ group.year }}</h2>
+    <div class="section-label">{{ group.year }}</div>
     {% set items = group.posts %}
     {% include "post-list.njk" %}
   {% endfor %}

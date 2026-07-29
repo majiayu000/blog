@@ -5,10 +5,9 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy({ "src/_headers": "_headers" });
   eleventyConfig.ignores.add("src/posts/**");
 
-  eleventyConfig.addFilter("cnDate", (date) => {
-    const [y, m, d] = date.split("-");
-    return `${y} 年 ${Number(m)} 月 ${Number(d)} 日`;
-  });
+  // 点分数字而非"2026 年 7 月 29 日"：元数据用等宽字体排版，
+  // 等宽字体拉开中文字距，纯数字才排得紧。
+  eleventyConfig.addFilter("cnDate", (date) => date.replace(/-/g, "."));
 
   eleventyConfig.addFilter("rfc822", (date) => new Date(`${date}T00:00:00Z`).toUTCString());
 

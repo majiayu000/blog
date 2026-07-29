@@ -8,9 +8,9 @@ permalink: "/tags/{{ group.tag | tagPath }}/"
 eleventyComputed:
   title: "标签：{{ group.tag }}"
 ---
-<h1>标签：{{ group.tag }}</h1>
+<h1>{{ group.tag }}</h1>
 
 {% set items = group.posts %}
 {% include "post-list.njk" %}
 
-<p class="meta"><a href="/tags/">← 所有标签</a></p>
+<a class="back-link" href="/tags/">← 所有标签</a>
