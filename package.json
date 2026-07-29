@@ -1,0 +1,15 @@
+{
+  "name": "blog",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.14",
+  "scripts": {
+    "dev": "eleventy --serve --port=${PORT:-5567}",
+    "build": "eleventy && pagefind --site _site",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@11ty/eleventy": "^3.1.2",
+    "pagefind": "^1.4.0"
+  }
+}

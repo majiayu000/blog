@@ -1,0 +1,16 @@
+---
+layout: shell.njk
+pagination:
+  data: blog.tags
+  size: 1
+  alias: group
+permalink: "/tags/{{ group.tag | tagPath }}/"
+eleventyComputed:
+  title: "标签：{{ group.tag }}"
+---
+<h1>标签：{{ group.tag }}</h1>
+
+{% set items = group.posts %}
+{% include "post-list.njk" %}
+
+<p class="meta"><a href="/tags/">← 所有标签</a></p>

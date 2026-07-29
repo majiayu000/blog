@@ -1,0 +1,20 @@
+---
+layout: shell.njk
+title: 标签
+permalink: /tags/
+---
+<h1>标签</h1>
+
+{% if blog.tags.length %}
+<ul class="tag-list">
+  {% for group in blog.tags %}
+  <li>
+    <a href="/tags/{{ group.tag | tagPath | urlencode }}/">
+      {{ group.tag }} <span class="count">{{ group.posts.length }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">还没有标签。在文章的 &lt;head&gt; 里加 &lt;meta name="tags" content="a, b"&gt; 即可。</p>
+{% endif %}

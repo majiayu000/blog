@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>一篇文章长什么样</title>
+<meta name="date" content="2026-07-29">
+<meta name="description" content="文章是自包含的整页 HTML，构建过程一个字节都不改。这篇说明它需要哪些 head 元数据。">
+<meta name="tags" content="站点说明">
+
+<style>
+  :root { --bg:#fdfdfc; --fg:#1c1b19; --muted:#6b6a66; --line:#e4e2dd; --accent:#9a3f16; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#131312; --fg:#e8e6e1; --muted:#918f89; --line:#2c2b28; --accent:#e2926a; }
+  }
+  body {
+    margin: 0 auto; padding: 3rem 1.25rem 5rem; max-width: 42rem;
+    background: var(--bg); color: var(--fg);
+    font: 1rem/1.75 ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  h1 { font-size: 1.6rem; line-height: 1.35; letter-spacing: -0.01em; margin: 0 0 0.5rem; }
+  h2 { font-size: 1.1rem; margin: 2.5rem 0 0.75rem; }
+  .meta { color: var(--muted); font-size: 0.8125rem; margin-bottom: 2.5rem; }
+  pre {
+    padding: 1rem; overflow-x: auto; border: 1px solid var(--line); border-radius: 6px;
+    background: color-mix(in srgb, var(--fg) 4%, var(--bg));
+    font-size: 0.8125rem; line-height: 1.6;
+  }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  li { margin: 0.35rem 0; }
+  .back { display: inline-block; margin-top: 3rem; font-size: 0.875rem; }
+</style>
+</head>
+<body>
+
+<h1>一篇文章长什么样</h1>
+<p class="meta"><time datetime="2026-07-29">2026 年 7 月 29 日</time></p>
+
+<p>这个站点的文章不是 Markdown，而是<strong>已经渲染好的整页 HTML</strong>。构建时它被原样拷贝到产物里，一个字节都不改——排版、样式、交互全部由文章自己决定。这一页本身就是个例子。</p>
+
+<h2>放在哪</h2>
+
+<p>一篇文章是一个目录，入口固定叫 <code>index.html</code>，图片等资源放在同一个目录内、用相对路径引用：</p>
+
+<pre><code>src/posts/&lt;slug&gt;/
+├── index.html
+└── cover.png     ←  在 index.html 里写 ./cover.png</code></pre>
+
+<p>目录名就是 URL：<code>src/posts/how-posts-work/</code> 对应 <code>/posts/how-posts-work/</code>。</p>
+
+<h2>head 里要写什么</h2>
+
+<p>首页卡片、标签页、归档、RSS 的元数据全部从文章自己的 <code>&lt;head&gt;</code> 读，不需要额外的配置文件：</p>
+
+<pre><code>&lt;title&gt;文章标题&lt;/title&gt;                          <em>必需</em>
+&lt;meta name="date"        content="2026-07-29"&gt;   <em>必需</em>
+&lt;meta name="description" content="一句话摘要"&gt;    <em>可选</em>
+&lt;meta name="tags"        content="架构, 工具链"&gt;  <em>可选，逗号分隔</em>
+&lt;meta name="draft"       content="true"&gt;         <em>可选，草稿不进产物</em></code></pre>
+
+<p>这样一篇文章是单文件自洽的：复制到别处，它仍然是完整的一篇，不依赖这个仓库。</p>
+
+<h2>写错了会怎样</h2>
+
+<p>缺 <code>title</code>、缺 <code>date</code>、日期格式不对、两个目录名只有大小写之差——<strong>构建会直接失败</strong>，并告诉你是哪个文件。不会拿目录名当标题、拿当天日期兜底。宁可构建红，也不要站点上线后悄悄显示错的元数据。</p>
+
+<h2>能放什么</h2>
+
+<ul>
+  <li>任意 HTML/CSS/JS——图表、可交互 demo、自定义排版都行</li>
+  <li>本目录内的图片、视频，用相对路径</li>
+  <li>搜索由 Pagefind 索引构建后的 HTML，文章不用做任何配合</li>
+</ul>
+
+<p>唯一的硬规则：<strong>资源引用不要用 <code>../</code> 跨出本目录</strong>，否则文章一旦被搬走就会破图。</p>
+
+<a class="back" href="/">← 回首页</a>
+
+</body>
+</html>

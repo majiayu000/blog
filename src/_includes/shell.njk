@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="{{ site.language }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% if title %}{{ title }} · {% endif %}{{ site.title }}</title>
+{% if site.description %}<meta name="description" content="{{ site.description }}">{% endif %}
+<link rel="alternate" type="application/rss+xml" title="{{ site.title }}" href="/feed.xml">
+<link rel="stylesheet" href="/css/main.css">
+{% if extraHead %}{{ extraHead | safe }}{% endif %}
+</head>
+<body>
+<header class="site-header">
+  <a class="site-title" href="/">{{ site.title }}</a>
+  <nav>
+    <a href="/archive/">归档</a>
+    <a href="/tags/">标签</a>
+    <a href="/search/">搜索</a>
+    <a href="/feed.xml">RSS</a>
+  </nav>
+</header>
+
+<main>
+{{ content | safe }}
+</main>
+
+<footer class="site-footer">
+  {% if site.author %}<span>{{ site.author }}</span>{% endif %}
+</footer>
+</body>
+</html>

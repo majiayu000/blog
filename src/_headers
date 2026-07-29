@@ -1,0 +1,14 @@
+# Cloudflare Pages 缓存策略。
+# CSS 和 pagefind-ui.js 文件名没有内容指纹，不能设 immutable —— 改了内容 URL 不变，
+# 长缓存会让访客拿到旧文件且无失效手段。等将来给资源加了哈希文件名再放长。
+
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/css/*
+  Cache-Control: public, max-age=3600
+
+/pagefind/*
+  Cache-Control: public, max-age=3600

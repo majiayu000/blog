@@ -1,0 +1,16 @@
+---
+layout: shell.njk
+title: 归档
+permalink: /archive/
+---
+<h1>归档</h1>
+
+{% if blog.years.length %}
+  {% for group in blog.years %}
+    <h2>{{ group.year }}</h2>
+    {% set items = group.posts %}
+    {% include "post-list.njk" %}
+  {% endfor %}
+{% else %}
+  <p class="empty">还没有文章。</p>
+{% endif %}
