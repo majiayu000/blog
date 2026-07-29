@@ -45,6 +45,10 @@ collide will *fail the build* and name the offending file. Nothing is inferred
 from the directory name and no date is defaulted to today — a red build beats a
 site that silently shows wrong metadata.
 
+**Include a link back to `/` in the post itself.** The shell's navigation is
+never injected into posts — that is the price of keeping them byte-for-byte
+untouched — so a post without its own back link is a dead end for readers.
+
 `src/posts/how-posts-work/` is a working example.
 
 ## Configuration
