@@ -1,57 +1,84 @@
-# Blog
+# blog
 
-个人博客。内容是**已渲染好的整页 HTML**，构建时原样输出，一个字节都不改。
-生成器只负责外壳：首页、标签、归档、搜索、RSS。
+[![CI](https://github.com/majiayu000/blog/actions/workflows/ci.yml/badge.svg)](https://github.com/majiayu000/blog/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-架构决策与取舍见 [SPEC.md](SPEC.md)。
+Personal blog at [blog.silencestar.com](https://blog.silencestar.com).
 
-## 用法
+Posts are **fully rendered, self-contained HTML pages**, copied to the output
+byte-for-byte. The generator only builds the shell around them: home, tags,
+archive, search and RSS. It never touches post content.
+
+Built with [Eleventy](https://11ty.dev) and [Pagefind](https://pagefind.app),
+deployed to Cloudflare Pages.
+
+架构决策与取舍见 [SPEC.md](SPEC.md)（中文）。
+
+## Getting started
 
 ```bash
 bun install
-bun run dev      # 本地预览 http://localhost:5567
-bun run build    # 产出 _site/
-bun test         # 元数据解析与 fail-closed 行为
+bun run dev      # preview at http://localhost:5567
+bun run build    # output to _site/
+bun test         # metadata parsing and fail-closed behaviour
 ```
 
-## 写一篇文章
+## Writing a post
 
-新建 `src/posts/<slug>/index.html`，目录名就是 URL。资源放同目录，用相对路径引用，
-不要用 `../` 跨出去——否则文章被搬走就会破图。
+Create `src/posts/<slug>/index.html`. The directory name becomes the URL.
+Keep assets in the same directory and reference them with relative paths —
+never `../`, or the post breaks once it is moved.
 
-元数据写在文章自己的 `<head>` 里，不需要额外的配置文件：
+Metadata lives in the post's own `<head>`, so no sidecar config file is needed
+and a post stays self-contained when copied elsewhere:
 
 ```html
-<title>文章标题</title>                          <!-- 必需 -->
-<meta name="date"        content="2026-07-29">   <!-- 必需 -->
-<meta name="description" content="一句话摘要">    <!-- 可选 -->
-<meta name="tags"        content="架构, 工具链">  <!-- 可选，逗号分隔 -->
-<meta name="draft"       content="true">         <!-- 可选，草稿不进产物 -->
+<title>Post title</title>                        <!-- required -->
+<meta name="date"        content="2026-07-29">   <!-- required -->
+<meta name="description" content="One-line summary">
+<meta name="tags"        content="architecture, tooling">
+<meta name="draft"       content="true">         <!-- excluded from output -->
 ```
 
-缺 `title`/`date`、日期非法、slug 冲突 → **构建失败并指出是哪个文件**，不做兜底。
+**Fail closed:** a missing title or date, an invalid date, or two slugs that
+collide will *fail the build* and name the offending file. Nothing is inferred
+from the directory name and no date is defaulted to today — a red build beats a
+site that silently shows wrong metadata.
 
-`src/posts/how-posts-work/` 本身就是一篇可参照的范例。
+`src/posts/how-posts-work/` is a working example.
 
-## 配置
+## Configuration
 
-站点信息走环境变量，没有硬编码在模板里（见 `src/_data/site.js`）：
+Site details come from environment variables (see `src/_data/site.js`):
 
-| 变量 | 默认值 |
+| Variable | Default |
 |---|---|
 | `SITE_TITLE` | `Blog` |
-| `SITE_DESCRIPTION` | 空 |
-| `SITE_URL` | `http://localhost:5567` |
-| `SITE_AUTHOR` | 空 |
+| `SITE_DESCRIPTION` | empty |
+| `SITE_URL` | `https://blog.silencestar.com` |
+| `SITE_AUTHOR` | empty |
 | `SITE_LANG` | `zh-CN` |
 | `PORT` | `5567` |
 
-`SITE_URL` 决定 RSS 里的绝对链接，**部署前必须设成正式域名**。
+`SITE_URL` determines the absolute links in the RSS feed.
 
-## 部署（Cloudflare Pages）
+## Deployment
 
-构建命令 `bun run build`，输出目录 `_site`，并在 Pages 环境变量里设好 `SITE_URL` 等。
-产物是纯静态目录，换 Netlify / Vercel / GitHub Pages 同样可用。
+Cloudflare Pages, connected to this repository:
 
-媒体文件目前跟站点一起走。等真出现视频或超大图再考虑外置到 R2（对象存储），
-届时需要的是"内容哈希命名 + 发布时引用改写"，站点架构不用重构。
+- Build command: `bun run build`
+- Output directory: `_site`
+- Custom domain: `blog.silencestar.com`
+
+`src/_headers` ships the cache policy. CSS and `pagefind-ui.js` have no content
+hash in their filenames, so they deliberately use a short max-age instead of
+`immutable` — otherwise a changed file keeps its URL and visitors are stuck with
+a stale copy that cannot be invalidated.
+
+Media currently ships with the site. If large videos or images arrive later,
+move them to object storage (R2) with **content-hashed filenames** and rewrite
+references at publish time; the site architecture does not need to change.
+
+## License
+
+[MIT](LICENSE)
