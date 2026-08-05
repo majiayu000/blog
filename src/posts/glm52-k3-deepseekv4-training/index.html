@@ -8,78 +8,48 @@
 <meta name="description" content="逐字读完 GLM-5、Kimi K3、DeepSeek V4 三份技术报告：架构分道扬镳，训练管线殊途同归。K3 算力账本显示后训练吃掉约 75% 总算力、MFU 仅 27%——预训练已不是主战场。">
 <meta name="tags" content="LLM, 训练管线, RL, MoE, 技术报告">
 <style>
-  :root{--bg:#0e1014;--panel:#14171e;--card:#191d26;--soft:#1e232e;--line:#2a303c;
-    --ink:#e6e9f0;--ink2:#c3c9d6;--muted:#8b93a4;--faint:#616a7c;
-    --acc:#7aa2ff;--acc2:#4fd1a5;--warn:#e0a458;--danger:#ef6f8b;--mag:#c88bff;
-    --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
-    --sans:'PingFang SC','Microsoft YaHei',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;}
-  @media (prefers-color-scheme:light){:root{--bg:#fbfbfc;--panel:#fff;--card:#fff;--soft:#f4f5f8;--line:#e4e7ee;
-    --ink:#161a22;--ink2:#2f3644;--muted:#5b6473;--faint:#8a92a2;
-    --acc:#3a63d6;--acc2:#0c9a72;--warn:#b3701a;--danger:#cf3a5c;--mag:#8a3fd0;}}
-  *{box-sizing:border-box}html{scroll-behavior:smooth}
-  body{margin:0;background:var(--bg);color:var(--ink2);font-family:var(--sans);line-height:1.68;font-size:16px;-webkit-font-smoothing:antialiased}
-  a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
-  .top{border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:20}
-  .top .in{max-width:1200px;margin:0 auto;padding:13px 24px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-  .top b{color:var(--ink);font-weight:650;font-size:15px}
-  .top .tag{font-family:var(--mono);font-size:11px;color:var(--faint);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
-  .shell{max-width:1200px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:220px 1fr;gap:44px;align-items:start}
-  nav{position:sticky;top:64px;padding:34px 0;font-size:13.5px;max-height:calc(100vh - 64px);overflow:auto}
-  nav a{display:block;color:var(--muted);padding:5px 0 5px 12px;border-left:2px solid var(--line);line-height:1.4}
-  nav a:hover{color:var(--ink);border-left-color:var(--acc);text-decoration:none}
-  nav .g{color:var(--faint);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 6px;padding-left:12px}
-  main{padding:30px 0 90px;min-width:0;max-width:820px}
-  .hero{margin:6px 0 30px;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.4)}
-  .hero img{display:block;width:100%;height:auto}
-  h1{font-size:clamp(24px,3.4vw,32px);line-height:1.2;letter-spacing:-.01em;color:var(--ink);font-weight:680;margin:6px 0 14px}
-  h2{font-size:22px;color:var(--ink);font-weight:660;margin:52px 0 6px;padding-top:12px;scroll-margin-top:64px;border-top:1px solid var(--line)}
-  h2:first-of-type{border-top:none}
-  span[id]{display:block;scroll-margin-top:70px}
-  h3{font-size:16.5px;color:var(--ink);font-weight:640;margin:28px 0 8px}
-  p{margin:11px 0;color:var(--muted)}
-  strong{color:var(--ink);font-weight:640}
-  ul{padding-left:20px;margin:11px 0}li{margin:6px 0}li::marker{color:var(--faint)}
-  code{font-family:var(--mono);font-size:.85em;background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:.08em .38em;color:var(--ink)}
-  pre{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:15px 17px;overflow-x:auto;margin:14px 0;font-size:12.5px;line-height:1.62}
-  pre code{background:none;border:none;padding:0;color:var(--ink2);font-size:12.5px}
-  blockquote{margin:14px 0;padding:12px 16px;background:var(--soft);border-left:3px solid var(--acc2);border-radius:0 10px 10px 0;color:var(--ink2);font-size:14.5px}
-  .tw{overflow-x:auto;margin:14px 0}
-  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}
-  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);font-weight:600}
-  td:first-child{color:var(--ink)}
-  .fig{margin:16px 0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  .fig img{display:block;width:100%;height:auto}
-  .fig .cap{font-size:12.5px;color:var(--faint);padding:8px 14px;background:var(--panel)}
-  @media(max-width:900px){.shell{grid-template-columns:1fr}nav{display:none}}
+  :root{--fg:#1a1a2e;--muted:#555;--faint:#999;--accent:#0e7490;--accent2:#b45309;--border:#e2e2e8;--bg:#fafafa;--card:#fff;
+    --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;}
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;color:var(--fg);
+       max-width:860px;margin:0 auto;padding:24px 20px 80px;line-height:1.75;background:var(--bg);
+       -webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+  .back{display:inline-block;font-size:13.5px;color:var(--accent);border:1px solid var(--border);
+        border-radius:6px;padding:3px 12px;background:var(--card);margin-bottom:28px}
+  .back:hover{text-decoration:none;border-color:var(--accent)}
+  h1{font-size:1.55em;line-height:1.4;border-bottom:2px solid var(--accent);padding-bottom:12px;margin:0 0 24px}
+  h2{font-size:1.28em;margin-top:2.2em;border-left:4px solid var(--accent);padding-left:10px;scroll-margin-top:20px}
+  h3{font-size:1.08em;margin-top:1.7em;color:var(--fg)}
+  p{margin:11px 0;color:#333}
+  strong{color:var(--accent2);font-weight:650}
+  ul{padding-left:22px;margin:11px 0}li{margin:6px 0}li::marker{color:var(--faint)}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:0.9em;background:var(--card);
+        border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#f0f4f5;font-family:var(--mono);font-size:0.82em;letter-spacing:.03em;color:var(--muted)}
+  .tw{overflow-x:auto;margin:16px 0}
+  .tw table{margin:0;min-width:560px}
+  code{font-family:var(--mono);font-size:.86em;background:#eef0f2;padding:2px 6px;border-radius:4px}
+  pre{background:#16213e;color:#e6e6e6;padding:16px;border-radius:8px;overflow-x:auto;margin:14px 0;
+      font-size:12.5px;line-height:1.65}
+  pre code{background:none;padding:0;color:inherit}
+  blockquote{border-left:3px solid var(--accent);margin:16px 0;padding:6px 16px;color:var(--muted);
+             background:var(--card);border-radius:0 8px 8px 0}
+  img{max-width:100%;border-radius:10px;box-shadow:0 2px 14px rgba(0,0,0,.12)}
+  .fig{margin:20px 0}
+  .fig .cap{font-size:12.5px;color:var(--faint);text-align:center;margin-top:8px}
+  hr{border:none;border-top:1px solid var(--border);margin:36px 0}
+  .refs{font-size:13.5px;color:var(--muted)}
 </style>
 </head>
 <body>
-<div class="top"><div class="in">
-  <a href="/" class="tag" style="text-decoration:none;color:var(--acc)">← 博客</a>
-  <b>三份技术报告拆解</b>
-  <span class="tag">GLM-5.2 · Kimi K3 · DeepSeek V4</span>
-  <span class="tag">训练管线</span>
-</div></div>
-<div class="shell">
-<nav>
-  <div class="g">正文</div>
-  <a href="#top">核心结论</a>
-  <a href="#s0">0 · 总表</a>
-  <a href="#s1">1 · 架构与消融</a>
-  <a href="#s2">2 · 算力账本</a>
-  <a href="#s3">3 · 训练数据</a>
-  <a href="#s4">4 · 管线走查</a>
-  <a href="#s5">5 · RL 深挖</a>
-  <a href="#s6">6 · 基准核对</a>
-  <a href="#s7">7 · 五个判断</a>
-  <div class="g">附录</div>
-  <a href="#appa">可信度声明</a>
-</nav>
-<main>
-<span id="top"></span>
-<div class="hero"><img src="cover.png" alt="三家模型与训练管线封面图"></div>
+<a class="back" href="/">← 博客首页</a>
+
 <h1>拆完 GLM-5.2、Kimi K3、DeepSeek V4 三份技术报告：后训练吃掉 75% 算力，架构是最不重要的部分</h1>
+
+<div class="fig"><img src="cover.png" alt="三家模型与训练管线封面图"></div>
 
 <p>三份技术报告全部读完：Kimi K3（arXiv 2607.24653，47 页）、DeepSeek V4（arXiv 2606.19348，58 页）、GLM-5（arXiv 2602.15763；GLM-5.2 没有独立报告，其改动来自 GLM-5 报告 + 官方 research 页）。加上三家的 checkpoint 结构、许可证和部署方案，做一个完整拆解。</p>
 
@@ -92,7 +62,6 @@
 <li>K3 后训练数据 93.13% 是合成数据</li>
 </ul>
 
-<span id="s0"></span>
 <h2>0 · 三个模型，一张总表</h2>
 <div class="tw"><table>
 <tr><th></th><th>Kimi K3</th><th>V4-Pro</th><th>V4-Flash</th><th>GLM-5（含 5.2）</th></tr>
@@ -106,7 +75,6 @@
 </table></div>
 <p><strong>事实</strong>：四者全是 MoE，全都冲 1M 上下文，许可证全都宽松。<strong>推断</strong>：这说明"超大 MoE + 超长上下文"已经是行业共识，不再是差异化来源——差异化只能来自训练。</p>
 
-<span id="s1"></span>
 <h2>1 · 架构细节与消融</h2>
 
 <h3>1.1 K3：KDA + GMLA 混合注意力，MoE 做了四件事</h3>
@@ -162,7 +130,6 @@
 <tr><td>短板</td><td>报告叙事偏学术</td><td>部署复杂（见 4.2）</td><td>细节披露少</td></tr>
 </table></div>
 
-<span id="s2"></span>
 <h2>2 · 训练算力与成本：K3 是唯一把账算明白的</h2>
 <div class="fig"><img src="compute-ledger.png" alt="后训练吃掉约 75% 算力示意图"><div class="cap">后训练（琥珀色）吃掉约 75% 总算力 — 示意图</div></div>
 <p>这一节是全篇信息密度最高的。<strong>K3 的 Table 5 是三份报告里唯一一份完整的算力账本</strong>，值得逐行看（<strong>事实</strong>）：</p>
@@ -181,7 +148,6 @@
 </ul>
 <p>V4 和 GLM 没给这种级别的账本（<strong>事实</strong>：V4 报告附录里可能有部分算力数据，但本次 PDF 后半部分提取失败，我无法确认；GLM 报告未提供）。<strong>建议</strong>：评估任何一家"开源"模型时，先看它敢不敢公开后训练算力——这是比权重更诚实的信号。</p>
 
-<span id="s3"></span>
 <h2>3 · 训练数据</h2>
 <h3>3.1 规模对比</h3>
 <div class="tw"><table>
@@ -216,7 +182,6 @@
 <h3>3.4 长上下文数据：不是靠堆长度，是靠课程</h3>
 <p>K3 的上下文扩展候选池有 <strong>31.5T</strong>，但真正用于扩展的只有 108B（<strong>事实</strong>）。Table 16 的消融显示最优课程是 <strong>80K→240K→480K</strong> 分阶段拉长。<strong>结论</strong>：1M 上下文不是喂长文本喂出来的，是精心设计的课程 + 从超大候选池里筛出来的少量高质量长样本。</p>
 
-<span id="s4"></span>
 <h2>4 · 端到端管线走查：数据 → 预训练 → mid-train → post-train → checkpoint</h2>
 <div class="fig"><img src="pipeline.png" alt="训练管线五阶段示意图"><div class="cap">数据 → 预训练 → mid-train → 后训练 → checkpoint — 示意图</div></div>
 <p>把三家管线并排走一遍，差异立刻清楚。</p>
@@ -246,7 +211,6 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 <h3>4.3 GLM 管线（披露最少）</h3>
 <p>GLM 报告能确认的管线节点有限：744B/40B、1M 上下文、MIT 权重。<strong>事实</strong>层面我无法像 K3 那样给出完整 token 账本，这里不编。<strong>建议</strong>：想了解 GLM-5.2 相对 GLM-5 的具体改动，看官方 research 页比看论文更有效。</p>
 
-<span id="s5"></span>
 <h2>5 · RL 与后训练深挖</h2>
 <p>这是三家真正分高下的地方，也是最有信息量的部分。</p>
 
@@ -303,7 +267,6 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 </ul>
 <p>第 3 条尤其值得记——<strong>reward hacking 在长程 agentic 任务上是公开承认的未解难题</strong>。任何拿 agentic benchmark 吹牛的模型，都要先回答这个问题。</p>
 
-<span id="s6"></span>
 <h2>6 · Benchmark 交叉核对</h2>
 <p>只列我有把握的数字，并标注存疑处（<strong>事实</strong>，除特别注明）。</p>
 <div class="tw"><table>
@@ -325,7 +288,6 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 <li>V4 的 76.7 在提取文本里<strong>没有明确标签</strong>，是我按表格位置推断的，采信时请打折。V4 在 OpenAI DeepSearch 上 56.7 vs GPT-5.4 的 74.0，Tool-Decathlon 46.3 vs 78.1——<strong>长程工具任务是 V4 的明显短板</strong>。</li>
 </ul>
 
-<span id="s7"></span>
 <h2>7 · 结论：五个判断</h2>
 <ul>
 <li><strong>架构趋同，竞争转移到训练管线。</strong> MoE + 1M + Muon + QK-norm 已经是标配，差异化在预训练之后的每一个环节。</li>
@@ -335,7 +297,6 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 <li><strong>开源的诚意要看披露深度。</strong> K3 给了完整算力 + 数据账本，V4 给了最细的 RL 方案，GLM 给了最宽松的权重但最少的细节。三者"开源"的含金量不一样。</li>
 </ul>
 
-<span id="appa"></span>
 <h2>附录 · 数据可信度声明</h2>
 <ul>
 <li>所有数字均来自三份技术报告原文（K3 arXiv 2607.24653、V4 arXiv 2606.19348、GLM arXiv 2602.15763），我尽量逐项核对。</li>
@@ -344,10 +305,9 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 <li>benchmark 均为各家自报，未做独立复测。</li>
 <li>文中 4 张插图为 AI 生成的示意图（gpt-image-2），仅用于概念可视化，不含真实数据。</li>
 </ul>
-<hr>
-<p>参考：Kimi K3 Technical Report — arXiv 2607.24653 · DeepSeek V4 Technical Report — arXiv 2606.19348 · GLM-5 Technical Report — arXiv 2602.15763 · 各家 HuggingFace 权重仓库</p>
 
-</main>
-</div>
+<hr>
+<p class="refs">参考：Kimi K3 Technical Report — arXiv 2607.24653 · DeepSeek V4 Technical Report — arXiv 2606.19348 · GLM-5 Technical Report — arXiv 2602.15763 · 各家 HuggingFace 权重仓库</p>
+
 </body>
 </html>
