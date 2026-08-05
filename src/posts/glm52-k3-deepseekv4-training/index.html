@@ -8,40 +8,33 @@
 <meta name="description" content="逐字读完 GLM-5、Kimi K3、DeepSeek V4 三份技术报告：架构分道扬镳，训练管线殊途同归。K3 算力账本显示后训练吃掉约 75% 总算力、MFU 仅 27%——预训练已不是主战场。">
 <meta name="tags" content="LLM, 训练管线, RL, MoE, 技术报告">
 <style>
-  :root{--fg:#1a1a2e;--muted:#555;--faint:#999;--accent:#0e7490;--accent2:#b45309;--border:#e2e2e8;--bg:#fafafa;--card:#fff;
-    --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;}
-  *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  body{font-family:-apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;color:var(--fg);
-       max-width:860px;margin:0 auto;padding:24px 20px 80px;line-height:1.75;background:var(--bg);
-       -webkit-font-smoothing:antialiased}
-  a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
-  .back{display:inline-block;font-size:13.5px;color:var(--accent);border:1px solid var(--border);
-        border-radius:6px;padding:3px 12px;background:var(--card);margin-bottom:28px}
-  .back:hover{text-decoration:none;border-color:var(--accent)}
-  h1{font-size:1.55em;line-height:1.4;border-bottom:2px solid var(--accent);padding-bottom:12px;margin:0 0 24px}
-  h2{font-size:1.28em;margin-top:2.2em;border-left:4px solid var(--accent);padding-left:10px;scroll-margin-top:20px}
-  h3{font-size:1.08em;margin-top:1.7em;color:var(--fg)}
-  p{margin:11px 0;color:#333}
-  strong{color:var(--accent2);font-weight:650}
-  ul{padding-left:22px;margin:11px 0}li{margin:6px 0}li::marker{color:var(--faint)}
-  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:0.9em;background:var(--card);
-        border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
-  th{background:#f0f4f5;font-family:var(--mono);font-size:0.82em;letter-spacing:.03em;color:var(--muted)}
-  .tw{overflow-x:auto;margin:16px 0}
-  .tw table{margin:0;min-width:560px}
-  code{font-family:var(--mono);font-size:.86em;background:#eef0f2;padding:2px 6px;border-radius:4px}
-  pre{background:#16213e;color:#e6e6e6;padding:16px;border-radius:8px;overflow-x:auto;margin:14px 0;
-      font-size:12.5px;line-height:1.65}
-  pre code{background:none;padding:0;color:inherit}
-  blockquote{border-left:3px solid var(--accent);margin:16px 0;padding:6px 16px;color:var(--muted);
-             background:var(--card);border-radius:0 8px 8px 0}
-  img{max-width:100%;border-radius:10px;box-shadow:0 2px 14px rgba(0,0,0,.12)}
-  .fig{margin:20px 0}
-  .fig .cap{font-size:12.5px;color:var(--faint);text-align:center;margin-top:8px}
-  hr{border:none;border-top:1px solid var(--border);margin:36px 0}
-  .refs{font-size:13.5px;color:var(--muted)}
+  :root { --fg:#1a1a2e; --muted:#666; --accent:#0e7490; --border:#e2e2e8; --bg:#fafafa; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif; color:var(--fg);
+         max-width:860px; margin:0 auto; padding:32px 20px 80px; line-height:1.75; background:var(--bg); }
+  h1 { font-size:1.6em; line-height:1.4; border-bottom:2px solid var(--accent); padding-bottom:12px; }
+  h2 { font-size:1.3em; margin-top:2em; border-left:4px solid var(--accent); padding-left:10px; }
+  h3 { font-size:1.1em; margin-top:1.6em; }
+  table { border-collapse:collapse; width:100%; margin:16px 0; font-size:0.92em; background:#fff; }
+  th, td { border:1px solid var(--border); padding:8px 10px; text-align:left; }
+  th { background:#f0f4f5; }
+  img { max-width:100%; border-radius:8px; margin:12px 0; box-shadow:0 2px 12px rgba(0,0,0,.12); }
+  code { background:#eef0f2; padding:2px 6px; border-radius:4px; font-size:0.9em; }
+  pre { background:#16213e; color:#e6e6e6; padding:16px; border-radius:8px; overflow-x:auto; }
+  pre code { background:none; padding:0; }
+  blockquote { border-left:3px solid var(--accent); margin:16px 0; padding:4px 16px;
+               color:var(--muted); background:#fff; }
+  strong { color:#b45309; }
+  hr { border:none; border-top:1px solid var(--border); margin:32px 0; }
+  /* blog 平台要求：文章自带返回链接 */
+  .back { display:inline-block; font-size:13.5px; color:var(--accent); border:1px solid var(--border);
+          border-radius:6px; padding:3px 12px; background:#fff; margin-bottom:28px; text-decoration:none; }
+  .back:hover { border-color:var(--accent); }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  /* 功能性的表格横向滚动容器（防手机端宽表破版） */
+  .tw { overflow-x:auto; margin:16px 0; }
+  .tw table { margin:0; min-width:560px; }
 </style>
 </head>
 <body>
@@ -49,7 +42,7 @@
 
 <h1>拆完 GLM-5.2、Kimi K3、DeepSeek V4 三份技术报告：后训练吃掉 75% 算力，架构是最不重要的部分</h1>
 
-<div class="fig"><img src="cover.png" alt="三家模型与训练管线封面图"></div>
+<p><img src="cover.png" alt="三家模型与训练管线封面图"></p>
 
 <p>三份技术报告全部读完：Kimi K3（arXiv 2607.24653，47 页）、DeepSeek V4（arXiv 2606.19348，58 页）、GLM-5（arXiv 2602.15763；GLM-5.2 没有独立报告，其改动来自 GLM-5 报告 + 官方 research 页）。加上三家的 checkpoint 结构、许可证和部署方案，做一个完整拆解。</p>
 
@@ -131,7 +124,7 @@
 </table></div>
 
 <h2>2 · 训练算力与成本：K3 是唯一把账算明白的</h2>
-<div class="fig"><img src="compute-ledger.png" alt="后训练吃掉约 75% 算力示意图"><div class="cap">后训练（琥珀色）吃掉约 75% 总算力 — 示意图</div></div>
+<p><img src="compute-ledger.png" alt="后训练吃掉约 75% 算力示意图"></p>
 <p>这一节是全篇信息密度最高的。<strong>K3 的 Table 5 是三份报告里唯一一份完整的算力账本</strong>，值得逐行看（<strong>事实</strong>）：</p>
 <div class="tw"><table>
 <tr><th>阶段</th><th>tokens</th><th>kH800</th><th>PFU-days</th><th>FLOPs</th><th>MFU</th></tr>
@@ -183,7 +176,7 @@
 <p>K3 的上下文扩展候选池有 <strong>31.5T</strong>，但真正用于扩展的只有 108B（<strong>事实</strong>）。Table 16 的消融显示最优课程是 <strong>80K→240K→480K</strong> 分阶段拉长。<strong>结论</strong>：1M 上下文不是喂长文本喂出来的，是精心设计的课程 + 从超大候选池里筛出来的少量高质量长样本。</p>
 
 <h2>4 · 端到端管线走查：数据 → 预训练 → mid-train → post-train → checkpoint</h2>
-<div class="fig"><img src="pipeline.png" alt="训练管线五阶段示意图"><div class="cap">数据 → 预训练 → mid-train → 后训练 → checkpoint — 示意图</div></div>
+<p><img src="pipeline.png" alt="训练管线五阶段示意图"></p>
 <p>把三家管线并排走一遍，差异立刻清楚。</p>
 
 <h3>4.1 K3 管线（披露最完整）</h3>
@@ -235,7 +228,7 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 <p><strong>结论</strong>：Agent 数据是单阶段提升最大的（7.6→41.6），Thinking 模式的收尾提升也很可观。<strong>推断</strong>：K3 的 Thinking / Instruct 双版本，本质是这条流水线开不开最后一级开关的产物。</p>
 
 <h3>5.2 K3：环境规模化（Table 22，事实）</h3>
-<div class="fig"><img src="rl-env-scaling.png" alt="RL 并行环境规模化示意图"><div class="cap">并行环境规模化 → 效果 log-linear 提升 — 示意图</div></div>
+<p><img src="rl-env-scaling.png" alt="RL 并行环境规模化示意图"></p>
 <p>并行环境从 256 扩到 65,536：</p>
 <div class="tw"><table>
 <tr><th>指标</th><th>256 环境</th><th>65,536 环境</th></tr>
@@ -307,7 +300,7 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 </ul>
 
 <hr>
-<p class="refs">参考：Kimi K3 Technical Report — arXiv 2607.24653 · DeepSeek V4 Technical Report — arXiv 2606.19348 · GLM-5 Technical Report — arXiv 2602.15763 · 各家 HuggingFace 权重仓库</p>
+<p>参考：Kimi K3 Technical Report — arXiv 2607.24653 · DeepSeek V4 Technical Report — arXiv 2606.19348 · GLM-5 Technical Report — arXiv 2602.15763 · 各家 HuggingFace 权重仓库</p>
 
 </body>
 </html>
