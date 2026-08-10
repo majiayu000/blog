@@ -56,6 +56,18 @@ navKey: home
     </article>
   </div>
 </section>
+{% else %}
+<section class="home-section">
+  <div class="content-frame">
+    <header class="section-heading">
+      <div>
+        <p class="eyebrow">// WRITING</p>
+        <h2>文章 <span lang="en">Writing</span></h2>
+      </div>
+    </header>
+    <p class="empty">还没有文章。往 src/posts/&lt;slug&gt;/index.html 放一篇完整 HTML，就会出现在这里。</p>
+  </div>
+</section>
 {% endif %}
 
 {% if blog.recent.length %}
