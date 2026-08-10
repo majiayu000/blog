@@ -38,7 +38,12 @@ and a post stays self-contained when copied elsewhere:
 <meta name="description" content="One-line summary">
 <meta name="tags"        content="architecture, tooling">
 <meta name="draft"       content="true">         <!-- excluded from output -->
+<meta name="featured"    content="true">         <!-- homepage editor's pick -->
 ```
+
+The homepage shows one editor's pick and four recent posts. If several posts
+are marked `featured`, the newest one wins; if none are marked, the newest post
+is used so the homepage still has a lead story.
 
 **Fail closed:** a missing title or date, an invalid date, or two slugs that
 collide will *fail the build* and name the offending file. Nothing is inferred

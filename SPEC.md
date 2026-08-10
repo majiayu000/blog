@@ -37,9 +37,13 @@
 <meta name="description" content="一句话摘要">       <!-- 可选 -->
 <meta name="tags" content="架构, 工具链">            <!-- 可选，逗号分隔 -->
 <meta name="draft" content="true">                  <!-- 可选，草稿不进产物 -->
+<meta name="featured" content="true">               <!-- 可选，首页编辑推荐 -->
 ```
 
 一篇文章因此是**单文件自洽**的，复制走仍是完整的一篇。
+
+首页只展示一篇编辑推荐和四篇最新文章。多篇标记为 `featured` 时取日期最新的一篇；
+没有标记时回退到最新文章，避免首页出现空的主推区。
 
 ## Fail closed
 

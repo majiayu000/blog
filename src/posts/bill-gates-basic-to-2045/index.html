@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>比尔·盖茨:两幕人生——从 Altair BASIC 到 2045 年的日落</title>
+<meta name="date" content="2026-08-07">
+<meta name="description" content="比尔·盖茨完整传记:湖畔少年的井字棋、哈佛辍学与 Altair BASIC、MS-DOS 的五万美元豪赌、Windows 帝国与反垄断十字架、从 CEO 到慈善家的转身、900 亿美元基金会的全球健康工程、脊灰根除与疫苗体系、AI 时代的重新定位,以及 2045 年基金会关停的日落时刻。含 1968–2026 逐年大事记、六大产物深度解析、一手引语与同侪对比。">
+<meta name="tags" content="人物, 微软, 慈善, 全球健康, 商业史, AI">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#e9edf3;--surface:#ffffff;--surface-2:#e3e8f0;--ink:#11141a;--ink-2:#3a4150;--muted:#5d6a7a;--faint:#93a0b0;
+    --acc:#0078d4;--acc-2:#107c10;--acc-3:#e81123;--acc-4:#b08000;--line:#d2d9e3;--line-2:#b8c2cf;
+    --display:'Space Grotesk','PingFang SC','Microsoft YaHei',sans-serif;--body:'Inter','PingFang SC','Microsoft YaHei',sans-serif;--mono:'JetBrains Mono',Menlo,monospace;--serif:Georgia,'Songti SC',serif;
+    --shadow:0 2px 8px rgba(17,20,26,.06),0 12px 32px rgba(17,20,26,.09);--shadow-lg:0 4px 16px rgba(17,20,26,.09),0 24px 64px rgba(17,20,26,.13);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#0a0e14;--surface:#121824;--surface-2:#1b2334;--ink:#e8edf5;--ink-2:#aeb9cb;--muted:#8a96aa;--faint:#5d6a80;
+      --acc:#3aa0ff;--acc-2:#4cc95c;--acc-3:#ff5c6c;--acc-4:#ffd400;--line:#232d40;--line-2:#2f3b54;
+      --shadow:0 2px 8px rgba(0,0,0,.25),0 12px 32px rgba(0,0,0,.35);--shadow-lg:0 4px 16px rgba(0,0,0,.35),0 24px 64px rgba(0,0,0,.45);}
+  }
+  :root[data-theme="light"]{--bg:#e9edf3;--surface:#ffffff;--surface-2:#e3e8f0;--ink:#11141a;--ink-2:#3a4150;--muted:#5d6a7a;--faint:#93a0b0;--acc:#0078d4;--acc-2:#107c10;--acc-3:#e81123;--acc-4:#b08000;--line:#d2d9e3;--line-2:#b8c2cf;--shadow:0 2px 8px rgba(17,20,26,.06),0 12px 32px rgba(17,20,26,.09);--shadow-lg:0 4px 16px rgba(17,20,26,.09),0 24px 64px rgba(17,20,26,.13);}
+  :root[data-theme="dark"]{--bg:#0a0e14;--surface:#121824;--surface-2:#1b2334;--ink:#e8edf5;--ink-2:#aeb9cb;--muted:#8a96aa;--faint:#5d6a80;--acc:#3aa0ff;--acc-2:#4cc95c;--acc-3:#ff5c6c;--acc-4:#ffd400;--line:#232d40;--line-2:#2f3b54;--shadow:0 2px 8px rgba(0,0,0,.25),0 12px 32px rgba(0,0,0,.35);--shadow-lg:0 4px 16px rgba(0,0,0,.35),0 24px 64px rgba(0,0,0,.45);}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink-2);font-family:var(--body);line-height:1.75;font-size:17px;font-weight:400;-webkit-font-smoothing:antialiased}
+  ::selection{background:var(--acc);color:var(--surface)}
+  a{color:var(--acc);text-decoration:none;position:relative}
+  a:not(.btn):not(.pill):not(.toplink)::after{content:"";position:absolute;left:0;bottom:-1px;width:0;height:1px;background:var(--acc);transition:width .35s ease}
+  a:not(.btn):not(.pill):not(.toplink):hover::after{width:100%}
+  .progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--acc-3),var(--acc-4) 33%,var(--acc-2) 66%,var(--acc));width:0%;z-index:100;transition:width .1s linear}
+  .topbar{position:fixed;top:0;left:0;right:0;z-index:90;background:rgba(0,0,0,0);backdrop-filter:blur(0);transition:background .3s,backdrop-filter .3s;border-bottom:1px solid transparent}
+  .topbar.scrolled{background:rgba(18,24,36,.75);backdrop-filter:blur(12px);border-color:var(--line)}
+  .topbar .in{max-width:1280px;margin:0 auto;padding:14px 28px;display:flex;justify-content:space-between;align-items:center}
+  .toplink{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);border:1px solid var(--line-2);border-radius:4px;background:var(--surface);padding:6px 14px;transition:all .25s ease}
+  .toplink:hover{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .theme-toggle{font-family:var(--mono);font-size:11px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line-2);border-radius:4px;padding:6px 14px;cursor:pointer;transition:all .25s ease}
+  .theme-toggle:hover{background:var(--surface-2)}
+  .hero{position:relative;min-height:94vh;display:flex;flex-direction:column;justify-content:center;padding:0 28px;overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 15% 20%,rgba(0,120,212,.16) 0%,transparent 42%),radial-gradient(circle at 85% 75%,rgba(16,124,16,.12) 0%,transparent 40%),radial-gradient(circle at 70% 20%,rgba(232,17,35,.08) 0%,transparent 38%);pointer-events:none}
+  .hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:56px 56px;opacity:.16;pointer-events:none;-webkit-mask-image:radial-gradient(ellipse at 50% 60%,#000 30%,transparent 75%);mask-image:radial-gradient(ellipse at 50% 60%,#000 30%,transparent 75%)}
+  .hero .win{position:relative;z-index:2;max-width:900px;margin:0 auto;width:100%;background:var(--surface);border:1px solid var(--line-2);border-radius:10px;box-shadow:var(--shadow-lg);overflow:hidden}
+  .hero .titlebar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(90deg,var(--acc),#1c5fc4);color:#fff;font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+  .hero .btns{display:flex;gap:6px}
+  .hero .btns i{width:13px;height:13px;border-radius:50%;display:block}
+  .hero .btns i:nth-child(1){background:#e81123}.hero .btns i:nth-child(2){background:#ffb900}.hero .btns i:nth-child(3){background:#16c60c}
+  .hero .flags{display:flex;gap:6px;margin-left:auto}
+  .hero .flags i{width:16px;height:13px;display:block;background:linear-gradient(135deg,var(--acc) 25%,transparent 25%,transparent 50%,var(--acc-2) 50%,var(--acc-2) 75%,transparent 75%),linear-gradient(135deg,transparent 25%,var(--acc-3) 25%,var(--acc-3) 50%,transparent 50%,transparent 75%,var(--acc-4) 75%);background-size:16px 13px;background-color:var(--surface)}
+  .hero .winbody{padding:56px 64px 60px}
+  .hero-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--acc);margin-bottom:20px}
+  .hero h1{font-family:var(--display);font-size:clamp(38px,6.4vw,80px);line-height:1.02;letter-spacing:-.03em;color:var(--ink);font-weight:700;margin:0 0 26px}
+  .hero h1 em{font-style:normal;color:var(--acc);position:relative;white-space:nowrap}
+  .hero h1 em::after{content:"";position:absolute;left:0;right:0;bottom:4px;height:10px;background:linear-gradient(90deg,var(--acc-3),var(--acc-4),var(--acc-2));opacity:.28;z-index:-1}
+  .hero-lead{font-size:clamp(16px,2vw,20px);line-height:1.75;color:var(--ink-2);max-width:680px;margin:0 0 30px}
+  .hero-meta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:34px}
+  .pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line-2);border-radius:4px;background:var(--surface-2);padding:5px 12px}
+  .taskbar{position:absolute;z-index:2;bottom:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:8px 18px;background:rgba(18,24,36,.9);color:#cfe3ff;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em}
+  .taskbar .start{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(90deg,var(--acc-2),#0d6e0d);color:#fff;padding:5px 14px;border-radius:3px;font-weight:700}
+  .taskbar .clock{margin-left:auto}
+  .shell{max-width:1280px;margin:0 auto;padding:48px 28px;display:grid;grid-template-columns:220px minmax(0,760px);gap:72px;align-items:start}
+  nav{position:sticky;top:90px;padding:0;font-size:12.5px;max-height:calc(100vh - 120px);overflow:auto}
+  nav .g{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:22px 0 8px;padding-left:14px}
+  nav a{display:block;color:var(--muted);padding:6px 0 6px 14px;border-left:1px solid var(--line);line-height:1.45;transition:all .2s ease}
+  nav a:hover,nav a.active{color:var(--ink);border-left-color:var(--acc);padding-left:18px}
+  main{padding:0 0 120px;min-width:0}
+  main > *{opacity:0;transform:translateY(18px);animation:reveal .8s cubic-bezier(.2,.6,.3,1) forwards}
+  @keyframes reveal{to{opacity:1;transform:translateY(0)}}
+  h2{font-family:var(--display);font-size:clamp(27px,3.4vw,42px);line-height:1.12;color:var(--ink);font-weight:700;margin:92px 0 26px;padding-top:24px;scroll-margin-top:80px;position:relative}
+  h2::before{content:attr(data-num);position:absolute;top:0;left:0;font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--acc);text-transform:uppercase}
+  h2::after{content:"";display:block;width:72px;height:4px;background:linear-gradient(90deg,var(--acc-3),var(--acc-4),var(--acc-2));margin-top:16px;border-radius:2px}
+  h3{font-family:var(--display);font-size:23px;color:var(--ink);font-weight:600;margin:46px 0 14px;line-height:1.25}
+  h4{font-family:var(--body);font-size:14px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:32px 0 10px}
+  p{margin:16px 0;color:var(--ink-2)}
+  .lead{font-size:19px;line-height:1.8}
+  .drop-cap::first-letter{float:left;font-family:var(--display);font-size:5em;line-height:.84;padding-right:13px;padding-top:6px;color:var(--acc);font-weight:700}
+  strong{color:var(--ink);font-weight:600}
+  ul,ol{padding-left:22px;margin:16px 0}li{margin:9px 0;color:var(--ink-2)}li::marker{color:var(--acc)}
+  code{font-family:var(--mono);font-size:.82em;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:.1em .4em;color:var(--ink)}
+  blockquote{margin:32px 0;padding:28px 30px;background:var(--surface);border-left:4px solid var(--acc);border-radius:0 14px 14px 0;box-shadow:var(--shadow);position:relative}
+  blockquote::before{content:""";position:absolute;top:10px;left:14px;font-family:var(--display);font-size:58px;color:var(--acc);opacity:.22;line-height:1}
+  blockquote p{position:relative;z-index:1;font-family:var(--serif);font-size:20px;line-height:1.6;color:var(--ink);font-style:italic;margin:0}
+  blockquote .en{display:block;margin-top:12px;font-family:var(--mono);font-size:11.5px;color:var(--faint);font-style:normal}
+  blockquote .src{display:block;margin-top:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--acc);font-style:normal}
+  hr{border:none;height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);margin:60px 0}
+  .tw{overflow-x:auto;margin:24px -28px;padding:0 28px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:560px;background:var(--surface);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
+  th,td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:500;background:var(--surface-2)}
+  tr:last-child td{border-bottom:none}
+  td:first-child{color:var(--ink);font-family:var(--mono);font-size:12px;white-space:nowrap}
+  .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:36px 0}
+  .kpi .c{position:relative;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--acc);border-radius:12px;padding:28px 22px 24px;box-shadow:var(--shadow);overflow:hidden;transition:all .35s cubic-bezier(.2,.6,.3,1);isolation:isolate}
+  .kpi .c::after{content:"";position:absolute;right:-30px;bottom:-30px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,var(--acc) 0%,transparent 70%);opacity:.08;pointer-events:none}
+  .kpi .c:nth-child(2){border-top-color:var(--acc-2)}.kpi .c:nth-child(3){border-top-color:var(--acc-3)}
+  .kpi .c:nth-child(4){border-top-color:var(--acc-4)}.kpi .c:nth-child(5){border-top-color:var(--acc-2)}.kpi .c:nth-child(6){border-top-color:var(--acc)}
+  .kpi .c.wide{grid-column:span 2}
+  .kpi .c:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg);border-color:var(--line-2)}
+  .kpi .n{font-family:var(--display);font-size:clamp(64px,5.5vw,86px);line-height:.92;color:var(--ink);font-weight:700;margin-bottom:14px;letter-spacing:-.03em;position:relative;z-index:2}
+  .kpi .n span{background:linear-gradient(135deg,var(--acc),var(--acc-3));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .kpi .c:nth-child(2) .n span{background:linear-gradient(135deg,var(--acc-2),var(--acc))}
+  .kpi .c:nth-child(3) .n span{background:linear-gradient(135deg,var(--acc-3),var(--acc-4))}
+  .kpi .c:nth-child(4) .n span{background:linear-gradient(135deg,var(--acc-4),var(--acc-3))}
+  .kpi .c:nth-child(5) .n span{background:linear-gradient(135deg,var(--acc-2),var(--acc-3))}
+  .kpi .c:nth-child(6) .n span{background:linear-gradient(135deg,var(--acc),var(--acc-2))}
+  .kpi .u{font-family:var(--display);font-size:clamp(18px,2vw,26px);font-weight:700;color:var(--acc);margin-left:8px;letter-spacing:.02em;text-transform:none;-webkit-text-fill-color:var(--acc);background:none;vertical-align:3px}
+  .kpi .l{font-size:13.5px;color:var(--ink-2);line-height:1.55;position:relative;z-index:2}
+  .kpi .ctx{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:9px;letter-spacing:.04em;position:relative;z-index:2}
+  @media(max-width:900px){.kpi{grid-template-columns:repeat(2,1fr)}.kpi .c.wide{grid-column:span 2}.kpi .n{font-size:56px}}
+  @media(max-width:540px){.kpi{grid-template-columns:1fr}.kpi .c.wide{grid-column:span 1}.kpi .n{font-size:50px}}
+  .note{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--acc-4);border-radius:0 12px 12px 0;padding:16px 20px;margin:22px 0;box-shadow:var(--shadow);font-size:14px}
+  .paper{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:26px 28px;margin:20px 0;box-shadow:var(--shadow);transition:transform .25s ease,box-shadow .25s ease}
+  .paper:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+  .paper .ph{font-family:var(--display);font-size:19px;font-weight:700;color:var(--ink);margin:0 0 4px}
+  .paper .pm{font-family:var(--mono);font-size:11px;color:var(--faint);margin:0 0 14px}
+  .paper .pl{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);margin:14px 0 4px}
+  .paper .c4{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:baseline}
+  .tl{position:relative;margin:36px 0 20px;padding-left:30px}
+  .tl::before{content:"";position:absolute;left:8px;top:4px;bottom:4px;width:2px;background:linear-gradient(180deg,var(--acc-3),var(--acc-4) 35%,var(--acc-2) 70%,var(--acc));opacity:.5}
+  .tl .e{position:relative;padding:0 0 26px 8px}
+  .tl .e::before{content:"";position:absolute;left:-30px;top:8px;width:12px;height:12px;border-radius:3px;background:var(--surface);border:2px solid var(--acc);transform:rotate(45deg)}
+  .tl .e:nth-child(3n)::before{border-color:var(--acc-2)}.tl .e:nth-child(3n+1)::before{border-color:var(--acc-3)}
+  .tl .y{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--acc);letter-spacing:.04em}
+  .tl .t{font-family:var(--display);font-size:17px;font-weight:600;color:var(--ink);margin:2px 0 6px}
+  .tl .d{font-size:14.5px;color:var(--muted)}
+  .tl .tag{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line-2);border-radius:3px;padding:2px 8px;margin-left:8px;color:var(--faint);vertical-align:2px}
+  .refs{font-size:13px}.refs li{margin:10px 0;color:var(--ink-2)}
+  .foot{margin-top:80px;padding-top:28px;border-top:1px solid var(--line);font-size:12px;color:var(--faint);font-family:var(--mono)}
+  .backtop{position:fixed;right:28px;bottom:28px;width:44px;height:44px;border-radius:6px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;pointer-events:none;transition:all .3s ease;z-index:80;color:var(--ink)}
+  .backtop.visible{opacity:1;pointer-events:auto}
+  .backtop:hover{background:var(--acc);border-color:var(--acc);color:#fff}
+  .section-intro{font-size:14.5px;color:var(--muted);font-family:var(--mono);letter-spacing:.03em;margin-bottom:22px}
+  .f{font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;color:var(--faint);text-transform:uppercase}
+  .f-fact{color:var(--acc-2)}.f-inf{color:var(--acc-4)}.f-int{color:var(--acc-3)}
+  @media(max-width:1020px){.shell{grid-template-columns:1fr;gap:32px}nav{display:none}}
+  @media(max-width:640px){body{font-size:16px}.hero{padding:0 16px}.hero .winbody{padding:38px 26px 44px}.hero h1{font-size:clamp(30px,10vw,46px)}.shell{padding:24px 18px}.tw{margin:20px -18px;padding:0 18px}blockquote{padding:22px 20px}blockquote p{font-size:17px}.tl{padding-left:24px}}
+  @media(prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="topbar" id="topbar">
+  <div class="in">
+    <a class="toplink" href="/">← 返回首页</a>
+    <button class="theme-toggle" id="themeToggle" aria-label="切换主题">◐ 主题</button>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="hero-grid"></div>
+  <div class="win">
+    <div class="titlebar">
+      <span class="btns"><i></i><i></i><i></i></span>
+      <span>windows&nbsp;·&nbsp;biography.exe</span>
+      <span class="flags"><i></i></span>
+    </div>
+    <div class="winbody">
+      <div class="hero-eyebrow">BIOGRAPHY · 1955–2045 · TWO ACTS</div>
+      <h1>比尔·盖茨:两幕人生<br>从 <em>Altair BASIC</em> 到 2045 年的日落</h1>
+      <p class="hero-lead">第一幕,他让软件成为世界上最大的生意;第二幕,他试图用同样的方式消灭疾病与贫困。一个 13 岁就痴迷"永远执行正确"的机器的少年,如何在 70 岁宣布把自己几乎全部财富花完、让全球最大的私人慈善机构在 2045 年关门。</p>
+      <div class="hero-meta">
+        <span class="pill">微软创始人</span><span class="pill">全球最大私人基金会主席</span><span class="pill">脊灰根除推动者</span><span class="pill">Giving Pledge</span><span class="pill">AI 观察者</span>
+      </div>
+    </div>
+  </div>
+  <div class="taskbar">
+    <span class="start">▶ 开始</span>
+    <span>| 全文 1968–2026 · 来源已标注</span>
+    <span class="clock">2026-08-07</span>
+  </div>
+</header>
+
+<div class="shell">
+<nav>
+  <div class="g">总览</div>
+  <a href="#kpi">功绩总览</a>
+  <a href="#timeline">逐年大事记</a>
+  <div class="g">第一幕 · 软件帝国</div>
+  <a href="#act1">湖畔与哈佛(1968–1975)</a>
+  <a href="#act2">BASIC:软件的商品化(1975–1980)</a>
+  <a href="#act3">MS-DOS 豪赌(1980–1985)</a>
+  <a href="#act4">Windows 与反垄断(1985–2000)</a>
+  <div class="g">第二幕 · 慈善帝国</div>
+  <a href="#act5">转身(2000–2008)</a>
+  <a href="#act6">基金会工程(2000–2026)</a>
+  <div class="g">深度</div>
+  <a href="#papers">六大产物解析</a>
+  <a href="#quotes">引语集</a>
+  <a href="#peers">同侪坐标</a>
+  <a href="#dark">暗面与争议</a>
+  <a href="#end">2045 年的日落</a>
+  <a href="#refs">参考与证据边界</a>
+</nav>
+
+<main>
+
+<section id="kpi">
+  <h2 data-num="01">功绩总览:两幕人生</h2>
+  <p class="section-intro">KEY FIGURES · 除特别标注外,均为公开报道口径</p>
+  <p class="drop-cap lead">威廉·亨利·盖茨三世(William Henry Gates III),1955 年 10 月 28 日生于西雅图。他的职业生涯可以干净地切成两幕:第一幕 1975–2000 年,与少年好友保罗·艾伦创办微软,让"软件"从爱好者的玩具变成全球最大的行业之一;第二幕 2000 年至今,卸任 CEO,把精力转向比尔及梅琳达·盖茨基金会——截至 2025 年末持有约 910 亿美元资产、全球规模最大的私人慈善机构——并宣布其将在 2045 年 12 月 31 日停止运营。</p>
+  <p>1995 年至 2007 年,福布斯富豪榜上连续 13 年榜首,24 年间有 18 年坐在世界首富的位置上;1999 年成为人类历史上第一个净资产短暂突破 1000 亿美元的"centibillionaire"。而 2025 年他在 BBC 采访中说,个人累计捐赠已达约 1000 亿美元——约等于他曾经的全部身家。(事实:Forbes 榜单、BBC 采访)</p>
+  <div class="kpi">
+    <div class="c">
+      <div class="n"><span data-count="1975">0</span></div>
+      <div class="l">与保罗·艾伦共同创立微软,时年 20 岁(1975,新墨西哥州阿尔伯克基)</div>
+      <div class="ctx">ACT I · MICRO-SOFT</div>
+    </div>
+    <div class="c">
+      <div class="n"><span data-count="13">0</span><span class="u">年</span></div>
+      <div class="l">1995–2007 连续 13 年福布斯全球首富;24 年间 18 年榜首</div>
+      <div class="ctx">FORBES · 1995–2017</div>
+    </div>
+    <div class="c">
+      <div class="n"><span data-count="31">0</span><span class="u">岁</span></div>
+      <div class="l">1987 年以 12.5 亿美元净资产成为史上最年轻白手起家亿万富翁</div>
+      <div class="ctx">IPO 后第二年</div>
+    </div>
+    <div class="c">
+      <div class="n"><span data-count="1065">0</span><span class="u">亿美元</span></div>
+      <div class="l">2026 年 7 月 Forbes 净资产估算,全球第 19 富有(微软股价与 Cascade 投资组合)</div>
+      <div class="ctx">2026-07 · FORBES</div>
+    </div>
+    <div class="c">
+      <div class="n"><span data-count="99.99">0</span><span class="u">%</span></div>
+      <div class="l">全球野生脊灰病例降幅:1988 年约 35 万例 → 2022 年 30 例,仅余两国地方性传播</div>
+      <div class="ctx">WHO 数据 · 基金会核心战役之一</div>
+    </div>
+    <div class="c wide">
+      <div class="n"><span data-count="2045">0</span><span class="u">年 · 日落</span></div>
+      <div class="l">2025 年 5 月宣布:基金会将于 2045 年 12 月 31 日停止运营——"20 年时间几乎花光我所有的财富"是计划的一部分,不是口号。</div>
+      <div class="ctx">GATESFOUNDATION.ORG · 2025-05-08</div>
+    </div>
+  </div>
+  <div class="note"><strong>叙事框架说明(解读):</strong>本文用"两幕人生"组织材料——前 25 年他构建"软件平台",后 25 年他构建"健康平台"。两者共享同一套方法论:寻找杠杆点、用系统性工程放大它、极度乐观地相信世界可以被改造。这种类比是本文的分析视角,不是盖茨本人的措辞。</div>
+</section>
+
+<section id="timeline">
+  <h2 data-num="02">逐年大事记(1968–2026)</h2>
+  <p class="section-intro">CHRONOLOGY · 事件均有公开来源,详见文末参考</p>
+  <div class="tl">
+    <div class="e"><div class="y">1968</div><div class="t">13 岁,入读湖滨学校<span class="tag">起源</span></div><div class="d">学校家长协会用义卖收入买下一台 Teletype 33 终端和 GE 主机的机时;盖茨用 BASIC 写了第一个程序——井字棋。</div></div>
+    <div class="e"><div class="y">1970</div><div class="t">因破解机时被禁</div><div class="d">与艾伦等 4 人利用 CCC 公司 PDP-10 的漏洞免费蹭机被禁一个夏天;解禁后以"找 bug 换机时"复出,盖茨开始研读 FORTRAN、LISP 与机器码源码。</div></div>
+    <div class="e"><div class="y">1971</div><div class="t">第一份商业软件</div><div class="d">为学校编写排课系统;挚友 Kent Evans 在登山事故中去世——盖茨称这是他人生最悲伤的日子之一。</div></div>
+    <div class="e"><div class="y">1972</div><div class="t">Traf-O-Data<span class="tag">第一家公司</span></div><div class="d">17 岁与艾伦合伙,用 Intel 8008 造交通流量计数器;同年担任国会 page。</div></div>
+    <div class="e"><div class="y">1973</div><div class="t">SAT 1590 / 1600,入读哈佛</div><div class="d">修读 Math 55 与研究生级计算机课程;认识了后来的微软合伙人与竞争对手史蒂夫·鲍尔默。</div></div>
+    <div class="e"><div class="y">1975</div><div class="t">Altair BASIC 与 Micro-Soft 诞生<span class="tag">第一幕开幕</span></div><div class="d">1 月《Popular Electronics》刊出 Altair 8800;盖茨致电 MITS 谎称已有 BASIC;几周后用模拟器写出解释器并演示成功;11 月从哈佛休学,与艾伦迁往阿尔伯克基。</div></div>
+    <div class="e"><div class="y">1976</div><div class="t">《致爱好者的公开信》</div><div class="d">2 月发文怒斥盗版:90% 以上的 Altair BASIC 用户未付费;11 月正式注册 "Microsoft"。</div></div>
+    <div class="e"><div class="y">1979</div><div class="t">迁址西雅图地区</div><div class="d">1 月 1 日公司从阿尔伯克基搬到 Bellevue;前五年盖茨自称审阅甚至重写公司几乎每一行代码。</div></div>
+    <div class="e"><div class="y">1980</div><div class="t">IBM 找上门来<span class="tag">转折点</span></div><div class="d">7 月 IBM 洽谈(母亲 Mary 向 IBM 时任 CEO John Opel 引荐是背景之一);IBM 需要操作系统,微软拿下 86-DOS 的独家授权,随后买断全部所有权。</div></div>
+    <div class="e"><div class="y">1981</div><div class="t">IBM PC 与 PC DOS</div><div class="d">以 5 万美元一次性费用把系统交给 IBM,<strong>但保留版权</strong>;6 月公司重组,盖茨任总裁兼董事长。8 月 IBM PC 发布,兼容机时代开启。</div></div>
+    <div class="e"><div class="y">1983</div><div class="t">艾伦离开</div><div class="d">艾伦因确诊霍奇金淋巴瘤离开微软;两人因股权分配长期关系紧张,直到艾伦 2018 年去世前才修复。</div></div>
+    <div class="e"><div class="y">1985</div><div class="t">Windows 1.0</div><div class="d">11 月 20 日发布,正面迎战苹果 Macintosh 的图形界面。</div></div>
+    <div class="e"><div class="y">1986</div><div class="t">微软上市</div><div class="d">3 月 IPO,盖茨保留 44.9% 股权;8 月与 IBM 合作 OS/2(后来破裂)。</div></div>
+    <div class="e"><div class="y">1987</div><div class="t">最年轻亿万富翁</div><div class="d">净资产 12.5 亿美元,31 岁;同年纽约贸易展上认识梅琳达·弗伦奇(入职微软约 4 个月)。</div></div>
+    <div class="e"><div class="y">1990</div><div class="t">Windows 3.0</div><div class="d">图形界面第一次真正大卖,奠定 Windows 王朝;次年 Windows NT 项目启动。</div></div>
+    <div class="e"><div class="y">1994</div><div class="t">结婚 + 第一笔慈善</div><div class="d">1 月 1 日与梅琳达在夏威夷拉奈岛完婚;同年捐出部分微软股票成立 William H. Gates Foundation;花 3080 万美元拍下达·芬奇手稿《Codex Leicester》。</div></div>
+    <div class="e"><div class="y">1995</div><div class="t">Windows 95 与全球首富</div><div class="d">8 月 Windows 95 发布,现象级营销;11 月《The Road Ahead》出版;首次登顶福布斯。</div></div>
+    <div class="e"><div class="y">1998</div><div class="t">反垄断诉讼</div><div class="d">5 月美国司法部联合 20 州起诉微软;8 月 27 日盖茨作证——"I don't recall"成为经典画面。</div></div>
+    <div class="e"><div class="y">1999</div><div class="t">第一个千亿富翁</div><div class="d">净资产短暂突破 1000 亿美元;入选《时代》20 世纪百大影响力人物。</div></div>
+    <div class="e"><div class="y">2000</div><div class="t">两幕之间的分界<span class="tag">第二幕开幕</span></div><div class="d">1 月卸任 CEO,鲍尔默接任;与梅琳达合并三家家族基金会、捐出 50 亿美元股票,成立比尔及梅琳达·盖茨基金会。</div></div>
+    <div class="e"><div class="y">2001</div><div class="t">反垄断和解</div><div class="d">联邦上诉法院驳回拆分判决;11 月司法部与微软达成和解,微软存活。</div></div>
+    <div class="e"><div class="y">2005</div><div class="t">荣誉 KBE</div><div class="d">获伊丽莎白二世授予荣誉大英帝国爵级司令勋章;与梅琳达、Bono 同获《时代》年度人物。</div></div>
+    <div class="e"><div class="y">2006</div><div class="t">宣布退出日常管理</div><div class="d">6 月 15 日宣布 2008 年彻底交接;巴菲特同日宣布把约 1000 万股伯克希尔 B 股逐年捐给基金会(首年约 15 亿美元)。</div></div>
+    <div class="e"><div class="y">2008</div><div class="t">全职慈善家</div><div class="d">6 月 27 日完成微软交接,全职投入基金会。</div></div>
+    <div class="e"><div class="y">2010</div><div class="t">Giving Pledge</div><div class="d">12 月与巴菲特、梅琳达共同发起"捐赠誓言":富豪承诺捐出至少一半财富。</div></div>
+    <div class="e"><div class="y">2011</div><div class="t">总部与马桶</div><div class="d">基金会 5 亿美元新总部开放(LEED 白金,门前立着《Impatient Optimist》纤维雕塑);发起"重塑马桶挑战",目标 25 亿没有安全卫生设施的人。</div></div>
+    <div class="e"><div class="y">2014</div><div class="t">卸任微软董事长</div><div class="d">2 月交棒,转任纳德拉等技术团队顾问(至今)。</div></div>
+    <div class="e"><div class="y">2016</div><div class="t">总统自由勋章</div><div class="d">与梅琳达一同获奥巴马颁发。</div></div>
+    <div class="e"><div class="y">2020</div><div class="t">离开微软董事会</div><div class="d">3 月辞职,全力抗疫:基金会疫情以来承诺超 20 亿美元,与 Wellcome、Mastercard 成立疗法加速器。</div></div>
+    <div class="e"><div class="y">2021</div><div class="t">离婚与气候书</div><div class="d">5 月 3 日宣布与梅琳达离婚,8 月办结;2 月出版《How to Avoid a Climate Disaster》。</div></div>
+    <div class="e"><div class="y">2022</div><div class="t">《How to Prevent the Next Pandemic》</div><div class="d">提议 WHO 下设年预算 10 亿美元的全球流行病应对与动员(GERM)团队。</div></div>
+    <div class="e"><div class="y">2023</div><div class="t">《The Age of AI Has Begun》</div><div class="d">3 月在 gatesnotes 发文,称 AI 与微处理器、PC、互联网同级;微软则在盖茨卸任后向 OpenAI 累计投资约 130 亿美元。</div></div>
+    <div class="e"><div class="y">2024</div><div class="t">梅琳达辞职</div><div class="d">6 月 7 日梅琳达辞任联席主席(2021 年离婚协议中"两年试用期"条款触发)。</div></div>
+    <div class="e"><div class="y">2025</div><div class="t">更名、回忆录与关停宣言<span class="tag">转折</span></div><div class="d">1 月基金会更名 Gates Foundation,盖茨独任主席;2 月出版回忆录《Source Code: My Beginnings》;5 月宣布 2045 年 12 月 31 日关停;7 月巴菲特捐出 60 亿美元(其最大单笔);10 月"气候备忘录"引发轩然大波。</div></div>
+    <div class="e"><div class="y">2026</div><div class="t">清算与交割</div><div class="d">1 月巴菲特停止捐赠;2 月盖茨取消印度 AI 峰会演讲;6 月 10 日就 Epstein 关联在众议院监督委员会作证;7 月巴菲特正式终止与基金会数十年合作(累计约 480 亿美元),Forbes 估盖茨净资产 1065 亿美元。</div></div>
+  </div>
+</section>
+
+<section id="act1">
+  <h2 data-num="03">第一幕·第 1 章:一台永远执行正确的机器(1968–1975)</h2>
+  <p class="drop-cap">1968 年,湖滨学校八年级的盖茨第一次坐在 Teletype 33 终端前。他后来在《The Road Ahead》里回忆,自己立刻着迷于"这台机器总是完美地执行软件,永远不会出错"——一个秩序的化身,出现在一个充满成年人大声争辩的世界里。</p>
+  <p>家庭给他的是另一套训练:父亲是知名律师,母亲是银行与公益机构董事。家里的规则是竞争性的——打牌、游泳到码头、打匹克球,赢有奖励,输有惩罚。(事实:维基百科引述访客描述)少年盖茨身材瘦小、在学校受欺负,计算机成了他的逃逸舱与竞技场:在这里,赢的唯一标准是代码对。</p>
+  <p>这段经历埋下了盖茨职业生涯的两个原型。其一,<strong>系统思维</strong>:被 CCC 禁掉机时后,他没等处罚结束,而是主动提出"我们帮你们找 bug,你们给我们机时";再后来直接读 FORTRAN、LISP 与机器码源码——他不是在学编程,是在拆系统。其二,<strong>稀缺资源的利用效率</strong>:1968 年的机时贵到按秒计费,他和艾伦琢磨怎么一次请求多拿一点、怎么在轮候表上动手脚。几十年后,他把同一套逻辑用在另一种稀缺资源上——让比尔·盖茨的钱在疾病防控上产生最大边际效用。</p>
+  <p>17 岁的 Traf-O-Data 是演习:用 Intel 8008 造交通计数器,替西雅图县读磁带数据。产品不太成功,但流程演练了完整闭环——找问题、写代码、卖出去。1973 年,SAT 1590/1600 的盖茨进入哈佛,修读数学 55(Math 55,以折磨人著称)与研究生级计算机课程。1974 年圣诞假期,他和艾伦看到《Popular Electronics》1975 年 1 月号的预告:Altair 8800,世界上第一台可编程的微处理器个人电脑。</p>
+  <div class="note"><strong>事实边界:</strong>盖茨本人自述的叙事(回忆录、书、访谈)与其传记作者 Manes 的记载在细节上偶有出入(如 Altair BASIC 的"谎称已有成品"的措辞),本文采用流传最广的版本,并在涉及争议处标注。</div>
+</section>
+
+<section id="act2">
+  <h2 data-num="04">第一幕·第 2 章:BASIC,软件的商品化宣言(1975–1980)</h2>
+  <p class="drop-cap">1975 年 1 月,盖茨打电话给 MITS 创始人 Ed Roberts,说他和伙伴"已经"在为 Altair 写 BASIC——实际上他们既没有 Altair 也没有一行代码。这个谎言的赌注是:如果对方上钩,他们有八周时间在模拟器上把解释器写出来。</p>
+  <p>结果是史上著名的交付:两人连开数周夜车,盖茨负责数学库与接口,艾伦负责 8080 模拟器与汇编核心;1975 年 3 月在阿尔伯克基的 MITS 办公室首次演示,4KB 内存里跑通了 BASIC。那是"软件行业"的创世时刻:在此之前,软件随硬件赠送,几乎没有独立价值;在此之后,一个 19 岁的辍学生证明,<strong>代码本身就是可以卖钱的产品</strong>。(事实)</p>
+  <p>1976 年 2 月,盖茨在 MITS 通讯上发表了那封著名的《致爱好者的公开信》:他估算 90% 以上的 Altair BASIC 用户没有付费,把盗版称作"偷窃",并警告"如果这样做,你们会阻止好的软件被写出来"。(事实;引语见引语集)这封信在爱好者圈激起公愤——"软件本来就该免费"是当时的主流教条,而盖茨毫不在意被讨厌。这是他一以贯之的性格:当他认为自己站在正确一边时,反对声只会增强他的斗志,不会改变他的方向。</p>
+  <p>1975 年 11 月盖茨从哈佛休学(按他的说法,"如果干不成,我随时可以回学校,我算正式请假"——而事实是他再没回去)。1976 年 11 月,"Micro-Soft" 去掉连字符注册为 Microsoft;1979 年 1 月 1 日公司搬到西雅图地区的 Bellevue。前五年,盖茨自称审阅甚至重写公司几乎每一行代码。今天回头看,Altair BASIC 的意义不在技术(它是移植与优化的杰作,但不是算法突破),而在于<strong>商业模式</strong>:它第一次把"软件"从硬件赠品变成了独立商品——这是后来整个微软帝国的地基。(解读)</p>
+</section>
+
+<section id="act3">
+  <h2 data-num="05">第一幕·第 3 章:五万美元的平台豪赌(1980–1985)</h2>
+  <p class="drop-cap">1980 年 7 月,IBM 主动找上门。背景里有一个常被讲起的事实:盖茨的母亲 Mary Maxwell Gates 与 IBM 时任 CEO John Opel 相识,在慈善委员会共事时向他提起了微软。(事实:多本传记记载)</p>
+  <p>IBM 需要给未来的 IBM PC 配操作系统。盖茨先推荐了 Digital Research 的 CP/M——他自己当时并没有操作系统可卖;但 IBM 与 DRI 的谈判破裂(坊间流传与 DRI 创始人 Gary Kildall 缺席会谈的轶事,未经证实)。几周后,盖茨和艾伦提议:西雅图计算机产品公司(SCP)的 Tim Paterson 写过一个类似 CP/M 的 86-DOS。微软以低价拿下独家授权,随后直接买断全部所有权,并雇佣 Paterson 做适配。</p>
+  <p>这笔交易最精妙的部分不在买价,而在签约条款:<strong>微软以一次性 5 万美元把系统授权给 IBM,但不转让版权。</strong>当时 IBM 以为自己在买一个配件;盖茨赌的是两件事——第一,IBM PC 的硬件会被克隆成产业标准;第二,操作系统是克隆机唯一绕不过去的软件。(推断:盖茨本人的判断,被后来事实证实)</p>
+  <p>两件事都发生了。Compaq 等公司合法克隆 IBM PC 硬件,而操作系统只有 MS-DOS 可用;1981 年 8 月 IBM PC 发布后,MS-DOS 随兼容机海啸成为事实标准。微软因此从小公司跃升为行业权力中心。多年后盖茨承认,如果当时把 MS-DOS 的版权让给 IBM,历史完全不同——这也是他后来把"平台所有权"当作信仰的原因:控制平台,而不是控制产品。(解读)</p>
+  <p>同期的另一条线是图形界面。1983 年,苹果 Lisa 与麦金塔展示了 GUI 的未来;微软 1985 年 11 月 20 日发布 Windows 1.0 迎战。1986 年 8 月,微软与 IBM 达成共同开发 OS/2 的协议,却在首个版本成功后因理念分歧破裂——IBM 想守住自己的硬件,微软想要独立的软件生态。1986 年 3 月 13 日,微软上市,盖茨保留 44.9% 股权;1987 年,31 岁的他以 12.5 亿美元净资产成为史上最年轻的白手起家亿万富翁。</p>
+  <div class="note"><strong>事实边界:</strong>"盖茨母亲向 Opel 引荐"与 "DRI 谈判破裂细节"在传记中版本不一;前者有 Manes 传记记载,后者以"未经证实的轶事"处理,本文不将其作为定论。</div>
+</section>
+
+<section id="act4">
+  <h2 data-num="06">第一幕·第 4 章:Windows 帝国与反垄断的十字架(1985–2000)</h2>
+  <p class="drop-cap">1990 年 5 月,Windows 3.0 发布。这是图形界面的第一次大众化胜利:内存管理、TrueType 字体、席卷性的营销,让 Windows 从"DOS 的华丽外壳"变成真正的平台。1995 年 8 月 24 日,Windows 95 发布——以《滚石》式首映礼与"Start Me Up"广告语登场,零售店排队,媒体把它当文化事件报道。Windows 95 之后,微软不再只是一家软件公司,它是个人计算时代的操作系统本身。</p>
+  <p>帝国的另一面是司法绞索。1998 年 5 月 18 日,美国司法部联合 20 个州起诉微软,指控其在 PC 操作系统市场维持垄断、把 IE 与 Windows 捆绑、胁迫合作伙伴。1998 年 8 月 27 日,盖茨出庭作证——这段录像成为公关灾难:面对检察官 David Boies 的连环追问,他反复以 "I don't recall" 回应,法官在庭上摇头,媒体评价"回避"。</p>
+  <p>盖茨后来承认自己确实在交锋中"粗鲁"了,但坚称那是抵抗断章取义的手段。2000 年 4 月,Thomas Penfield Jackson 法官裁定微软构成垄断;同年 11 月,法庭发布拆分微软的裁决。2001 年,上诉法院推翻拆分判决;同年 11 月,司法部与微软达成和解——微软付出一系列行为性补救,保住了完整肉身。今天回头看,<strong>反垄断案是盖茨第一幕的墓碑</strong>:它没有杀死微软,但终结了"微软无敌"的叙事,也间接把盖茨推向了人生的第二幕。(解读)</p>
+  <p>同一时期的盖茨个人层面也有关键动作:1994 年 1 月 1 日与梅琳达·弗伦奇在夏威夷拉奈岛结婚;同年捐出部分微软股票创立 William H. Gates Foundation——这是他对 Carnegie 与 Rockefeller 式慈善做了一番研究后的决定,当时还是低调的家族基金。</p>
+  <h3>管理风格:苛刻的"BillG 评审"</h3>
+  <p>盖茨的 CEO 风格以极致苛刻闻名(事实:多位当事人记载):他会连续数小时追问直到对方承认不知道,然后怒斥对方准备不足;他曾一夜读完 500 页技术规格并逐页批注;1990 年代初的 BillG review 会议上,36 岁的他一场会说了四次 F 词,与会者评价"比尔老了、温和了"。(事实:Joel Spolsky 等当事人的回忆)</p>
+  <p>这套风格与微软的"失败文化"一体两面:产品可以失败,借口不能存在。Windows 1.0 被嘲笑、Bob 成为笑柄、Vista 翻车——但 20 年里,微软总是用下一版覆盖上一版的失败。盖茨把"不断迭代、永不道歉"写进了公司基因。(解读)</p>
+</section>
+
+<section id="act5">
+  <h2 data-num="07">转身:从 CEO 到首席慈善家(2000–2008)</h2>
+  <p class="drop-cap">2000 年 1 月 13 日,盖茨宣布卸任微软 CEO,交棒史蒂夫·鲍尔默,自己转任"首席软件架构师"。同年,他和梅琳达把三家家族基金会合并,捐出价值 50 亿美元的股票,成立比尔及梅琳达·盖茨基金会(Bill &amp; Melinda Gates Foundation)。2005 年,《时代》把年度人物颁给盖茨夫妇与 Bono;2006 年 6 月 15 日,盖茨宣布 2008 年彻底退出微软日常管理,全职投入基金会。</p>
+  <p>2008 年 6 月 27 日,交接完成。他 52 岁——正是很多企业家的巅峰期——选择把剩余时间全部押注在一个当时还叫"慈善事业"的赛道上。同期,沃伦·巴菲特在 2006 年宣布把约 1000 万股伯克希尔 B 股逐年捐给基金会(首年约 15 亿美元),并附带条件:比尔或梅琳达须在世且积极参与管理,基金会须每年支出等于前一年伯克希尔赠礼加上净资产 5% 的金额。巴菲特的逻辑是:把钱交给一个"能把慈善当工程来做"的人,比自己做基金会更高效。</p>
+  <p>这个转身的动机,盖茨自己给过版本不一的解释:母亲 Mary 在 1994 年癌症去世前劝他"回馈社会";1993 年访问非洲时目睹贫困儿童的冲击;以及 Carnegie 那句"拥巨富而死者以耻辱终"。他本人的核心自述是:微软的财富远超个人需要,而他"非常幸运,因此亏欠这个世界,有责任减少世界的不平等"。(事实:2014 年《Rolling Stone》采访)</p>
+  <p>值得注意的是转身的连续性:盖茨没有像很多富豪那样"退休后做慈善",而是把慈善变成了新的全职职业,CEO 的日程表、绩效指标、季度复盘全部照搬——基金会从一开始就按"风险投资 + 工程交付"的方式运作。(解读)</p>
+</section>
+
+<section id="act6">
+  <h2 data-num="08">第二幕:全球健康的工程化(2000–2026)</h2>
+  <p class="drop-cap">如果说微软时期盖茨制造的是"软件平台",基金会时期他制造的则是"健康平台"——不是单点救助,而是把疫苗、药品、支付机制与监测系统组合成可以规模化运转的体系。(解读)</p>
+  <h3>数字底座</h3>
+  <div class="tw">
+  <table>
+    <tr><th>指标</th><th>数值</th><th>口径</th></tr>
+    <tr><td>基金会资产</td><td>约 910 亿美元(2025-12-31)</td><td>财务报告</td></tr>
+    <tr><td>2025 年支出</td><td>约 81 亿美元</td><td>财务报告</td></tr>
+    <tr><td>员工</td><td>2,215 人(2025)</td><td>Fact Sheet</td></tr>
+    <tr><td>盖茨夫妇累计捐赠</td><td>约 360 亿美元(截至 2018 年)</td><td>公开报道</td></tr>
+    <tr><td>盖茨个人累计捐赠</td><td>约 1000 亿美元(2025 年 BBC 自述)</td><td>本人口径</td></tr>
+    <tr><td>巴菲特累计捐赠</td><td>约 480 亿美元(2006–2025)</td><td>2026 年终止时估算</td></tr>
+    <tr><td>COVID-19 响应承诺</td><td>超 20 亿美元</td><td>2022 年公告</td></tr>
+  </table>
+  </div>
+  <h3>核心战役:脊灰根除</h3>
+  <p>基金会最著名的长期押注是消灭脊髓灰质炎。全球野生脊灰病例从 1988 年估计的 35 万例降至 2022 年的 30 例,仅剩巴基斯坦与阿富汗两个地方性传播国家;WPV2 于 2015 年、WPV3 于 2019 年先后获得消灭认证。(事实:WHO 数据)基金会与 WHO、Rotary、UNICEF、GAVI 组成的联盟体系,是"工程化慈善"的样板:病例数字按国家按季度追踪,漏种儿童逐个补种,疫情暴发即调集资源扑灭——这是把软件工程的"指标驱动、持续交付"搬进了流行病学。(解读)</p>
+  <h3>杠杆点清单</h3>
+  <ul>
+    <li><strong>GAVI(疫苗联盟)</strong>:2016–2020 五年贡献 15.53 亿美元(第二大捐方),2020 年峰会承诺后五年 16 亿美元(约占总额 20%)。</li>
+    <li><strong>全球基金</strong>:累计捐超 66 亿美元,其中疟疾方向超 13 亿——被盖茨称为"几乎只有我们在给疟疾药研发续命"。(事实)</li>
+    <li><strong>疟疾与麻疹</strong>:基金会资助的疫苗接种使非洲麻疹死亡自 2000 年下降约 90%;疟疾死亡率在 WHO 口径下持续大幅下降(具体幅度因时期而异,文末标注)。</li>
+    <li><strong>结核病</strong>:资助 GeneXpert 检测降价——单次检测价格从 16.86 美元降至 9.98 美元(事实)。</li>
+    <li><strong>重塑马桶挑战(2011 年)</strong>:目标 25 亿无安全卫生设施者,要求离网、去病原体、回收资源、成本低于每人每天 5 美分;配套的 Omni-Processor 把粪便转化为能源与水,盖茨曾在发布会上当众喝下处理后的水(事实)。</li>
+    <li><strong>Gates Cambridge 奖学金</strong>:2000 年捐 2.1 亿美元。</li>
+  </ul>
+  <h3>治理实验</h3>
+  <p>基金会同时是慈善治理的实验场:2010 年 12 月,盖茨与巴菲特、梅琳达共同签署 Giving Pledge(捐赠誓言),推动全球富豪承诺捐出至少一半财富——截至现在已有数百位签署人;2006 年宣布基金会将在两人去世后 50 年内花完资产(后缩短为 20 年);2025 年 5 月,盖茨宣布基金会于 2045 年 12 月 31 日停止运营,他计划在 20 年内"几乎花光我所有的财富",留给三个孩子每人约 1000 万美元(即不到其财富的 1%)。这与多数大型基金会"永续运作"的模型截然相反:盖茨的论点是,当下的疾病与贫困问题应该用尽资产去解决,而不是让钱在复利里养老。(解读;事实为公告内容)</p>
+  <p>2024 年 6 月 7 日,梅琳达辞任联席主席(2021 年离婚协议条款触发);2025 年 1 月基金会更名 Gates Foundation,盖茨独任主席。2026 年 7 月,巴菲特正式终止与基金会的合作——他去世后遗产将转给自家家族基金会而非盖茨基金会。巴菲特的离场,与 2025–2026 年围绕盖茨与 Jeffrey Epstein 往来的审查直接相关。(事实:公开报道;详见"暗面"章)</p>
+</section>
+
+<section id="papers">
+  <h2 data-num="09">六大产物深度解析</h2>
+  <p class="section-intro">PRODUCT DEEP-DIVES · 盖茨留下的不是论文,而是产品、商业模式与制度</p>
+  <div class="paper">
+    <div class="ph"><span class="c4" style="background:var(--acc)"></span>Altair BASIC(1975)</div>
+    <div class="pm">问题:微处理器有了,但没有人写过"微机的软件";机器还停在爱好者阶段</div>
+    <p>关键动作:在没有任何硬件的情况下,用模拟器写出 4KB 内可运行的 BASIC 解释器,并当众演示成功。技术上是移植与内存优化的教科书,但真正的创新在商业:按"软件"单独定价、坚决收费、公开谴责盗版。</p>
+    <p class="pl">意义</p>
+    <p>把"软件"从硬件的赠品变成独立商品——软件行业自此有了定价权。盖茨后来总结:让软件赚钱,是个人计算革命能持续的根本原因。</p>
+  </div>
+  <div class="paper">
+    <div class="ph"><span class="c4" style="background:var(--acc-2)"></span>MS-DOS 授权模式(1981)</div>
+    <div class="pm">问题:IBM 需要操作系统,微软没有;但 IBM 的合作是千载难逢的入口</div>
+    <p>关键动作:低价买断 86-DOS 所有权,以 5 万美元一次性授权给 IBM PC,<strong>保留版权</strong>。赌注是兼容机生态会出现,而它们离不开 MS-DOS。</p>
+    <p class="pl">意义</p>
+    <p>平台所有权的范本:卖"零件"给巨头,同时保有对"生态"的控制。这一课后来被苹果(2010 年代)、谷歌(Android)、以及微软自己在云计算时代反复重演。</p>
+  </div>
+  <div class="paper">
+    <div class="ph"><span class="c4" style="background:var(--acc-3)"></span>Windows 95(1995)</div>
+    <div class="pm">问题:GUI 是苹果发明的,微软需要把"图形界面"大众化并标准化</div>
+    <p>关键动作:十年迭代(DOS 之上的 1.0→3.0→95),把易用性、兼容性与营销三者合成一次文化事件;默认隐藏 DOS 提示符,宣告"微软相信普通用户"。</p>
+    <p class="pl">意义</p>
+    <p>体验即生态的启蒙:操作系统不再是工程师工具,而是家庭电器。Windows 95 也是"开发者生态"概念大众化的起点——第三方软件跟着平台走。</p>
+  </div>
+  <div class="paper">
+    <div class="ph"><span class="c4" style="background:var(--acc-4)"></span>Giving Pledge(2010)</div>
+    <div class="pm">问题:富豪慈善全靠自觉,规模与节奏不可预期;公共信任度低</div>
+    <p>关键动作:与巴菲特、梅琳达共同发起公开承诺——签署人承诺捐出至少一半财富,名单公开、接受监督。这不是法律契约,而是声誉契约。</p>
+    <p class="pl">意义</p>
+    <p>把"捐赠"从私人消费变成可审计的公共承诺。盖茨用自己作抵押品,推动了一轮全球富豪慈善的制度化。</p>
+  </div>
+  <div class="paper">
+    <div class="ph"><span class="c4" style="background:var(--acc)"></span>脊灰根除联盟(2000–)</div>
+    <div class="pm">问题:疫苗存在,但覆盖、冷链、监测、冲突地区免疫是系统工程难题</div>
+    <p>关键动作:与 WHO、Rotary、UNICEF、GAVI、各国政府组成联盟;基金会在其中承担"资本 + 指标追踪 + 问题攻坚"的角色:病例数字季度追踪、疫情点即时报、补种按村推进。</p>
+    <p class="pl">意义</p>
+    <p>全球健康的"平台工程"样板:单一组织做不了,资本 + 数据 + 执行网络可以。35 万例 → 30 例的数字,是这套机制的有效性证明。</p>
+  </div>
+  <div class="paper">
+    <div class="ph"><span class="c4" style="background:var(--acc-2)"></span>基金会关停计划(2025)</div>
+    <div class="pm">问题:大型基金会永续经营,行政成本膨胀,资金错配时代需求</div>
+    <p>关键动作:宣布 2045 年 12 月 31 日停止运营,20 年内花完几乎全部资产;目标是通过提前清算来倒逼"当下解决问题"的效率。</p>
+    <p class="pl">意义</p>
+    <p>对"永续慈善"的激进否定——钱是工具,不是遗产。这一决定将在未来 20 年成为慈善行业的参照系与争论对象。</p>
+  </div>
+  <div class="note"><strong>解读声明:</strong>上述"意义"段落是本文的分析,不是盖茨的官方表述;事实性内容均见于公开来源。</div>
+</section>
+
+<section id="quotes">
+  <h2 data-num="10">他本人怎么说:引语集</h2>
+  <p class="section-intro">QUOTES · 全部为英文原文 + 公开出处,中文为编译</p>
+  <blockquote><p>如果事情没有成功,我随时可以回学校——我算是正式请假。</p><span class="en">"If things hadn't worked out, I could always go back to school. I was officially on leave."</span><span class="src">谈 1975 年从哈佛休学 · 回忆录/自述</span></blockquote>
+  <blockquote><p>首先,机器会帮我们做很多工作,而它们还没有那么智能。只要我们管理得当,这应该是好事。但再往后几十年,智能强到一定程度就值得担忧了。我同意埃隆·马斯克和其他一些人的看法,我不理解为什么有些人毫不担心。</p><span class="en">"First the machines will do a lot of jobs for us and not be super intelligent. That should be positive if we manage it well. A few decades after that though the intelligence is strong enough to be a concern. I agree with Elon Musk and some others on this and don't understand why some people are not concerned."</span><span class="src">Reddit AMA · 2015-01</span></blockquote>
+  <blockquote><p>我是跟 Boies 交锋了吗?……我认罪——对 Boies 的粗鲁,一级罪名成立。</p><span class="en">"Did I fence with Boies? … I plead guilty … rudeness to Boies in the first degree."</span><span class="src">回顾 1998 年反垄断案作证 · 事后访谈</span></blockquote>
+  <blockquote><p>我缴的税比历史上任何个人都多,而且心甘情愿……我已经缴了超过 60 亿美元。</p><span class="en">"I've paid more tax than any individual ever, and gladly so … I've paid over $6 billion in taxes."</span><span class="src">BBC 采访 · 税收立场</span></blockquote>
+  <blockquote><p>宗教的道德体系,我认为极其重要。我们以宗教方式养育孩子,他们上的是梅琳达去的天主教堂,我也参与其中。我非常幸运,因此我亏欠这个世界——有责任努力减少世界的不平等。这可以说是一种宗教信念,至少是一种道德信念。</p><span class="en">"The moral systems of religion, I think, are super important. We've raised our kids in a religious way; they've gone to the Catholic church that Melinda goes to and I participate in. I've been very lucky, and therefore I owe it to try and reduce the inequity in the world."</span><span class="src">《Rolling Stone》· 2014</span></blockquote>
+  <blockquote><p>如果让我选:未来十位美国总统,或者让能源变得环保又便宜四分之一——我选能源。</p><span class="en">"If you gave me the choice between picking the next 10 presidents or ensuring that energy is environmentally friendly and a quarter as costly, I'd pick the energy thing."</span><span class="src">谈气候与能源 · 2011</span></blockquote>
+  <blockquote><p>花时间与他相处,给他"在场"的可信度——这是一个巨大的错误。</p><span class="en">"It was a huge mistake to spend time with him, to give him the credibility of being there."</span><span class="src">谈 Epstein · BBC · 2021-08</span></blockquote>
+  <blockquote><p>政府存在的意义,就是提前想清楚可能发生的坏事。以(新冠)大流行为例,做得远远不够。我们不能忘记,下一次大流行还会来,我们必须投资做好准备——就像养一支消防队,花点钱,用聪明的方式,还要真的模拟可能发生的事。</p><span class="en">"Governments are there to think ahead to bad things that might happen. In the case of the pandemic, not enough was done. We can't forget that another pandemic will come and we'll need to invest in being ready… just like having a fire department."</span><span class="src">新加坡金融科技节 · 2020-12</span></blockquote>
+  <h3>旁人眼中的盖茨</h3>
+  <blockquote><p>他的标准套路是先抛出越来越难的问题,直到你承认自己不知道,然后他就可以训斥你没有准备。</p><span class="en">"His standard M.O. is to ask harder and harder questions until you admit that you don't know, and then he can yell at you for being unprepared."</span><span class="src">Joel Spolsky 谈 BillG review · 2006</span></blockquote>
+  <blockquote><p>(盖茨输掉 35/37 局后)一个月内,他赢下或打平了每一局。他把游戏研究到解出最优解为止。这才叫竞争对手。</p><span class="en">"He had studied the game until he solved it. That is a competitor."</span><span class="src">Atari 高管回忆 · 竞争性</span></blockquote>
+</section>
+
+<section id="peers">
+  <h2 data-num="11">同侪坐标:Allen、Jobs、Buffett</h2>
+  <p class="section-intro">PEER COMPARISON · 同为时代塑造者,路径却大相径庭</p>
+  <div class="tw">
+  <table>
+    <tr><th>维度</th><th>保罗·艾伦</th><th>比尔·盖茨</th><th>史蒂夫·乔布斯</th><th>沃伦·巴菲特</th></tr>
+    <tr><td>起点</td><td>湖畔同学、技术搭档</td><td>湖畔同学、商业大脑</td><td>车库创业者</td><td>奥马哈证券少年</td></tr>
+    <tr><td>核心天赋</td><td>工程直觉与远见("信息高速公路"预测)</td><td>商业判断 + 平台思维 + 极端竞争心</td><td>品味、叙事与产品直觉</td><td>估值纪律与耐心</td></tr>
+    <tr><td>与盖茨的关系</td><td>联合创始人,1983 年因病离开,后因股权反目,晚年和解</td><td>—</td><td>亦敌亦友:GUI 之战、Mac vs PC 广告战</td><td>忘年交:2006 年起捐 480 亿美元给基金会</td></tr>
+    <tr><td>巅峰资产</td><td>约 200 亿美元级(2018 年去世)</td><td>1065 亿美元(2026-07)</td><td>约 100 亿美元级(2011 年去世)</td><td>千亿美元级</td></tr>
+    <tr><td>慈善路径</td><td>艾伦脑科学研究所等,生前捐约 20 亿+</td><td>基金会 + Giving Pledge,计划 2045 年花完</td><td>生前极少公开捐赠(死后资产捐出)</td><td>把钱捐给"更会花的人"(盖茨基金会)</td></tr>
+    <tr><td>对世界的杠杆</td><td>技术远见落地为项目</td><td>平台 + 疫苗 + 制度</td><td>产品定义品类</td><td>资本配置的示范</td></tr>
+  </table>
+  </div>
+  <p>与乔布斯的对照最能说明盖茨的独特性:乔布斯卖的是"让消费者惊喜的物",盖茨卖的是"让开发者依附的台"。两人在 1990 年代正面交锋——Windows vs Mac 的 GUI 之争,以及 2000 年代的 Mac vs PC 广告战——而乔布斯 2011 年去世前,两人已多年各安其位:苹果做高端硬件,微软统治企业桌面。(事实)</p>
+  <p>与巴菲特的对照则说明他慈善哲学的源头:巴菲特不建自己的运营型基金会,而是把 480 亿美元交给盖茨基金会——因为他认为盖茨夫妇是"更高效的资本配置者"。2026 年 7 月巴菲特终止合作,遗产改捐家族基金会,给这段 20 年的"慈善外包"关系画上句号——原因据公开报道与盖茨-Epstein 关联的审查有关。(事实:公开报道;动机推断见争议章)</p>
+</section>
+
+<section id="dark">
+  <h2 data-num="12">暗面与争议</h2>
+  <p class="section-intro">CONTROVERSIES · 事实与推断明确区分</p>
+  <h3>反垄断与竞争手段(事实)</h3>
+  <p>除 1998–2001 年美国诉微软案外,微软在欧盟等地长期面临反垄断调查;1990 年代末法院多份裁决支持"微软使用反竞争手段"的指控。盖茨本人的证词风格("I don't recall")被普遍视为公关灾难。</p>
+  <h3>对同事与下属的苛刻(事实,多方当事人记载)</h3>
+  <p>1981 年起就有高管抱怨盖茨不接电话;对 Borland 超越时向编程主管咆哮半小时;著名的 "that's the stupidest thing I've ever heard" 与 "你不如放弃期权加入和平队"等语录流传于多位当事人的回忆。保罗·艾伦自传称盖茨在他癌症治疗期间"阴谋稀释我的股份——赤裸裸的机会主义";盖茨回应称记忆不同。(双方说法并列,不裁断)</p>
+  <h3>Jeffrey Epstein 关联(事实+推断)</h3>
+  <p>盖茨 1992 年首次认识 Epstein,2011 年起(此时 Epstein 已于 2008 年定罪)往来频繁,2013 年秋携妻拜访其宅邸;2018 年两人同框照片流出。2021 年 8 月盖茨承认"花时间与他相处是巨大错误";2026 年 1 月解封文件披露 Epstein 曾草拟邮件指控盖茨婚外情(盖茨发言人否认);2026 年 2 月盖茨取消印度 AI 峰会演讲;2026 年 4 月基金会宣布独立审查,结论未发现刑事不法证据;2026 年 6 月 10 日盖茨在众议院监督委员会作证,称 Epstein 曾利用其婚外情施压他"重新接触",并称从未去过 Epstein 的岛屿、牧场或佛州住所。(事实:众议院作证与公开报道;对 Epstein 动机的描述来自盖茨本人证词,非独立裁决)</p>
+  <h3>2025 年气候备忘录(事实)</h3>
+  <p>2025 年 10 月泄露的内部备忘录称:气候变化不构成"对文明的生存威胁",资金应优先投入扶贫与医疗;遭多位气候科学家批评(如 Katharine Hayhoe:"气候变化不是一个独立的桶,它是每个桶上的洞"),也被气候否认阵营曲解为"骗局";盖茨回应称备忘录被"巨大误读",并将增加气候与健康支出。(事实:各方声明并列)</p>
+  <h3>基金会的批评(事实)</h3>
+  <p>批评者指出:教育项目(小规模学校、特许学校)投入数十亿美元而成效证据薄弱;AGRA 农业项目被指服务于跨国种子/农化企业利益,且与额外 3000 万人营养不良相关(卫报等报道);基金会信托以收益最大化为唯一目标,曾持有私营监狱 GEO Group 等争议投资且拒绝撤资;2019 年把 Goalkeepers 奖授予印度总理莫迪,超 10 万人请愿要求收回。2011 年受助机构调查也批评其决策不透明。(事实:各项报道与调查;因果归因属各方观点)</p>
+  <div class="note"><strong>立场声明:</strong>本节仅并列已公开的事实与各方主张,不代替司法或历史裁决。盖茨的回应已尽量并列呈现。</div>
+</section>
+
+<section id="end">
+  <h2 data-num="13">尾声:2045 年的日落</h2>
+  <p class="drop-cap">2025 年 5 月 8 日,盖茨宣布基金会将在 2045 年 12 月 31 日停止运营。标题写得很像微软时代的版本号:"My new deadline: 20 years to give away virtually all my wealth"——一个把人生当成产品路线图来管理的人,给自己 90 岁生日附近的时刻设了 End-of-life 日期。</p>
+  <p>如果届时他还在世,盖茨 90 岁。剩余 20 年里,基金会要以每年约 90 亿美元的力度把钱打出去,同时处理三种不可控变量:脊灰能否赶在疫苗疲劳前灭绝、气候技术能否在窗口期规模化、以及他个人争议(尤其 Epstein 关联的余波)是否持续消耗公共信任。这是一个连他自己都无法用"指标驱动"解决的路线图——但某种程度上,这正是他想要的:把一切压上桌,赌世界可以被工程化地改变。</p>
+  <p>回顾两幕人生,有一个始终未变的东西:13 岁那年,他第一次看见"一台永远执行正确的机器"时的那种着迷。后来他造软件、造平台、造疫苗联盟、造慈善制度,始终在做同一件事——<strong>把混乱的世界翻译成可以迭代的系统,然后相信下一版会更好。</strong>(解读)至于这信念本身是对是错,2045 年 12 月 31 日会给出第一份成绩单。</p>
+  <hr>
+  <p class="f">本文以"事实/推断/解读"三级标注;所有英文引语保留原文,出处见下。事实均来自公开来源,截至 2026 年 8 月。</p>
+</section>
+
+<section id="refs">
+  <h2 data-num="14">参考与证据边界</h2>
+  <p class="section-intro">SOURCES · 主要来源与已知的不确定性</p>
+  <ol class="refs">
+    <li><strong>Wikipedia:Bill Gates</strong>(英文,2026 年 8 月修订版)——生平、财富、反垄断、Epstein、气候备忘录等事实的基线来源;其中引用了 Manes 传记、BBC、《Rolling Stone》、Spolsky 回忆等一手出处。</li>
+    <li><strong>Wikipedia:Gates Foundation</strong>(英文,2026 年修订)——基金会财务(2025 年资产 910 亿、支出 81 亿)、巴菲特捐赠时间线(2006 承诺 → 2025 年 60 亿 → 2026 年终止,累计约 480 亿)、梅琳达辞职、2045 年关停、厕所挑战、争议。</li>
+    <li><strong>Wikipedia:Polio</strong>(英文,2026 年 8 月复核版)——脊灰数据:1988 年约 35 万例 → 2022 年 30 例;WPV2/WPV3 消灭认证年份。</li>
+    <li><strong>Forbes The World's Billionaires</strong>——2026 年 7 月净资产 1065 亿美元、全球第 19 位;1995–2017 年间 18 年首富。</li>
+    <li><strong>BBC 采访(2025)</strong>——个人累计捐赠 1000 亿美元、纳税超 60 亿、Epstein"巨大错误"等引语。</li>
+    <li><strong>gatesfoundation.org / gatesnotes.com</strong>——2045 年关停公告(2025-05-08)、《The Age of AI Has Begun》(2023-03)。</li>
+    <li><strong>WHO / GAVI / The Global Fund</strong>——疫苗与疾病数据;部分数字(如疟疾死亡率降幅)因口径与时期不同本文仅定性引用。</li>
+  </ol>
+  <div class="note"><strong>不确定性清单:</strong>(1) Windows 3.0/95、反垄断和解的具体日期采用通行说法,个别次要日期以年份表述;(2) 盖茨-Epstein 关系的细节(是否见过面、动机)各方叙述不一,本文并列呈现;(3) 基金会"疟疾死亡率降幅"等健康成果数字随 WHO 年报变化,本文避免给出单一精确百分比;(4) "微软向 OpenAI 投资约 130 亿美元"为公开报道口径,非基金会财务数据。</div>
+  <p class="foot">BLOG BIO DEEP DIVE · BILL GATES · 2026-08-07 · 独立整理,无官方背书</p>
+</section>
+
+</main>
+</div>
+<button class="backtop" id="backtop" aria-label="回到顶部">↑</button>
+<script>
+(function(){
+  var p=document.getElementById('progress'),tb=document.getElementById('topbar'),bt=document.getElementById('backtop');
+  function onScroll(){
+    var h=document.documentElement;var s=h.scrollTop/(h.scrollHeight-h.clientHeight)*100;
+    p.style.width=s+'%';tb.classList.toggle('scrolled',h.scrollTop>40);bt.classList.toggle('visible',h.scrollTop>600);
+  }
+  addEventListener('scroll',onScroll,{passive:true});onScroll();
+  bt.addEventListener('click',function(){scrollTo({top:0,behavior:'smooth'})});
+  var t=document.getElementById('themeToggle');
+  function setTheme(m){document.documentElement.dataset.theme=m;t.textContent=m==='dark'?'☾ 深色':'◐ 主题'}
+  if(matchMedia('(prefers-color-scheme:dark)').matches)setTheme('dark');
+  t.addEventListener('click',function(){var m=document.documentElement.dataset.theme==='dark'?'light':'dark';setTheme(m)});
+  var spy=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){var h=location.hash;var a=document.querySelector('nav a[href="'+h+'"]');if(a)a.classList.remove('active')}})},{rootMargin:'-50% 0px -50% 0px'});
+  var navs=document.querySelectorAll('nav a');navs.forEach(function(a){a.addEventListener('click',function(){navs.forEach(function(x){x.classList.remove('active')});a.classList.add('active')})});
+  document.querySelectorAll('main section').forEach(function(s){spy.observe(s)});
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(!e.isIntersecting)return;var el=e.target;var target=+el.dataset.count;var dur=1400,start=null;
+    function step(ts){if(!start)start=ts;var t=Math.min((ts-start)/dur,1);var ease=1-Math.pow(1-t,3);var v=target*ease;el.textContent=t>=1?target:Math.round(v*100)/100;if(t<1)requestAnimationFrame(step)}
+    requestAnimationFrame(step);io.unobserve(el)})},{threshold:.4});
+  document.querySelectorAll('.kpi [data-count]').forEach(function(el){io.observe(el)});
+})();
+</script>
+</body>
+</html>
