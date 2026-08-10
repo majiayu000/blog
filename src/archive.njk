@@ -15,7 +15,6 @@ navKey: archive
     {% for group in blog.years %}
       <div class="section-label">{{ group.year }}</div>
       {% set items = group.posts %}
-      {% set featuredList = false %}
       {% include "post-list.njk" %}
     {% endfor %}
   {% else %}

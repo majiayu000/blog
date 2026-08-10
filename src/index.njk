@@ -21,7 +21,8 @@ navKey: home
   </div>
 </section>
 
-<section class="home-section">
+{% if blog.featured %}
+<section class="home-section home-section--featured">
   <div class="content-frame">
     <header class="section-heading">
       <div>
@@ -30,12 +31,61 @@ navKey: home
       </div>
       <a href="/archive/">全部 →</a>
     </header>
-    {% set items = blog.posts %}
-    {% set featuredList = true %}
-    {% set emptyText = "还没有文章。往 src/posts/<slug>/index.html 放一篇 HTML 就会出现在这里。" %}
+    <article class="featured-story">
+      <div class="featured-story__content">
+        <div class="featured-story__topline">
+          <span>编辑推荐</span>
+          {% if blog.featured.tags.length %}<a href="/tags/{{ blog.featured.tags[0] | tagPath | urlencode }}/">{{ blog.featured.tags[0] }}</a>{% endif %}
+        </div>
+        <h3><a href="{{ blog.featured.url }}">{{ blog.featured.title }}</a></h3>
+        {% if blog.featured.description %}<p>{{ blog.featured.description }}</p>{% endif %}
+        <div class="featured-story__meta">
+          <time datetime="{{ blog.featured.date }}">{{ blog.featured.date | cnDate }}</time>
+          <a href="{{ blog.featured.url }}">阅读全文 <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+      <aside class="featured-story__rail" aria-label="精选文章信息">
+        <p>EDITOR'S PICK <b>/ 01</b></p>
+        <strong aria-hidden="true">01</strong>
+        <dl>
+          <div><dt>FORMAT</dt><dd>深度长文</dd></div>
+          <div><dt>TOPICS</dt><dd>{{ blog.featured.tags.length }}</dd></div>
+        </dl>
+        <span>{{ blog.featured.slug }}.html</span>
+      </aside>
+    </article>
+  </div>
+</section>
+{% else %}
+<section class="home-section">
+  <div class="content-frame">
+    <header class="section-heading">
+      <div>
+        <p class="eyebrow">// WRITING</p>
+        <h2>文章 <span lang="en">Writing</span></h2>
+      </div>
+    </header>
+    <p class="empty">还没有文章。往 src/posts/&lt;slug&gt;/index.html 放一篇完整 HTML，就会出现在这里。</p>
+  </div>
+</section>
+{% endif %}
+
+{% if blog.recent.length %}
+<section class="home-section home-section--latest">
+  <div class="content-frame">
+    <header class="section-heading">
+      <div>
+        <p class="eyebrow">// LATEST NOTES</p>
+        <h2>最新文章 <span lang="en">Latest</span></h2>
+      </div>
+      <a href="/archive/">查看全部 →</a>
+    </header>
+    {% set items = blog.recent %}
+    {% set compactList = true %}
     {% include "post-list.njk" %}
   </div>
 </section>
+{% endif %}
 
 <section class="home-section home-section--topics">
   <div class="content-frame">

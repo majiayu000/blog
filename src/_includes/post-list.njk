@@ -1,5 +1,5 @@
 {% if items.length %}
-<ul class="posts{% if featuredList %} posts--featured{% endif %}">
+<ul class="posts{% if compactList %} posts--compact{% endif %}">
   {% for post in items %}
   <li class="post-card">
     <div class="post-card__content">
@@ -19,19 +19,6 @@
         <a class="post-card__read" href="{{ post.url }}">读全文 <span aria-hidden="true">→</span></a>
       </div>
     </div>
-    {% if featuredList %}
-    <div class="artifact-preview" aria-hidden="true">
-      <div class="artifact-preview__bar">
-        <span class="window-dots"><i></i><i></i><i></i></span>
-        <span>{{ post.slug }}.html</span>
-        <b>● LIVE</b>
-      </div>
-      <div class="artifact-preview__body">
-        <span>▦ 自包含 HTML 文章</span>
-        <small>view the source artifact</small>
-      </div>
-    </div>
-    {% endif %}
   </li>
   {% endfor %}
 </ul>

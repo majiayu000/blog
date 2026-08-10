@@ -117,18 +117,30 @@
     font-size: clamp(2.9rem, 15vw, 4.4rem);
   }
 
-  .posts--featured .post-card {
+  .featured-story {
     grid-template-columns: 1fr;
   }
 
-  .artifact-preview {
-    min-height: 14rem;
+  .featured-story__content {
+    min-height: 24rem;
+  }
+
+  .featured-story__rail {
+    min-height: 12rem;
     border-top: 1px solid var(--line);
     border-left: 0;
   }
 
-  .artifact-preview__body {
-    min-height: calc(14rem - 2.8rem);
+  .featured-story__rail > strong {
+    position: absolute;
+    top: 3.5rem;
+    right: 2rem;
+    font-size: 7rem;
+  }
+
+  .featured-story__rail dl {
+    max-width: 16rem;
+    margin-top: 3rem;
   }
 
   .about-grid {
@@ -180,6 +192,39 @@
 
   .post-card__content {
     padding: 1.25rem;
+  }
+
+  .featured-story__content {
+    min-height: 0;
+    padding: 1.6rem;
+  }
+
+  .featured-story__topline {
+    margin-bottom: 2.4rem;
+  }
+
+  .featured-story__rail {
+    min-height: 10rem;
+    padding: 1.5rem;
+  }
+
+  .featured-story__rail > strong {
+    top: 3rem;
+    right: 1.5rem;
+    font-size: 5.5rem;
+  }
+
+  .featured-story__rail dl {
+    max-width: 12rem;
+    margin-top: 2.5rem;
+  }
+
+  .posts--compact {
+    grid-template-columns: 1fr;
+  }
+
+  .posts--compact .post-card__content {
+    min-height: 0;
   }
 
   .about-mark {

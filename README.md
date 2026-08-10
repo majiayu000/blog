@@ -27,7 +27,8 @@ bun test         # metadata parsing and fail-closed behaviour
 
 Create `src/posts/<slug>/index.html`. The directory name becomes the URL.
 Keep assets in the same directory and reference them with relative paths —
-never `../`, or the post breaks once it is moved.
+never `../`, or the post breaks once it is moved. Remote stylesheets, scripts,
+fonts and media fail the build; normal source links remain allowed.
 
 Metadata lives in the post's own `<head>`, so no sidecar config file is needed
 and a post stays self-contained when copied elsewhere:
@@ -38,12 +39,17 @@ and a post stays self-contained when copied elsewhere:
 <meta name="description" content="One-line summary">
 <meta name="tags"        content="architecture, tooling">
 <meta name="draft"       content="true">         <!-- excluded from output -->
+<meta name="featured"    content="true">         <!-- homepage editor's pick -->
 ```
 
-**Fail closed:** a missing title or date, an invalid date, or two slugs that
-collide will *fail the build* and name the offending file. Nothing is inferred
-from the directory name and no date is defaulted to today — a red build beats a
-site that silently shows wrong metadata.
+The homepage shows one editor's pick and four recent posts. If several posts
+are marked `featured`, the newest one wins; if none are marked, the newest post
+is used so the homepage still has a lead story.
+
+**Fail closed:** a missing title or date, an invalid date, a remote resource,
+or two slugs that collide will *fail the build* and name the offending file.
+Nothing is inferred from the directory name and no date is defaulted to today —
+a red build beats a site that silently shows wrong metadata.
 
 **Include a link back to `/` in the post itself.** The shell's navigation is
 never injected into posts — that is the price of keeping them byte-for-byte
