@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Glimmer vs Gemma 4 12B，我在一台 Mac 上跑了 50 道同题</title>
+<meta name="date" content="2026-08-11">
+<meta name="description" content="在同一台 Apple Silicon 上，用 IFEval、BFCL、MMMU、LiveBench 和 BigCodeBench 对 Glimmer 与 Gemma 4 12B 做同题实测，看看谁更强、谁更快，以及谁更适合本地 Agent。">
+<meta name="tags" content="本地模型, 模型评测, Glimmer, Gemma 4, llama.cpp">
+<style>
+  :root {
+    --paper: #f3efe4;
+    --paper-2: #e9e3d5;
+    --ink: #20231f;
+    --ink-soft: #53574f;
+    --muted: #7e8178;
+    --line: #c9c2b3;
+    --glimmer: #e6532f;
+    --glimmer-soft: #f7d4c9;
+    --gemma: #007f82;
+    --gemma-soft: #c4e5e2;
+    --dark: #181b19;
+    --cream: #fffaf0;
+    --serif: "Iowan Old Style", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", serif;
+    --sans: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --mono: "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #1b1e1b;
+      --paper-2: #252925;
+      --ink: #ece8dc;
+      --ink-soft: #c3c0b6;
+      --muted: #96988f;
+      --line: #41463f;
+      --glimmer-soft: #553127;
+      --gemma-soft: #1c4d4c;
+      --dark: #111311;
+      --cream: #222620;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background:
+      linear-gradient(90deg, rgba(80, 70, 45, .045) 1px, transparent 1px) 0 0 / 24px 24px,
+      linear-gradient(rgba(80, 70, 45, .035) 1px, transparent 1px) 0 0 / 24px 24px,
+      var(--paper);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.82;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; text-decoration-color: var(--gemma); text-underline-offset: .2em; }
+  a:hover { color: var(--gemma); }
+  .skip {
+    position: absolute;
+    left: -9999px;
+    top: 8px;
+    z-index: 20;
+    padding: 8px 12px;
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .skip:focus { left: 8px; }
+
+  .topline {
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--paper) 90%, transparent);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .topline-inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 10px 24px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .topline a { text-decoration: none; }
+  .topline-meta { color: var(--muted); }
+
+  .hero {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 78px 24px 64px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(280px, .65fr);
+    gap: clamp(36px, 7vw, 92px);
+    align-items: end;
+  }
+  .eyebrow {
+    margin: 0 0 20px;
+    font-family: var(--mono);
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+  h1 {
+    max-width: 780px;
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: clamp(42px, 7vw, 82px);
+    font-weight: 650;
+    letter-spacing: -.045em;
+    line-height: 1.03;
+    text-wrap: balance;
+  }
+  .versus { color: var(--muted); font-style: italic; font-weight: 400; }
+  .hero-deck {
+    max-width: 720px;
+    margin: 30px 0 0;
+    color: var(--ink-soft);
+    font-size: clamp(19px, 2.2vw, 24px);
+    line-height: 1.58;
+  }
+  .hero-deck strong { color: var(--ink); }
+
+  .score-stamp {
+    position: relative;
+    padding: 24px 22px 22px;
+    border: 2px solid var(--ink);
+    box-shadow: 8px 8px 0 var(--line);
+    background: var(--cream);
+    transform: rotate(1.5deg);
+  }
+  .score-stamp::before {
+    content: "LOCAL / VERIFIED";
+    position: absolute;
+    right: 16px;
+    top: -11px;
+    padding: 2px 8px;
+    background: var(--glimmer);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .08em;
+  }
+  .score-kicker {
+    font-family: var(--mono);
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .score {
+    margin: 8px 0 2px;
+    font-family: var(--mono);
+    font-size: clamp(58px, 9vw, 92px);
+    font-weight: 800;
+    letter-spacing: -.08em;
+    line-height: 1;
+  }
+  .score .g1 { color: var(--glimmer); }
+  .score .g2 { color: var(--gemma); }
+  .score small { color: var(--muted); font-size: .34em; letter-spacing: 0; }
+  .score-caption { margin: 8px 0 0; font-family: var(--sans); font-size: 14px; }
+
+  .verdict-band {
+    background: var(--dark);
+    color: #e9e5db;
+    border-block: 1px solid #000;
+  }
+  .verdict-inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 34px 24px;
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+  .verdict-label {
+    font-family: var(--mono);
+    color: #9ba099;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .verdict-copy { margin: 0; font-size: clamp(20px, 2.5vw, 29px); line-height: 1.55; }
+  .verdict-copy strong:first-child { color: #ff8060; }
+  .verdict-copy strong:last-child { color: #5bc7c3; }
+
+  .page {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 74px 24px 110px;
+    display: grid;
+    grid-template-columns: minmax(0, 730px) minmax(180px, 1fr);
+    gap: clamp(48px, 8vw, 110px);
+    align-items: start;
+  }
+  main, article { min-width: 0; }
+  aside { position: sticky; top: 72px; font-family: var(--sans); font-size: 13px; }
+  .toc-title {
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--ink);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+  }
+  aside ol { margin: 14px 0 0; padding: 0; list-style: none; counter-reset: toc; }
+  aside li { counter-increment: toc; margin: 0 0 9px; }
+  aside a { color: var(--muted); text-decoration: none; }
+  aside a::before { content: "0" counter(toc) " "; font-family: var(--mono); color: var(--line); }
+  aside a:hover { color: var(--glimmer); }
+
+  h2 {
+    margin: 82px 0 22px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: clamp(28px, 4vw, 40px);
+    letter-spacing: -.025em;
+    line-height: 1.25;
+  }
+  h2:first-child { margin-top: 0; }
+  h3 {
+    margin: 42px 0 12px;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 19px;
+    line-height: 1.45;
+  }
+  p { margin: 0 0 22px; }
+  strong { color: var(--ink); }
+  code {
+    padding: 2px 5px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--paper-2);
+    font-family: var(--mono);
+    font-size: .82em;
+  }
+  ul { margin: 0 0 26px; padding-left: 1.25em; }
+  li { margin-bottom: 8px; }
+  li::marker { color: var(--glimmer); }
+
+  .method-card {
+    margin: 30px 0;
+    padding: 26px;
+    border: 1px solid var(--line);
+    border-left: 5px solid var(--gemma);
+    background: var(--cream);
+  }
+  .method-card ul { margin-bottom: 0; }
+  .note {
+    margin: 30px 0;
+    padding: 18px 20px;
+    border-block: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 15px;
+  }
+  .note b {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  .table-wrap { width: 100%; margin: 28px 0 36px; overflow-x: auto; border: 1px solid var(--line); }
+  table { width: 100%; min-width: 620px; border-collapse: collapse; background: var(--cream); font-family: var(--sans); font-size: 14px; }
+  caption { padding: 10px 12px; color: var(--muted); background: var(--paper-2); font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-align: left; text-transform: uppercase; }
+  th, td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  th { color: var(--muted); font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+  tbody tr:hover { background: var(--paper-2); }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .win-g { color: var(--glimmer); font-weight: 800; }
+  .win-m { color: var(--gemma); font-weight: 800; }
+
+  .duel {
+    margin: 32px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .duel-card { min-height: 142px; padding: 20px; border: 1px solid var(--line); background: var(--cream); }
+  .duel-card.glimmer { border-top: 5px solid var(--glimmer); }
+  .duel-card.gemma { border-top: 5px solid var(--gemma); }
+  .duel-name { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .duel-big { margin: 8px 0 0; font-family: var(--mono); font-size: 40px; font-weight: 800; line-height: 1; }
+  .duel-small { margin: 10px 0 0; color: var(--muted); font-family: var(--sans); font-size: 13px; }
+
+  .truncation {
+    margin: 32px 0;
+    padding: 24px;
+    border: 1px solid var(--line);
+    background: var(--cream);
+  }
+  .bar-row { display: grid; grid-template-columns: 105px 1fr 38px; gap: 12px; align-items: center; margin: 13px 0; font-family: var(--mono); font-size: 11px; }
+  .bar-track { height: 13px; background: var(--paper-2); overflow: hidden; }
+  .bar { height: 100%; transform-origin: left; animation: grow .8s ease-out both; }
+  .bar.glimmer { background: var(--glimmer); }
+  .bar.gemma { background: var(--gemma); }
+  @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  .choice-grid { margin: 34px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .choice {
+    padding: 24px;
+    border: 1px solid var(--line);
+    background: var(--cream);
+  }
+  .choice:first-child { box-shadow: inset 0 4px 0 var(--glimmer); }
+  .choice:last-child { box-shadow: inset 0 4px 0 var(--gemma); }
+  .choice h3 { margin: 0 0 14px; }
+  .choice ul { margin-bottom: 0; font-size: 15px; }
+
+  .closing {
+    margin-top: 80px;
+    padding: 34px;
+    background: var(--dark);
+    color: #e9e5db;
+    box-shadow: 10px 10px 0 var(--line);
+  }
+  .closing p { margin: 0; font-size: clamp(21px, 3vw, 30px); line-height: 1.55; }
+  .closing strong { color: #ff8060; }
+  .source-line { margin-top: 54px; color: var(--muted); font-family: var(--sans); font-size: 13px; }
+
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: 1fr; padding-top: 52px; }
+    .score-stamp { max-width: 360px; transform: none; }
+    .page { grid-template-columns: 1fr; }
+    aside { display: none; }
+    .verdict-inner { grid-template-columns: 1fr; gap: 8px; }
+  }
+  @media (max-width: 620px) {
+    body { font-size: 16px; }
+    .topline-meta { display: none; }
+    .hero { padding-inline: 18px; }
+    .page { padding: 54px 18px 80px; }
+    .duel, .choice-grid { grid-template-columns: 1fr; }
+    .bar-row { grid-template-columns: 82px 1fr 32px; gap: 8px; }
+    .closing { padding: 24px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .bar { animation: none; }
+  }
+  @media print {
+    .topline, aside { display: none; }
+    body { background: #fff; color: #111; }
+    .hero, .page { max-width: none; padding-inline: 0; }
+    .verdict-band, .closing { background: #eee; color: #111; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+
+<header class="topline">
+  <div class="topline-inner">
+    <a href="/">← Silent Star / 博客首页</a>
+    <span class="topline-meta">2026.08.11 · 本地模型实验记录 № 01</span>
+  </div>
+</header>
+
+<section class="hero" aria-labelledby="page-title">
+  <div>
+    <p class="eyebrow">Apple Silicon · 50 unique prompts · deterministic scoring</p>
+    <h1 id="page-title">Glimmer <span class="versus">vs</span><br>Gemma 4 12B</h1>
+    <p class="hero-deck">两个模型跑在同一台 Mac 上，题目和评分框架保持一致。<strong>一个用能力换时间，一个用速度换上限。</strong></p>
+  </div>
+  <div class="score-stamp" aria-label="Glimmer 三胜，Gemma 一胜，一项平手">
+    <div class="score-kicker">Head-to-head</div>
+    <div class="score"><span class="g1">3</span><small>/</small><span class="g2">1</span><small> + 1 tie</small></div>
+    <p class="score-caption">五项本机实测，Glimmer 3 胜，Gemma 1 胜，代码生成打平。</p>
+  </div>
+</section>
+
+<section class="verdict-band" aria-label="结论摘要">
+  <div class="verdict-inner">
+    <div class="verdict-label">Verdict / 结论</div>
+    <p class="verdict-copy"><strong>Glimmer 的综合能力更强</strong>，尤其是复杂指令、推理与多模态；<strong>Gemma 4 12B 更快、更轻，工具调用更稳</strong>，完成有效对照只用了前者约三分之一的时间。</p>
+  </div>
+</section>
+
+<div class="page">
+<main id="main">
+<article>
+  <h2 id="why">我为什么要自己跑一遍</h2>
+  <p>本地模型的选择常被参数量和排行榜分数带着走。部署以后，还得看它能不能照着复杂指令做事，函数调用会不会出错，长思考能否及时停下，写出的代码又能不能通过测试。</p>
+  <p>这次我选了五组题。IFEval 看指令遵循，BFCL 测工具调用，MMMU 加入图片，LiveBench 负责综合推理，BigCodeBench 把生成代码送进沙箱执行。</p>
+  <p>我把两个模型部署在同一台 Apple Silicon 机器上，都只开一个实例和一个并发。题目跑完以后，我再逐条解析停止原因、耗时和评分日志。</p>
+
+  <h2 id="method">怎样保证同题可比</h2>
+  <p>评测使用 Inspect AI 0.3.255 和 Inspect Evals 0.16.0。为了尽量减少模型之外的变量，我固定了整套协议。</p>
+  <div class="method-card">
+    <ul>
+      <li>每项抽取 10 题，共 50 道不重复题目；</li>
+      <li><code>sample_shuffle=42</code>，温度为 0；</li>
+      <li>五项样本 ID 与顺序逐一核对，完全一致；</li>
+      <li>使用 Inspect 自带的确定性评分器，不用另一个大模型主观打分；</li>
+      <li>BigCodeBench 生成代码只在无网络 Docker 沙箱中执行；</li>
+      <li>所有计入成绩的评测均为 10/10 完成，样本错误为 0。</li>
+    </ul>
+  </div>
+  <p>输出上限随任务复杂度变化。BFCL 为 1024 token，IFEval 与 MMMU 为 2048 token，LiveBench 和 BigCodeBench 的最终有效上限为 4096 token。Gemma 使用 Google <a href="https://huggingface.co/google/gemma-4-12B">官方 Gemma 4 12B 模型</a>及其<a href="https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-gguf">官方 QAT Q4_0 GGUF</a>，两套服务的上下文均为 32768。</p>
+  <div class="note"><b>边界提醒</b>每项只有 10 题。这组结果能暴露接口、截断和速度差异，适合本机选型与部署验收。它不能代替完整排行榜成绩。</div>
+
+  <h2 id="score">五项成绩，3 胜、1 负、1 平</h2>
+  <div class="table-wrap">
+    <table>
+      <caption>Table 01 / 同题最终得分</caption>
+      <thead><tr><th>能力</th><th>评测</th><th>Glimmer</th><th>Gemma 4 12B</th><th>领先</th></tr></thead>
+      <tbody>
+        <tr><td>指令遵循</td><td>IFEval</td><td class="num win-g">0.917</td><td class="num">0.600</td><td class="win-g">Glimmer</td></tr>
+        <tr><td>工具调用</td><td>BFCL</td><td class="num">0.900</td><td class="num win-m">1.000</td><td class="win-m">Gemma</td></tr>
+        <tr><td>多模态</td><td>MMMU CS</td><td class="num win-g">0.400</td><td class="num">0.200</td><td class="win-g">Glimmer</td></tr>
+        <tr><td>综合推理</td><td>LiveBench</td><td class="num win-g">0.600</td><td class="num">0.100</td><td class="win-g">Glimmer</td></tr>
+        <tr><td>代码生成</td><td>BigCodeBench</td><td class="num">0.400</td><td class="num">0.400</td><td>平手</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>IFEval 的 <code>final_acc</code> 是综合指标，不能简单翻译成“答对几题”。附加指标也呈现同样差距。Glimmer 的 prompt strict accuracy 为 0.900，instruction strict accuracy 为 0.933，Gemma 两项均为 0.600。</p>
+
+  <h2 id="tools">Gemma 靠工具调用拿下一局</h2>
+  <div class="duel" aria-label="BFCL 工具调用成绩">
+    <div class="duel-card glimmer"><div class="duel-name">Glimmer / BFCL</div><p class="duel-big">0.900</p><p class="duel-small">5 分 31 秒 · 0 截断</p></div>
+    <div class="duel-card gemma"><div class="duel-name">Gemma 4 / BFCL</div><p class="duel-big">1.000</p><p class="duel-small">1 分 54 秒 · 0 截断</p></div>
+  </div>
+  <p>BFCL 会检查模型选了哪个函数，也会核对传入参数。两个模型的 10 个样本都产生了框架可识别的原生工具调用，没有输出截断。Gemma 的 10 个样本全部正确。</p>
+  <p>Gemma 只用了 1 分 54 秒，Glimmer 用了 5 分 31 秒。模型如果主要服务于 Agent、自动化脚本或桌面助手，这段延迟差异每天都能感受到。</p>
+
+  <h2 id="thinking">最大差距在于能不能停止思考</h2>
+  <p>长思考的收敛能力拉开了本轮最大差距。Gemma 在 MMMU 的 10 道题中有 8 道写满 2048 token。到了 LiveBench，即使上限升到 4096，仍有 9 道写满。</p>
+  <div class="truncation" aria-label="LiveBench 截断率对比">
+    <div class="bar-row"><span>Glimmer</span><div class="bar-track"><div class="bar glimmer" style="width:40%"></div></div><strong>4/10</strong></div>
+    <div class="bar-row"><span>Gemma 4</span><div class="bar-track"><div class="bar gemma" style="width:90%"></div></div><strong>9/10</strong></div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <caption>Table 02 / 输出达到 token 上限的样本数</caption>
+      <thead><tr><th>评测</th><th>上限</th><th>Glimmer</th><th>Gemma 4</th></tr></thead>
+      <tbody>
+        <tr><td>IFEval</td><td class="num">2048</td><td class="num">1/10</td><td class="num">4/10</td></tr>
+        <tr><td>BFCL</td><td class="num">1024</td><td class="num">0/10</td><td class="num">0/10</td></tr>
+        <tr><td>MMMU</td><td class="num">2048</td><td class="num">3/10</td><td class="num">8/10</td></tr>
+        <tr><td>LiveBench</td><td class="num">4096</td><td class="num">4/10</td><td class="num">9/10</td></tr>
+        <tr><td>BigCodeBench</td><td class="num">4096</td><td class="num">4/10</td><td class="num">4/10</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>部分 Gemma 输出把预算几乎全部花在内部推理上，最后答案为空或不完整。这类输出会被评分器判错。LiveBench 的 0.100 里，有多少是推理本身不会，有多少是没来得及交答案，这组小样本分不开。当前日志至少说明一件事。<strong>在这套 llama.cpp 配置与输出预算下，它经常无法及时把推理收束成可评分答案。</strong></p>
+  <p>Glimmer 也有同类问题，但程度明显较轻。同样的最终有效预算下，它在 LiveBench 得到 0.600，截断数是 4/10。</p>
+
+  <h2 id="code">代码生成打平，也都不够稳定</h2>
+  <p>BigCodeBench 会把生成结果送进 Docker 沙箱执行隐藏测试。两个模型最终都是 0.400，10 个样本中各有 4 个通过。</p>
+  <p>这个平局有点出乎我的意料。Glimmer 在推理评测里的优势，没有直接变成更高的代码通过率；Gemma 虽然在长推理上落后，代码任务也没有继续掉队。</p>
+  <p>用它们写初稿、找思路都可以，直接提交还不行。4/10 的通过率意味着项目测试和人工审查都省不掉。</p>
+
+  <h2 id="vision">多模态部署，先确认图片真的进了模型</h2>
+  <p>Gemma 第一次跑 MMMU 时，服务直接返回“不支持图像输入”。模型本身支持视觉，失败出在部署参数。我当时只加载了主 GGUF，漏掉了配套的视觉投影文件 <code>mmproj</code>。</p>
+  <p>补上同一官方版本的 <code>mmproj</code> 后，我先用一个 MMMU 样本做图片输入冒烟测试。图片经过 OpenAI 兼容接口进入模型并完成评分，我才重新跑完整 10 题。第一次基础设施失败没有计入模型成绩。</p>
+  <div class="note"><b>Deployment lesson</b>接口返回 200、模型能输出文字，仍然不能证明视觉输入已经正常。给多模态模型下结论之前，先拿一张真实图片走完整个请求。</div>
+
+  <h2 id="speed">Gemma 跑完只用 1 小时 43 分</h2>
+  <div class="table-wrap">
+    <table>
+      <caption>Table 03 / 同机成功计分轮耗时</caption>
+      <thead><tr><th>评测</th><th>Glimmer</th><th>Gemma 4 12B</th></tr></thead>
+      <tbody>
+        <tr><td>IFEval</td><td class="num">38 分 01 秒</td><td class="num">18 分 24 秒</td></tr>
+        <tr><td>BFCL</td><td class="num">5 分 31 秒</td><td class="num">1 分 54 秒</td></tr>
+        <tr><td>MMMU 最终完整轮</td><td class="num">40 分 26 秒</td><td class="num">18 分 01 秒</td></tr>
+        <tr><td>LiveBench 最终协议</td><td class="num">49 分 27 秒 + 71 分 31 秒</td><td class="num">31 分 27 秒</td></tr>
+        <tr><td>BigCodeBench 最终协议</td><td class="num">52 分 52 秒 + 48 分 08 秒</td><td class="num">33 分 11 秒</td></tr>
+        <tr><td><strong>合计</strong></td><td class="num win-g">5 小时 05 分 56 秒</td><td class="num win-m">1 小时 42 分 57 秒</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Glimmer 的 LiveBench 与 BigCodeBench 采用“保留初轮自然停止题，再把截断题提升到 4096 token 复测”的校正方式；Gemma 直接用 4096 token 跑完整 10 题。每题最终有效上限一致，但耗时结构不完全相同。这张表记录的是实际部署成本，不能替代严格的纯吞吐基准。</p>
+  <p>即便考虑协议差异，Gemma 的速度优势仍然明确。它更适合对等待时间敏感的交互场景；Glimmer 则是在用更多时间，换更高的综合成功率。</p>
+
+  <h2 id="choose">到底该选谁</h2>
+  <div class="choice-grid">
+    <section class="choice">
+      <h3>选择 Glimmer，如果你更在意</h3>
+      <ul>
+        <li>复杂格式与多条件指令；</li>
+        <li>综合推理的一次成功率；</li>
+        <li>图像与文本结合的分析；</li>
+        <li>可以接受更高延迟。</li>
+      </ul>
+    </section>
+    <section class="choice">
+      <h3>选择 Gemma 4，如果你更在意</h3>
+      <ul>
+        <li>本地 Agent 与函数调用；</li>
+        <li>更快的交互响应；</li>
+        <li>更小的模型与运行成本；</li>
+        <li>任务结构化、结果可验证。</li>
+      </ul>
+    </section>
+  </div>
+  <p>代码生成方面，这 10 题没有分出胜负。如果代码是核心用途，我会换成与真实技术栈一致的私有测试，直接拿项目 issue、单元测试和实际修复任务来跑。</p>
+  <p>更稳妥的后续评测，则是把每项扩大到至少 50 题，再加入一套真实工作流数据。公开评测告诉你模型的通用能力，私有评测才能回答“它对我的任务到底有没有用”。</p>
+
+  <div class="closing">
+    <p>如果只能保留一个，我会把 <strong>Glimmer 留作主模型</strong>。Gemma 也值得留下。它可以处理高频、结构化、可验证的任务，复杂推理和多模态请求则交给 Glimmer。</p>
+  </div>
+  <p class="source-line">模型使用 Gemma 4 12B QAT Q4_0，本机运行时为 llama.cpp，评测日期是 2026-08-11。本文所有分数均来自同机实际日志，未混用厂商榜单。</p>
+</article>
+</main>
+
+<aside aria-label="文章目录">
+  <div class="toc-title">Field notes / 目录</div>
+  <ol>
+    <li><a href="#why">为什么自己跑一遍</a></li>
+    <li><a href="#method">同题评测方法</a></li>
+    <li><a href="#score">五项最终成绩</a></li>
+    <li><a href="#tools">Gemma 的胜场</a></li>
+    <li><a href="#thinking">长思考收敛</a></li>
+    <li><a href="#code">代码生成</a></li>
+    <li><a href="#vision">多模态部署坑</a></li>
+    <li><a href="#speed">本机速度差距</a></li>
+    <li><a href="#choose">选型建议</a></li>
+  </ol>
+</aside>
+</div>
+</body>
+</html>
