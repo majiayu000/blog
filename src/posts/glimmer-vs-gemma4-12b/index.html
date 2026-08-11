@@ -289,6 +289,196 @@
   .win-g { color: var(--glimmer); font-weight: 800; }
   .win-m { color: var(--gemma); font-weight: 800; }
 
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .benchmark-board {
+    --board-bg: #0c0f10;
+    --board-panel: #121719;
+    --board-line: #2b3234;
+    --board-text: #f1eee5;
+    --board-muted: #899194;
+    margin: 32px 0 42px;
+    overflow: hidden;
+    border: 1px solid #050606;
+    background:
+      radial-gradient(circle at 18% 0%, rgba(230, 83, 47, .10), transparent 34%),
+      radial-gradient(circle at 92% 100%, rgba(0, 127, 130, .12), transparent 38%),
+      var(--board-bg);
+    color: var(--board-text);
+    box-shadow: 11px 11px 0 color-mix(in srgb, var(--line) 72%, transparent);
+  }
+  .benchmark-head {
+    margin: 0;
+    padding: 22px 24px 20px;
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: end;
+    border-bottom: 1px solid var(--board-line);
+  }
+  .benchmark-kicker {
+    display: block;
+    margin-bottom: 5px;
+    color: #ff8060;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+  }
+  .benchmark-title {
+    display: block;
+    color: var(--board-text);
+    font-family: var(--serif);
+    font-size: 21px;
+    font-weight: 650;
+    letter-spacing: -.015em;
+  }
+  .benchmark-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px 14px;
+    color: var(--board-muted);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .benchmark-legend span { display: inline-flex; gap: 6px; align-items: center; }
+  .benchmark-legend i { width: 7px; height: 7px; border-radius: 50%; }
+  .benchmark-legend .dot-g { background: #ff6b47; box-shadow: 0 0 12px rgba(255, 107, 71, .55); }
+  .benchmark-legend .dot-m { background: #3ec1c2; box-shadow: 0 0 12px rgba(62, 193, 194, .5); }
+  .benchmark-scroll { overflow-x: auto; scrollbar-color: #465053 var(--board-bg); }
+  .benchmark-table {
+    min-width: 650px;
+    margin: 0;
+    border-collapse: collapse;
+    background: transparent;
+    color: var(--board-text);
+    font-family: var(--sans);
+    font-size: 13px;
+  }
+  .benchmark-table th,
+  .benchmark-table td {
+    padding: 15px 18px;
+    border: 0;
+    border-right: 1px solid var(--board-line);
+    border-bottom: 1px solid var(--board-line);
+  }
+  .benchmark-table tr > *:last-child { border-right: 0; }
+  .benchmark-table tbody tr:last-child > * { border-bottom: 0; }
+  .benchmark-table tbody tr:hover { background: rgba(255, 255, 255, .025); }
+  .benchmark-table thead th {
+    height: 58px;
+    background: rgba(255, 255, 255, .018);
+    color: var(--board-muted);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+  }
+  .benchmark-table .metric-head { width: 40%; text-align: left; }
+  .benchmark-table .model-head { width: 30%; text-align: center; }
+  .model-head strong { display: block; margin-bottom: 3px; font-size: 12px; letter-spacing: .02em; text-transform: none; }
+  .model-head small { color: var(--board-muted); font-size: 8px; font-weight: 500; }
+  .model-head.glimmer-head strong { color: #ff8060; }
+  .model-head.gemma-head strong { color: #5bc7c3; }
+  .benchmark-table .metric {
+    background: rgba(255, 255, 255, .012);
+    color: var(--board-text);
+    font-weight: 500;
+    text-align: left;
+    text-transform: none;
+  }
+  .metric-number {
+    display: inline-block;
+    width: 28px;
+    color: #596164;
+    font-family: var(--mono);
+    font-size: 9px;
+  }
+  .metric-name { display: inline-block; min-width: 76px; font-weight: 650; }
+  .metric-code {
+    display: block;
+    margin: 3px 0 0 28px;
+    color: var(--board-muted);
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: .05em;
+  }
+  .benchmark-table .score-cell {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    text-align: center;
+  }
+  .score-cell::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0 auto 0 0;
+    width: calc(var(--score) * 100%);
+    opacity: .14;
+    transform-origin: left;
+    animation: score-reveal .9s cubic-bezier(.2, .8, .2, 1) both;
+  }
+  .score-cell.glimmer-score::before { background: #ff6b47; }
+  .score-cell.gemma-score::before { background: #3ec1c2; }
+  .score-cell.is-winner { background: rgba(255, 255, 255, .065); }
+  .score-cell.is-winner::after {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    pointer-events: none;
+  }
+  .score-value {
+    font-family: var(--mono);
+    font-size: 17px;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+  }
+  .glimmer-score .score-value { color: #ff8060; }
+  .gemma-score .score-value { color: #5bc7c3; }
+  .result-marker {
+    display: inline-block;
+    min-width: 31px;
+    margin-left: 7px;
+    padding: 2px 4px;
+    border: 1px solid #566063;
+    color: #b8bdbd;
+    font-family: var(--mono);
+    font-size: 7px;
+    letter-spacing: .08em;
+    vertical-align: 2px;
+  }
+  .is-winner .result-marker { border-color: currentColor; color: var(--board-text); }
+  .benchmark-foot {
+    padding: 12px 18px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    border-top: 1px solid var(--board-line);
+    color: var(--board-muted);
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+  }
+  .swipe-hint { display: none; }
+  @keyframes score-reveal { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
   .duel {
     margin: 32px 0;
     display: grid;
@@ -352,16 +542,22 @@
     .duel, .choice-grid { grid-template-columns: 1fr; }
     .bar-row { grid-template-columns: 82px 1fr 32px; gap: 8px; }
     .closing { padding: 24px; }
+    .benchmark-board { margin-inline: -18px; box-shadow: none; border-inline: 0; }
+    .benchmark-head { padding: 18px; align-items: start; flex-direction: column; gap: 12px; }
+    .benchmark-legend { justify-content: flex-start; }
+    .benchmark-foot { padding-inline: 18px; flex-wrap: wrap; }
+    .swipe-hint { display: block; width: 100%; color: #d6d9d7; }
   }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    .bar { animation: none; }
+    .bar, .score-cell::before { animation: none; }
   }
   @media print {
     .topline, aside { display: none; }
     body { background: #fff; color: #111; }
     .hero, .page { max-width: none; padding-inline: 0; }
     .verdict-band, .closing { background: #eee; color: #111; }
+    .benchmark-board { break-inside: avoid; box-shadow: none; }
   }
 </style>
 </head>
@@ -419,19 +615,58 @@
   <div class="note"><b>边界提醒</b>每项只有 10 题。这组结果能暴露接口、截断和速度差异，适合本机选型与部署验收。它不能代替完整排行榜成绩。</div>
 
   <h2 id="score">五项成绩，3 胜、1 负、1 平</h2>
-  <div class="table-wrap">
-    <table>
-      <caption>Table 01 / 同题最终得分</caption>
-      <thead><tr><th>能力</th><th>评测</th><th>Glimmer</th><th>Gemma 4 12B</th><th>领先</th></tr></thead>
-      <tbody>
-        <tr><td>指令遵循</td><td>IFEval</td><td class="num win-g">0.917</td><td class="num">0.600</td><td class="win-g">Glimmer</td></tr>
-        <tr><td>工具调用</td><td>BFCL</td><td class="num">0.900</td><td class="num win-m">1.000</td><td class="win-m">Gemma</td></tr>
-        <tr><td>多模态</td><td>MMMU CS</td><td class="num win-g">0.400</td><td class="num">0.200</td><td class="win-g">Glimmer</td></tr>
-        <tr><td>综合推理</td><td>LiveBench</td><td class="num win-g">0.600</td><td class="num">0.100</td><td class="win-g">Glimmer</td></tr>
-        <tr><td>代码生成</td><td>BigCodeBench</td><td class="num">0.400</td><td class="num">0.400</td><td>平手</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <figure class="benchmark-board" aria-labelledby="benchmark-title">
+    <figcaption class="benchmark-head">
+      <span>
+        <span class="benchmark-kicker">Benchmark matrix / 01</span>
+        <strong class="benchmark-title" id="benchmark-title">同题、本机、确定性评分</strong>
+      </span>
+      <span class="benchmark-legend" aria-label="模型颜色图例">
+        <span><i class="dot-g" aria-hidden="true"></i>Glimmer</span>
+        <span><i class="dot-m" aria-hidden="true"></i>Gemma 4</span>
+      </span>
+    </figcaption>
+    <div class="benchmark-scroll" tabindex="0" aria-label="可横向滚动的模型成绩表">
+      <table class="benchmark-table">
+        <caption class="sr-only">Glimmer 与 Gemma 4 12B 五项本机同题最终得分；分数越高越好。</caption>
+        <thead>
+          <tr>
+            <th class="metric-head" scope="col">能力 / Benchmark</th>
+            <th class="model-head glimmer-head" scope="col"><strong>Glimmer</strong><small>Local runtime</small></th>
+            <th class="model-head gemma-head" scope="col"><strong>Gemma 4 12B</strong><small>QAT Q4_0</small></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th class="metric" scope="row"><span class="metric-number">01</span><span class="metric-name">指令遵循</span><small class="metric-code">IFEval · final_acc</small></th>
+            <td class="score-cell glimmer-score is-winner" style="--score:.917"><span class="score-value">0.917</span><span class="result-marker">WIN</span></td>
+            <td class="score-cell gemma-score" style="--score:.6"><span class="score-value">0.600</span></td>
+          </tr>
+          <tr>
+            <th class="metric" scope="row"><span class="metric-number">02</span><span class="metric-name">工具调用</span><small class="metric-code">BFCL · accuracy</small></th>
+            <td class="score-cell glimmer-score" style="--score:.9"><span class="score-value">0.900</span></td>
+            <td class="score-cell gemma-score is-winner" style="--score:1"><span class="score-value">1.000</span><span class="result-marker">WIN</span></td>
+          </tr>
+          <tr>
+            <th class="metric" scope="row"><span class="metric-number">03</span><span class="metric-name">多模态</span><small class="metric-code">MMMU CS · accuracy</small></th>
+            <td class="score-cell glimmer-score is-winner" style="--score:.4"><span class="score-value">0.400</span><span class="result-marker">WIN</span></td>
+            <td class="score-cell gemma-score" style="--score:.2"><span class="score-value">0.200</span></td>
+          </tr>
+          <tr>
+            <th class="metric" scope="row"><span class="metric-number">04</span><span class="metric-name">综合推理</span><small class="metric-code">LiveBench · accuracy</small></th>
+            <td class="score-cell glimmer-score is-winner" style="--score:.6"><span class="score-value">0.600</span><span class="result-marker">WIN</span></td>
+            <td class="score-cell gemma-score" style="--score:.1"><span class="score-value">0.100</span></td>
+          </tr>
+          <tr>
+            <th class="metric" scope="row"><span class="metric-number">05</span><span class="metric-name">代码生成</span><small class="metric-code">BigCodeBench · pass rate</small></th>
+            <td class="score-cell glimmer-score" style="--score:.4"><span class="score-value">0.400</span><span class="result-marker">TIE</span></td>
+            <td class="score-cell gemma-score" style="--score:.4"><span class="score-value">0.400</span><span class="result-marker">TIE</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="benchmark-foot"><span>5 benchmarks × 10 prompts</span><span>Higher is better ↑</span><span class="swipe-hint">← 左右滑动查看完整成绩 →</span></div>
+  </figure>
   <p>IFEval 的 <code>final_acc</code> 是综合指标，不能简单翻译成“答对几题”。附加指标也呈现同样差距。Glimmer 的 prompt strict accuracy 为 0.900，instruction strict accuracy 为 0.933，Gemma 两项均为 0.600。</p>
 
   <h2 id="tools">Gemma 靠工具调用拿下一局</h2>
