@@ -76,7 +76,7 @@
   ul,ol{padding-left:22px;margin:16px 0}li{margin:9px 0;color:var(--ink-2)}li::marker{color:var(--acc)}
   code{font-family:var(--mono);font-size:.82em;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:.1em .4em;color:var(--ink)}
   blockquote{margin:32px 0;padding:28px 30px;background:var(--surface);border-left:4px solid var(--acc);border-radius:0 14px 14px 0;box-shadow:var(--shadow);position:relative}
-  blockquote::before{content:""";position:absolute;top:10px;left:14px;font-family:var(--display);font-size:58px;color:var(--acc);opacity:.22;line-height:1}
+  blockquote::before{content:"\201C";position:absolute;top:10px;left:14px;font-family:var(--display);font-size:58px;color:var(--acc);opacity:.22;line-height:1}
   blockquote p{position:relative;z-index:1;font-family:var(--serif);font-size:20px;line-height:1.6;color:var(--ink);font-style:italic;margin:0}
   blockquote .en{display:block;margin-top:12px;font-family:var(--mono);font-size:11.5px;color:var(--faint);font-style:normal}
   blockquote .src{display:block;margin-top:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--acc);font-style:normal}
@@ -95,13 +95,14 @@
   .kpi .c.wide{grid-column:span 2}
   .kpi .c:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg);border-color:var(--line-2)}
   .kpi .n{font-family:var(--display);font-size:clamp(64px,5.5vw,86px);line-height:.92;color:var(--ink);font-weight:700;margin-bottom:14px;letter-spacing:-.03em;position:relative;z-index:2}
-  .kpi .n span{background:linear-gradient(135deg,var(--acc),var(--acc-3));-webkit-background-clip:text;background-clip:text;color:transparent}
-  .kpi .c:nth-child(2) .n span{background:linear-gradient(135deg,var(--acc-2),var(--acc))}
-  .kpi .c:nth-child(3) .n span{background:linear-gradient(135deg,var(--acc-3),var(--acc-4))}
-  .kpi .c:nth-child(4) .n span{background:linear-gradient(135deg,var(--acc-4),var(--acc-3))}
-  .kpi .c:nth-child(5) .n span{background:linear-gradient(135deg,var(--acc-2),var(--acc-3))}
-  .kpi .c:nth-child(6) .n span{background:linear-gradient(135deg,var(--acc),var(--acc-2))}
+  .kpi .n span{background:var(--num-gradient,linear-gradient(135deg,var(--acc),var(--acc-3)));-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+  .kpi .c:nth-child(2) .n span{--num-gradient:linear-gradient(135deg,var(--acc-2),var(--acc))}
+  .kpi .c:nth-child(3) .n span{--num-gradient:linear-gradient(135deg,var(--acc-3),var(--acc-4))}
+  .kpi .c:nth-child(4) .n span{--num-gradient:linear-gradient(135deg,var(--acc-4),var(--acc-3))}
+  .kpi .c:nth-child(5) .n span{--num-gradient:linear-gradient(135deg,var(--acc-2),var(--acc-3))}
+  .kpi .c:nth-child(6) .n span{--num-gradient:linear-gradient(135deg,var(--acc),var(--acc-2))}
   .kpi .u{font-family:var(--display);font-size:clamp(18px,2vw,26px);font-weight:700;color:var(--acc);margin-left:8px;letter-spacing:.02em;text-transform:none;-webkit-text-fill-color:var(--acc);background:none;vertical-align:3px}
+  .kpi .c:nth-child(4) .u{display:block;font-size:16px;line-height:1;margin:10px 0 0;letter-spacing:.08em}
   .kpi .l{font-size:13.5px;color:var(--ink-2);line-height:1.55;position:relative;z-index:2}
   .kpi .ctx{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:9px;letter-spacing:.04em;position:relative;z-index:2}
   @media(max-width:900px){.kpi{grid-template-columns:repeat(2,1fr)}.kpi .c.wide{grid-column:span 2}.kpi .n{font-size:56px}}

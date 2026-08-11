@@ -68,7 +68,7 @@
   ul,ol{padding-left:22px;margin:16px 0}li{margin:9px 0;color:var(--ink-2)}li::marker{color:var(--faint)}
   code{font-family:var(--mono);font-size:.82em;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:.1em .4em;color:var(--ink)}
   blockquote{margin:32px 0;padding:28px 32px;background:var(--surface);border-left:3px solid var(--acc);border-radius:0 16px 16px 0;box-shadow:var(--shadow);position:relative}
-  blockquote::before{content:""";position:absolute;top:14px;left:18px;font-family:var(--display);font-size:64px;color:var(--acc);opacity:.25;line-height:1}
+  blockquote::before{content:"\201C";position:absolute;top:14px;left:18px;font-family:var(--display);font-size:64px;color:var(--acc);opacity:.25;line-height:1}
   blockquote p{position:relative;z-index:1;font-family:var(--display);font-size:22px;line-height:1.55;color:var(--ink);font-style:italic;margin:0}
   blockquote .en{display:block;margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--faint);font-style:normal}
   hr{border:none;height:1px;background:linear-gradient(90deg,transparent,var(--line),transparent);margin:64px 0}
@@ -78,6 +78,12 @@
   th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:500;background:var(--surface-2)}
   tr:last-child td{border-bottom:none}
   td:first-child{color:var(--ink);font-family:var(--mono);font-size:12px;white-space:nowrap}
+  .honors-table{border-collapse:separate;border-spacing:0;table-layout:fixed}
+  .honors-table th:first-child{width:88px}.honors-table th:nth-child(2){width:42%}
+  .honors-table td:first-child{font-size:15px;font-weight:700;color:var(--acc);letter-spacing:.04em}
+  .honors-table td:nth-child(2){font-weight:600;color:var(--ink)}
+  .honors-table tbody tr{transition:background-color .2s ease}
+  .honors-table tbody tr:hover{background:rgba(154,124,28,.055)}
   .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:36px 0}
   .kpi .c{position:relative;background:linear-gradient(160deg,var(--surface) 0%,var(--surface-2) 100%);border:1px solid var(--line);border-radius:22px;padding:30px 24px 26px;box-shadow:var(--shadow);overflow:hidden;transition:all .4s cubic-bezier(.2,.6,.3,1);isolation:isolate}
   .kpi .c.wide{grid-column:span 2}
@@ -89,10 +95,10 @@
   .kpi .c:hover{transform:translateY(-7px) scale(1.015);box-shadow:var(--shadow-lg);border-color:var(--line-2)}
   .kpi .c:hover::after{opacity:.14}
   .kpi .n{font-family:var(--display);font-size:64px;line-height:.9;color:var(--ink);font-weight:800;margin-bottom:14px;letter-spacing:-.04em;position:relative;z-index:2}
-  .kpi .n span{background:linear-gradient(135deg,var(--acc),var(--acc-2));-webkit-background-clip:text;background-clip:text;color:transparent}
-  .kpi .c:nth-child(2) .n span{background:linear-gradient(135deg,var(--acc-2),var(--acc))}
-  .kpi .c:nth-child(3) .n span{background:linear-gradient(135deg,var(--acc-3),var(--acc))}
-  .kpi .c:nth-child(5) .n span{background:linear-gradient(135deg,var(--acc-2),var(--acc-3))}
+  .kpi .n span{background:var(--num-gradient,linear-gradient(135deg,var(--acc),var(--acc-2)));-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+  .kpi .c:nth-child(2) .n span{--num-gradient:linear-gradient(135deg,var(--acc-2),var(--acc))}
+  .kpi .c:nth-child(3) .n span{--num-gradient:linear-gradient(135deg,var(--acc-3),var(--acc))}
+  .kpi .c:nth-child(5) .n span{--num-gradient:linear-gradient(135deg,var(--acc-2),var(--acc-3))}
   .kpi .u{font-family:var(--body);font-size:15px;font-weight:500;color:var(--muted);margin-left:10px;letter-spacing:0;text-transform:none;-webkit-text-fill-color:var(--muted);background:none}
   .kpi .l{font-size:14px;color:var(--ink-2);line-height:1.55;position:relative;z-index:2}
   .kpi .ctx{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:10px;letter-spacing:.04em;position:relative;z-index:2}
@@ -232,8 +238,8 @@
   </table></div>
 
   <h4>主要荣誉</h4>
-  <div class="tw"><table>
-    <thead><tr><th>年份</th><th>荣誉</th><th>说明</th></tr></thead>
+  <div class="tw"><table class="honors-table" aria-label="Jeff Dean 主要荣誉">
+    <thead><tr><th scope="col">年份</th><th scope="col">荣誉</th><th scope="col">说明</th></tr></thead>
     <tbody>
       <tr><td>2009</td><td>ACM Fellow / NAE 院士</td><td>计算机协会会士与美国国家工程院院士</td></tr>
       <tr><td>2012</td><td>Mark Weiser + ACM 计算奖 + ACM-Infosys</td><td>操作系统创造力奖、ACM 计算奖;与 Sanjay 共获 Infosys 奖</td></tr>
