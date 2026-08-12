@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>从蒸馏、合成数据到 RSI：模型竞争真正比拼的是什么？</title>
+<meta name="date" content="2026-08-12">
+<meta name="description" content="精读 42章经对谈 Evolvent AI 联合创始人孟繁青：当训练基础设施逐渐标准化，模型竞争正从算法技巧转向数据、评估与可验证的自我改进闭环。">
+<meta name="tags" content="LLM, 后训练, 合成数据, RSI, 模型竞争, 播客精读">
+<style>
+  :root{
+    --bg:#0d1010;--panel:#121716;--card:#171e1c;--soft:#1d2623;--line:#29332f;
+    --ink:#edf2ef;--ink2:#c8d1cc;--muted:#929e98;--faint:#69756f;
+    --lime:#b7e36b;--mint:#56d6ad;--cyan:#67bddd;--amber:#e5b767;--rose:#e98894;
+    --sans:'PingFang SC','Microsoft YaHei',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
+  }
+  @media(prefers-color-scheme:light){:root{
+    --bg:#f5f7f3;--panel:#fff;--card:#fff;--soft:#edf2ec;--line:#d9e1da;
+    --ink:#19221d;--ink2:#34423a;--muted:#5e6b64;--faint:#87938d;
+    --lime:#527f13;--mint:#087b5d;--cyan:#176d91;--amber:#98600b;--rose:#a93648;
+  }}
+  :root[data-theme="dark"]{--bg:#0d1010;--panel:#121716;--card:#171e1c;--soft:#1d2623;--line:#29332f;--ink:#edf2ef;--ink2:#c8d1cc;--muted:#929e98;--faint:#69756f;--lime:#b7e36b;--mint:#56d6ad;--cyan:#67bddd;--amber:#e5b767;--rose:#e98894}
+  :root[data-theme="light"]{--bg:#f5f7f3;--panel:#fff;--card:#fff;--soft:#edf2ec;--line:#d9e1da;--ink:#19221d;--ink2:#34423a;--muted:#5e6b64;--faint:#87938d;--lime:#527f13;--mint:#087b5d;--cyan:#176d91;--amber:#98600b;--rose:#a93648}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink2);font:16px/1.78 var(--sans);-webkit-font-smoothing:antialiased}
+  a{color:var(--mint);text-decoration:none}a:hover{text-decoration:underline}
+  .top{position:sticky;top:0;z-index:30;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--panel) 92%,transparent);backdrop-filter:blur(14px)}
+  .top .in{max-width:1180px;margin:auto;padding:12px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .top b{color:var(--ink);font-size:14px}.chip{font:11px var(--mono);color:var(--faint);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+  .shell{max-width:1180px;margin:auto;padding:0 24px;display:grid;grid-template-columns:215px minmax(0,820px);gap:46px;align-items:start}
+  nav{position:sticky;top:58px;padding:34px 0;max-height:calc(100vh - 58px);overflow:auto;font-size:13px}
+  nav .g{margin:18px 0 7px;padding-left:12px;color:var(--faint);font:10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase}
+  nav a{display:block;padding:5px 0 5px 12px;border-left:2px solid var(--line);color:var(--muted);line-height:1.4}
+  nav a:hover{border-left-color:var(--lime);color:var(--ink);text-decoration:none}
+  main{min-width:0;padding:30px 0 90px}
+  .hero{position:relative;overflow:hidden;margin:5px 0 24px;padding:42px 40px 36px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#18211d 0%,#101512 55%,#17201d 100%);box-shadow:0 22px 64px rgba(0,0,0,.28)}
+  .hero:before{content:"";position:absolute;width:420px;height:420px;right:-170px;top:-250px;border-radius:50%;background:radial-gradient(circle,#70e5af30,transparent 68%)}
+  .eyebrow{position:relative;color:#b7e36b;font:12px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+  h1{position:relative;max-width:740px;margin:14px 0 15px;color:#edf2ef;font-size:clamp(29px,4.5vw,45px);line-height:1.16;letter-spacing:-.03em}
+  .dek{position:relative;max-width:680px;margin:0;color:#929e98;font-size:16.5px}
+  .meta{position:relative;display:flex;gap:9px;flex-wrap:wrap;margin-top:25px}.meta span{font:11px var(--mono);color:#75827b}
+  .thesis{margin:22px 0 32px;padding:22px 24px;border:1px solid color-mix(in srgb,var(--lime) 35%,var(--line));border-radius:14px;background:color-mix(in srgb,var(--lime) 7%,var(--card))}
+  .thesis .label{color:var(--lime);font:11px var(--mono);letter-spacing:.09em;text-transform:uppercase}.thesis p{margin:8px 0 0;color:var(--ink);font-size:18px;line-height:1.65}
+  h2{scroll-margin-top:65px;margin:54px 0 12px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink);font-size:24px;line-height:1.35}
+  h2.first{border:0;margin-top:34px}h3{margin:29px 0 8px;color:var(--ink);font-size:18px;line-height:1.45}
+  p{margin:11px 0;color:var(--muted)}strong{color:var(--ink)}em{color:var(--ink2)}
+  ul,ol{padding-left:22px}li{margin:7px 0;color:var(--muted)}li::marker{color:var(--faint)}
+  blockquote{margin:20px 0;padding:14px 17px;border-left:3px solid var(--mint);border-radius:0 10px 10px 0;background:var(--soft);color:var(--ink2)}
+  blockquote p{margin:0;color:var(--ink2)}
+  .source{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;margin:20px 0;padding:18px 20px;border:1px solid var(--line);border-radius:13px;background:var(--card)}
+  .source strong{display:block;margin-bottom:3px}.source p{margin:0;font-size:13.5px}
+  .button{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border:1px solid color-mix(in srgb,var(--mint) 45%,var(--line));border-radius:8px;color:var(--ink);font:12px var(--mono);white-space:nowrap;background:color-mix(in srgb,var(--mint) 8%,var(--soft))}.button:hover{text-decoration:none;border-color:var(--mint)}
+  .flow{margin:24px 0;padding:22px;border:1px solid var(--line);border-radius:15px;background:var(--panel);overflow:hidden}
+  .flowline{display:grid;grid-template-columns:1fr 42px 1fr 42px 1fr;align-items:stretch;gap:8px}
+  .stage{padding:18px 16px;border:1px solid var(--line);border-radius:11px;background:var(--card)}
+  .stage .n{font:10px var(--mono);letter-spacing:.08em;color:var(--faint)}.stage h3{margin:6px 0 5px;font-size:17px}.stage p{margin:0;font-size:13px;line-height:1.55}
+  .stage.a{border-top:3px solid var(--amber)}.stage.b{border-top:3px solid var(--mint)}.stage.c{border-top:3px solid var(--cyan)}
+  .arrow{align-self:center;text-align:center;color:var(--faint);font:22px var(--mono)}
+  .flowcap{margin:13px 2px 0;color:var(--faint);font-size:12px;text-align:center}
+  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:20px 0}
+  .card{padding:19px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  .card .k{font:10.5px var(--mono);color:var(--faint);letter-spacing:.07em}.card h3{margin:7px 0 7px;font-size:17px}.card p{margin:0;font-size:13.5px;line-height:1.65}
+  .loop{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:21px 0}
+  .loop div{position:relative;padding:13px 9px;border:1px solid var(--line);border-radius:9px;background:var(--soft);text-align:center;color:var(--ink2);font-size:12px}
+  .loop div:not(:last-child):after{content:"→";position:absolute;right:-9px;top:50%;z-index:2;transform:translateY(-50%);color:var(--lime);font-family:var(--mono)}
+  .numbers{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin:21px 0}
+  .number{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  .number b{display:block;color:var(--lime);font:700 clamp(30px,5vw,44px)/1 var(--mono);letter-spacing:-.04em}.number span{display:block;margin-top:9px;color:var(--muted);font-size:13px;line-height:1.55}
+  .note{margin:18px 0;padding:15px 17px;border:1px solid var(--line);border-radius:10px;background:var(--soft);font-size:13.5px}.note b{color:var(--amber)}
+  .tw{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:12px}
+  table{width:100%;min-width:610px;border-collapse:collapse;background:var(--card);font-size:13.5px}
+  th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}tr:last-child td{border-bottom:0}
+  th{color:var(--faint);font:10.5px var(--mono);letter-spacing:.07em;text-transform:uppercase;background:var(--soft)}td:first-child{color:var(--ink);font-weight:600}
+  .timeline{list-style:none;padding:0;margin:20px 0}.timeline li{display:grid;grid-template-columns:58px 1fr;gap:15px;margin:0;padding:10px 0;border-bottom:1px solid var(--line)}
+  .timeline time{color:var(--mint);font:12px var(--mono);padding-top:3px}.timeline span{color:var(--muted)}
+  .refs{margin-top:20px;padding:18px 20px;border:1px solid var(--line);border-radius:12px;background:var(--card)}.refs p{margin:5px 0;font-size:13.5px}
+  footer.article{margin-top:55px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);font-size:12px}
+  @media(max-width:900px){.shell{grid-template-columns:1fr}.shell>nav{display:none}}
+  @media(max-width:660px){.shell{padding:0 16px}main{padding-top:18px}.hero{padding:31px 23px}.source{grid-template-columns:1fr}.flowline{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}.cards,.numbers{grid-template-columns:1fr}.loop{grid-template-columns:1fr}.loop div:not(:last-child):after{content:"↓";right:auto;left:50%;top:auto;bottom:-15px;transform:translateX(-50%)}h2{font-size:22px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <a class="chip" href="/" style="color:var(--mint)">← 博客</a>
+  <b>播客精读</b>
+  <span class="chip">42章经 × Evolvent AI</span>
+  <span class="chip">59:29</span>
+</div></header>
+
+<div class="shell">
+<nav aria-label="文章目录">
+  <div class="g">核心路径</div>
+  <a href="#answer">先说结论</a>
+  <a href="#path">三个词，一条路径</a>
+  <a href="#post-training">后训练正在数据化</a>
+  <a href="#competition">模型竞争拼什么</a>
+  <a href="#rsi">RSI 离闭环多远</a>
+  <div class="g">我的判断</div>
+  <a href="#takeaways">值得带走的观点</a>
+  <a href="#caveats">需要保留的边界</a>
+  <a href="#timeline">节目时间轴</a>
+  <a href="#sources">资料与出处</a>
+</nav>
+
+<main>
+  <section class="hero">
+    <div class="eyebrow">Podcast field notes / 2026.08.12</div>
+    <h1>从蒸馏、合成数据到 RSI：模型竞争真正比拼的是什么？</h1>
+    <p class="dek">当训练基础设施逐渐标准化，竞争重心正在从单点算法技巧，移向数据策略、可执行评估，以及能否把失败证据稳定地变成下一轮改进。</p>
+    <div class="meta"><span>精读：42章经</span><span>嘉宾：孟繁青</span><span>主题：POST-TRAINING · DATA · RSI</span></div>
+  </section>
+
+  <div class="source">
+    <div>
+      <strong>原节目：从蒸馏到合成数据到 RSI，模型竞争的下一个焦点是什么？</strong>
+      <p>42章经对谈 Evolvent AI 联合创始人孟繁青，发布于 2026 年 8 月 8 日。本篇是基于节目内容与公开研究资料写成的原创精读，不是逐字稿转载。</p>
+    </div>
+    <a class="button" href="https://www.xiaoyuzhoufm.com/episode/6a75424b000a55a9bb042560" target="_blank" rel="noopener noreferrer">在小宇宙收听 ↗</a>
+  </div>
+
+  <section id="answer">
+    <div class="thesis">
+      <div class="label">Answer first</div>
+      <p><strong>蒸馏、合成数据和 RSI 不是三个分散的热点，而是模型把外部能力逐步内化、再尝试自己改进自己的三个阶段。</strong>真正稀缺的也不再只是一次训练，而是发现缺口、生产数据、验证效果、保留最佳结果的完整闭环。</p>
+    </div>
+    <p>这期节目最有价值的地方，不是又解释了一遍什么叫后训练，而是把几条通常分开讨论的线连了起来：模型厂为什么越来越重视数据，做 Post-training 的人为什么容易走向 Agent 与 Benchmark，国内模型追赶究竟靠不靠蒸馏，以及 RSI 为什么听起来宏大，落地时却首先变成一个非常工程化的实验系统。</p>
+    <p>孟繁青给出的答案很鲜明：<strong>训练本身正在服务化，数据研究反而成为后训练的主要工作；蒸馏是加速器，不是能力的唯一来源；RSI 的近期形态，也不是模型突然获得无限自我进化能力，而是把“发现问题—造数据—训练—评估”这条链逐步交给 Agent。</strong></p>
+  </section>
+
+  <section id="path">
+    <h2 class="first">三个词，其实是一条能力内化路径</h2>
+    <div class="flow" role="img" aria-label="从蒸馏到合成数据再到 RSI 的能力内化路径">
+      <div class="flowline">
+        <div class="stage a"><div class="n">01 / DISTILL</div><h3>蒸馏</h3><p>借助更强模型的输出，把已有能力更快迁移给目标模型。</p></div>
+        <div class="arrow">→</div>
+        <div class="stage b"><div class="n">02 / SYNTHESIZE</div><h3>合成数据</h3><p>围绕能力缺口主动设计题目、轨迹、反馈与难度，而不只是复制答案。</p></div>
+        <div class="arrow">→</div>
+        <div class="stage c"><div class="n">03 / SELF-IMPROVE</div><h3>RSI</h3><p>让系统根据评估证据，自己提出并验证下一轮改进策略。</p></div>
+      </div>
+      <p class="flowcap">从“向老师学”到“自己出训练题”，再到“自己管理研究循环”。自动化范围逐步扩大，验证难度也同步上升。</p>
+    </div>
+
+    <p><strong>蒸馏</strong>解决的是速度问题：如果强模型已经表现出某种能力，目标模型可以学习它产生的答案、推理轨迹或工具使用过程。它是获取合成数据的一种手段，但二者不能画等号。</p>
+    <p><strong>合成数据</strong>解决的是供给问题：当高质量自然数据越来越难获得，团队必须主动构造符合训练目标的数据分布。真正困难的不是“让模型多生成一些文本”，而是判断该生成什么、难度是否合适、有没有奖励投机，以及训练后是否伤害了别的能力。</p>
+    <p><strong>RSI（Recursive Self-Improvement）</strong>解决的是研究循环问题：系统不只生成数据，还要从失败中提出假设、改变数据策略、训练候选模型、读取评估反馈，并决定继续搜索还是回到历史最佳版本。</p>
+  </section>
+
+  <section id="post-training">
+    <h2>后训练正在变成“数据研究”</h2>
+    <p>在成熟模型厂里，SFT、推理服务和评估流水线会逐步平台化。研究员不必每次从找机器、配环境开始，而是向统一服务提交数据与配置。基础设施没有消失，它只是从每个人都要重复完成的工作，变成了由专门团队维护的公共能力。</p>
+    <p>因此，后训练人员的注意力会向上游移动：模型到底缺什么能力？应该构造什么训练经验？怎样过滤错误与投机轨迹？数据混合和课程难度如何安排？节目里那句“Post-training 的人每天主要在做数据”，并不是说研究变简单了，而是说研究对象变了。</p>
+
+    <div class="cards">
+      <div class="card"><div class="k">SHIFT 01</div><h3>从题库到环境</h3><p>旧式 Benchmark 更像闭卷考试，输入问题、比对答案。Agent Benchmark 则要提供软件、状态和工具，让模型在长流程里完成真实任务。</p></div>
+      <div class="card"><div class="k">SHIFT 02</div><h3>从单分到证据链</h3><p>最终结果之外，还要观察中间操作、状态变化、约束是否满足，以及模型有没有通过漏洞获得表面高分。</p></div>
+      <div class="card"><div class="k">SHIFT 03</div><h3>从清洗到课程设计</h3><p>数据质量不只是“正确或错误”。太简单学不到新东西，太难又无法形成有效梯度，能力提升还可能以其他任务退化为代价。</p></div>
+      <div class="card"><div class="k">SHIFT 04</div><h3>从一次训练到实验组合</h3><p>单次结果很难说明是哪项策略起效。数据、训练、评估和预算必须被固定或记录，才有可能做可靠归因。</p></div>
+    </div>
+
+    <blockquote><p>后训练的壁垒没有因为基础设施成熟而消失。壁垒只是从“能不能把模型训起来”，转移到了“能不能持续提出有价值的数据假设”。</p></blockquote>
+  </section>
+
+  <section id="competition">
+    <h2>模型竞争最后拼什么？</h2>
+    <p>节目里最反直觉的判断，是国内外模型差距的来源。直觉上，国内团队更擅长工程，因此后训练应该更占优势；孟繁青的观察却相反：国内更有特色的部分可能是被算力约束倒逼出来的预训练架构创新，而海外团队由于更早开始积累高质量后训练数据，反而在数据与组织经验上拥有时间优势。</p>
+    <p>这个判断未必能简单推广到所有公司，但它提醒我们，模型竞争至少有四层，而且每一层的时间常数不同：</p>
+
+    <div class="tw"><table>
+      <thead><tr><th>竞争层</th><th>核心问题</th><th>追赶方式</th><th>难复制之处</th></tr></thead>
+      <tbody>
+        <tr><td>算力</td><td>能跑多大规模、多少实验</td><td>资本投入与资源调度</td><td>供给、集群稳定性、长期预算</td></tr>
+        <tr><td>架构</td><td>每单位算力能换来多少能力</td><td>论文、开源与人才流动</td><td>规模化验证和工程细节</td></tr>
+        <tr><td>数据</td><td>模型应该学习什么</td><td>蒸馏、合成、采集与标注</td><td>失败经验、课程设计、质量判断</td></tr>
+        <tr><td>组织</td><td>能否把新认知快速变成新版本</td><td>流程调整与团队协作</td><td>决策速度、反馈链路、隐性知识</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>蒸馏为什么只是加速器</h3>
+    <p>蒸馏能把强模型已经显露出来的能力快速变成训练材料，尤其适合缩短后训练的数据冷启动时间。但它无法代替全部能力来源：预训练仍然决定基础知识与表示能力，自己的评估体系决定团队能否发现真正的缺口，而架构与训练系统决定这些数据能否被有效吸收。</p>
+    <p>因此，“是否使用蒸馏”不是最有信息量的问题。更重要的是：<strong>团队是否知道自己在蒸馏什么，能否验证迁移后的能力，以及当外部教师不可用时，能否靠自己的模型、环境和反馈继续生产有效数据。</strong></p>
+  </section>
+
+  <section id="rsi">
+    <h2>RSI 距离真正的闭环，还有多远？</h2>
+    <p>把 RSI 拆开看，它并不神秘。一个最小的数据中心自我改进循环，大致只有五步：</p>
+    <div class="loop" aria-label="RSI 五步循环">
+      <div>诊断能力缺口</div><div>提出数据假设</div><div>生成并验证数据</div><div>训练候选模型</div><div>评估并选择</div>
+    </div>
+    <p>难点在于，这条链不是天然单调向上的。模型可能误判失败原因，生成与真实任务错位的数据，训练出格式更漂亮但能力更差的候选，也可能在已经找到好版本后继续搜索，最后提交一个退化版本。</p>
+
+    <p>Evolvent AI 公开的 <a href="https://arxiv.org/abs/2607.25886" target="_blank" rel="noopener noreferrer">RSIBench-Data 论文</a>刻意把外围系统固定下来：基础模型、训练与推理服务、评估环境和预算保持一致，只允许研究 Agent 改变训练数据策略。这样做不是为了模拟无限制的自我进化，而是先回答一个可验证的问题：Agent 能不能根据反馈，稳定地做出更好的数据研究决策？</p>
+
+    <div class="numbers">
+      <div class="number"><b>58.33%</b><span>在 24 个 Agent×任务设置中，有 14 个通过后续迭代超过了第一次有效尝试。</span></div>
+      <div class="number"><b>78.26%</b><span>在达到峰值后仍继续搜索的设置中，最终一次尝试低于历史最佳；其余也只是回到同一峰值。</span></div>
+    </div>
+
+    <p>这组结果揭示的不是“RSI 已经成功”或“RSI 完全没用”，而是一条更有价值的中间结论：<strong>当前 Agent 已经偶尔能发现有效改进，但还不能可靠地管理改进过程。</strong>发现能力开始出现，搜索、归因和最佳结果保护仍然不稳定。</p>
+
+    <div class="note"><b>我的解读：</b>短期内，RSI 最先创造价值的地方可能不是让一个基础模型无限自我升级，而是替研究团队提高实验吞吐——自动生成候选、执行验证、整理失败证据，并在严格边界内探索数据策略。它更像研究基础设施的升级，而不是突然到来的智能奇点。</div>
+  </section>
+
+  <section id="takeaways">
+    <h2>这期节目最值得带走的五个观点</h2>
+    <ol>
+      <li><strong>训练门槛降低，不等于研究门槛降低。</strong>当训练服务被标准化，真正困难的工作会上移到能力诊断、数据策略和评估设计。</li>
+      <li><strong>Agent Benchmark 本身已经接近产品原型。</strong>它需要重建工具、状态和验证器，因此优秀的评估环境往往离真实业务也更近。</li>
+      <li><strong>数据质量最终仍要经过训练验证。</strong>静态规则能挡住明显错误，却很难提前判断一批数据是否真的提升目标能力、是否损害其他能力。</li>
+      <li><strong>蒸馏解决的是追赶速度，不是全部能力来源。</strong>真正可持续的竞争力来自自己的基础模型、数据生产、评估体系与组织反馈。</li>
+      <li><strong>RSI 的核心不是“自己改代码”，而是“自己管理证据”。</strong>能否从失败形成正确假设、保持实验可归因，并保住历史最佳结果，比盲目增加迭代轮数更重要。</li>
+    </ol>
+  </section>
+
+  <section id="caveats">
+    <h2>听完以后，仍需保留的三个边界</h2>
+    <h3>一、预训练与后训练不是泾渭分明</h3>
+    <p>“预训练学知识、后训练做分布迁移”是有用的简化，但真实系统里两者会相互影响。持续预训练、中期训练、长上下文扩展和大规模 RL 已经让边界越来越模糊。不能据此推出基础能力只来自某一个阶段。</p>
+    <h3>二、Benchmark 接近真实，不代表等于真实</h3>
+    <p>环境越复杂，验证器越可能遗漏真实世界的隐含要求。一个 Agent 在模拟 Notion、终端或代码仓库里完成任务，并不自动意味着它能在真实组织中稳定工作。评估仍然只是被明确写下来的那部分需求。</p>
+    <h3>三、“蒸馏不是决定性因素”是判断，不是已证实比例</h3>
+    <p>各家训练数据、教师模型调用和内部评估并不透明，很难给蒸馏贡献一个可靠占比。更稳妥的结论是：蒸馏很重要，但没有充分证据证明它可以替代预训练、架构创新和自主数据积累。</p>
+  </section>
+
+  <section id="timeline">
+    <h2>节目时间轴</h2>
+    <p>如果只想听重点，可以沿着下面四段进入原节目：</p>
+    <ol class="timeline">
+      <li><time>01:15</time><span><strong>后训练与模型竞争：</strong>从模型厂到创业公司，Post-training、Benchmark 与数据工作的变化。</span></li>
+      <li><time>21:50</time><span><strong>RSI：</strong>Self-Evolving、AI for AI 与 Auto-Research 的关系，以及闭环为何很难真正转起来。</span></li>
+      <li><time>35:29</time><span><strong>数据：</strong>模型对数据需求的几轮变化，外采价值，以及合成数据与蒸馏的区别。</span></li>
+      <li><time>48:18</time><span><strong>展望：</strong>AI4S、模型公司的组织形态、蒸馏对国内追赶的意义与 Evolvent AI 的方向。</span></li>
+    </ol>
+    <p><a class="button" href="https://www.xiaoyuzhoufm.com/episode/6a75424b000a55a9bb042560" target="_blank" rel="noopener noreferrer">打开完整节目与官方文稿 ↗</a></p>
+  </section>
+
+  <section id="sources">
+    <h2>资料与出处</h2>
+    <div class="refs">
+      <p>① <a href="https://www.xiaoyuzhoufm.com/episode/6a75424b000a55a9bb042560" target="_blank" rel="noopener noreferrer">42章经：从蒸馏到合成数据到 RSI，模型竞争的下一个焦点是什么？</a></p>
+      <p>② <a href="https://arxiv.org/abs/2607.25886" target="_blank" rel="noopener noreferrer">RSIBench-Data: Benchmarking Data-Centric Research for Recursive Self-Improvement</a></p>
+      <p>③ <a href="https://github.com/evolvent-ai/RSIBench-Data" target="_blank" rel="noopener noreferrer">RSIBench-Data 开源仓库</a></p>
+      <p>④ <a href="https://rsibench.co/" target="_blank" rel="noopener noreferrer">RSIBench 项目说明</a></p>
+    </div>
+  </section>
+
+  <footer class="article">
+    本文为原创精读与观点整理。节目事实与受访者观点已尽量分开表述；涉及论文数字时，以论文公开版本为准。
+  </footer>
+</main>
+</div>
+</body>
+</html>
