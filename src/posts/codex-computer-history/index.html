@@ -1,0 +1,794 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Codex / ChatGPT App · Computer History 完整记录</title>
+<meta name="date" content="2026-08-20">
+<meta name="description" content="对着本机 ChatGPT.app 和 SkyComputerUseService 还原 Computer History。产品名叫 Computer History，配置仍叫 chronicle，原生叫 skysight。">
+<meta name="tags" content="Codex, ChatGPT, Computer History, macOS">
+<style>
+
+  :root{--bg:#0e1014;--panel:#14171e;--card:#191d26;--soft:#1e232e;--line:#2a303c;
+    --ink:#e6e9f0;--ink2:#c3c9d6;--muted:#8b93a4;--faint:#616a7c;
+    --acc:#7aa2ff;--acc2:#4fd1a5;--warn:#e0a458;--danger:#ef6f8b;--mag:#c88bff;
+    --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
+    --sans:'PingFang SC','Microsoft YaHei',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;}
+  @media (prefers-color-scheme:light){:root{--bg:#fbfbfc;--panel:#fff;--card:#fff;--soft:#f4f5f8;--line:#e4e7ee;
+    --ink:#161a22;--ink2:#2f3644;--muted:#5b6473;--faint:#8a92a2;
+    --acc:#3a63d6;--acc2:#0c9a72;--warn:#b3701a;--danger:#cf3a5c;--mag:#8a3fd0;}}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink2);font-family:var(--sans);line-height:1.68;font-size:16px;-webkit-font-smoothing:antialiased}
+  a{color:var(--acc);text-decoration:none}a:hover{text-decoration:underline}
+  .top{border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:20}
+  .top .in{max-width:1200px;margin:0 auto;padding:13px 24px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .top b{color:var(--ink);font-weight:650;font-size:15px}
+  .top .tag{font-family:var(--mono);font-size:11px;color:var(--faint);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+  .shell{max-width:1200px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:220px 1fr;gap:44px;align-items:start}
+  nav{position:sticky;top:64px;padding:34px 0;font-size:13.5px;max-height:calc(100vh - 64px);overflow:auto}
+  nav a{display:block;color:var(--muted);padding:5px 0 5px 12px;border-left:2px solid var(--line);line-height:1.4}
+  nav a:hover{color:var(--ink);border-left-color:var(--acc);text-decoration:none}
+  nav .g{color:var(--faint);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 6px;padding-left:12px}
+  main{padding:30px 0 90px;min-width:0;max-width:820px}
+  h1{font-size:clamp(24px,3.4vw,32px);line-height:1.2;letter-spacing:-.01em;color:var(--ink);font-weight:680;margin:6px 0 14px}
+  h2{font-size:22px;color:var(--ink);font-weight:660;margin:52px 0 6px;padding-top:12px;scroll-margin-top:64px;border-top:1px solid var(--line)}
+  h2:first-of-type{border-top:none}
+  h3{font-size:16.5px;color:var(--ink);font-weight:640;margin:28px 0 8px;scroll-margin-top:64px}
+  h4{font-size:13.5px;color:var(--ink2);font-weight:600;margin:18px 0 6px;font-family:var(--mono);scroll-margin-top:64px}
+  p{margin:11px 0;color:var(--muted)}
+  strong{color:var(--ink);font-weight:640}
+  ul,ol{padding-left:20px;margin:11px 0}li{margin:6px 0}li::marker{color:var(--faint)}
+  code{font-family:var(--mono);font-size:.85em;background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:.08em .38em;color:var(--ink)}
+  .code{position:relative;margin:14px 0}
+  .code .lang{position:absolute;top:0;right:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);background:var(--soft);border:1px solid var(--line);border-bottom-left-radius:8px;border-top-right-radius:11px;padding:3px 9px;z-index:1}
+  pre{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:15px 17px;overflow-x:auto;margin:0;font-size:12.5px;line-height:1.62}
+  pre code{background:none;border:none;padding:0;color:var(--ink2);font-size:12.5px}
+  blockquote{margin:14px 0;padding:12px 16px;background:var(--soft);border-left:3px solid var(--acc2);border-radius:0 10px 10px 0;color:var(--ink2);font-size:14.5px}
+  .tw{overflow-x:auto;margin:14px 0}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);font-weight:600}
+  td:first-child{color:var(--ink)}
+  @media(max-width:900px){.shell{grid-template-columns:1fr}nav{display:none}}
+
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <a href="/" class="tag" style="text-decoration:none;color:var(--acc)">← 博客</a>
+  <b>Computer History</b>
+  <span class="tag">拆包笔记</span>
+  <span class="tag">ChatGPT · Codex · macOS</span>
+</div></div>
+<div class="shell">
+<nav>
+  <div class="g">目录</div>
+<a href="#0-一句话">0. 一句话</a>
+<a href="#1-不要和这些搞混">1. 不要和这些搞混</a>
+<a href="#2-三个名字对照">2. 三个名字对照</a>
+<a href="#3-本机对应的安装物">3. 本机对应的安装物</a>
+<a href="#4-谁能开-什么条件">4. 谁能开、什么条件</a>
+<a href="#5-架构">5. 架构</a>
+<a href="#6-打开-暂停-关闭-主进程源码">6. 打开 / 暂停 / 关闭（主进程源码）</a>
+<a href="#7-原生-ipc">7. 原生 IPC</a>
+<a href="#8-观察策略-settings">8. 观察策略（settings）</a>
+<a href="#9-事件流-采集产物">9. 事件流（采集产物）</a>
+<a href="#9-4-记忆生成管线-service-不再只靠官方一句话">9.4 记忆生成管线（Service，不再只靠官</a>
+<a href="#9-5-codex-自己怎么用这些数据-asar-src--js-环境提示">9.5 Codex 自己怎么用这些数据（asar</a>
+<a href="#10-记忆文件格式-时间线真正读的东西">10. 记忆文件格式（时间线真正读的东西）</a>
+<a href="#11-设置页-ui-asar-chronicle-settings-page">11. 设置页 UI（asar `chronic</a>
+<a href="#12-插件-mcp-agent-用法">12. 插件 / MCP / Agent 用法</a>
+<a href="#13-和-codex-memories-的关系">13. 和 Codex Memories 的关系</a>
+<a href="#14-从-chronicle-迁到-computer-history">14. 从 Chronicle 迁到 Compu</a>
+<a href="#15-隐私与安全">15. 隐私与安全</a>
+<a href="#16-官方产品能力-文档口径">16. 官方产品能力（文档口径）</a>
+<a href="#17-本机状态-2026-08-19-检查">17. 本机状态（2026-08-19 检查）</a>
+<a href="#18-证据清单">18. 证据清单</a>
+<a href="#19-完整度-相对-实现说明书">19. 完整度（相对「实现说明书」）</a>
+<a href="#20-压缩结论">20. 压缩结论</a>
+</nav>
+<main>
+<h1>Codex / ChatGPT App · Computer History 完整记录</h1>
+<p>记录日期：2026-08-19  </p>
+<p>对象：ChatGPT 桌面端（macOS）里的 <strong>Computer History</strong>，不是会话 history、不是内置浏览器 OwlHistory、也不是旧 Chronicle 录屏本身。  </p>
+<p>性质：对着本机安装包还原。Electron 来自未加密 <code>app.asar</code>（无 source map）。采集内核是 <code>SkyComputerUseService</code>（Mach-O / Swift），没有 <code>.swift</code> 源文件，但类型名、JSON <code>kind</code>、摘要管线、硬编码 bundle 列表能从字符串完整抽出。  </p>
+<p>补全轮次：2026-08-19 第二轮（Service 21MB + Client MCP + Record &amp; Replay 同源事件层）。</p>
+<h2 id="0-一句话">0. 一句话</h2>
+<p>Computer History 把你允许范围内的 Mac App / 网站交互事件，周期性收成 Markdown 记忆和时间线，给 ChatGPT 与 Codex 当「你刚才在干什么」的上下文。产品名是 Computer History；配置和 UI 代码仍叫 <code>chronicle</code>；原生采集和 feature flag 叫 <code>skysight</code>。</p>
+<h2 id="1-不要和这些搞混">1. 不要和这些搞混</h2>
+<div class="tw"><table>
+<tr><th>名字</th><th>是什么</th><th>路径 / 标识</th></tr>
+<tr><td><strong>Computer History</strong></td><td>本文对象。被动记交互事件 → 记忆 + 时间线</td><td><code>features.skysight</code> + <code>features.chronicle</code>；记忆在 <code>~/.codex/memories/extensions/skysight/resources/</code></td></tr>
+<tr><td>旧 <strong>Chronicle</strong></td><td>2026-04 研究预览，录屏 + OCR</td><td><code>$TMPDIR/chronicle/screen_recording/</code>；二进制 <code>codex_chronicle</code>；旧记忆在 <code>~/.codex/memories_extensions/chronicle/</code></td></tr>
+<tr><td><strong>Computer Use</strong></td><td>Agent 主动点、打、控 App</td><td>同一套 Sky 客户端，子命令 <code>mcp</code></td></tr>
+<tr><td><strong>Record &amp; Replay</strong></td><td>你按开始/结束，演示一遍做成 skill</td><td>同一客户端，子命令 <code>event-stream mcp</code></td></tr>
+<tr><td>会话 / thread history</td><td>聊天记录</td><td><code>~/.codex/sessions</code>、<code>thread_history_1.sqlite</code></td></tr>
+<tr><td><strong>OwlHistory</strong></td><td>内置浏览器网页历史</td><td><code>owl-feature-bootstrap-cache.json</code> 里的 <code>OwlHistory</code></td></tr>
+</table></div>
+<p>Computer History 打开时会把旧 Chronicle <strong>skill</strong> 归档，采集改走 Skysight。旧 Chronicle 的 242 条 md <strong>不会</strong>被新时间线读取。</p>
+<h2 id="2-三个名字对照">2. 三个名字对照</h2>
+<p>同一功能在包里同时存在：</p>
+<div class="tw"><table>
+<tr><th>层</th><th>名字</th></tr>
+<tr><td>用户可见</td><td>Computer History</td></tr>
+<tr><td>设置页 i18n / React query / 配置开关</td><td><code>chronicle</code>（<code>settings.chronicle.*</code>、<code>t.chronicle.listHistory()</code>、<code>features.chronicle</code>）</td></tr>
+<tr><td>桌面 feature flag</td><td><code>skysight</code>（默认 <code>false</code>，仅 <code>darwin</code>）</td></tr>
+<tr><td>原生 IPC / 分析</td><td><code>ComputerUseIPCSkysight<em></code>、<code>CodexSkysight</em></code></td></tr>
+<tr><td>插件包</td><td><code>computer-history</code></td></tr>
+<tr><td>记忆目录</td><td><code>memories/extensions/skysight/</code></td></tr>
+</table></div>
+<p>asar 里实例化条件（主进程）：</p>
+<div class="code"><span class="lang">js</span><pre><code>chronicle: process.platform === &quot;darwin&quot;
+  &amp;&amp; this.options.getSkysightRecorderController != null
+    ? new /* ChronicleHostService */(..., {
+        list: () =&gt; pde({ resourcesDirectory: u }),
+        listSuggestions: () =&gt; mde({ resourcesDirectory: u }),
+        listSummaryIntervals: (sinceMs) =&gt; hde({ resourcesDirectory: u, sinceMs }),
+      })
+    : undefined</code></pre></div>
+<p><code>u</code> 固定为：</p>
+<div class="code"><span class="lang">js</span><pre><code>path.join(executionCodexHome, &quot;memories&quot;, &quot;extensions&quot;, &quot;skysight&quot;, &quot;resources&quot;)</code></pre></div>
+<p>插件表：</p>
+<div class="code"><span class="lang">js</span><pre><code>{
+  ...computerHistory,
+  isAvailable: ({ features, platform }) =&gt;
+    platform === &quot;darwin&quot; &amp;&amp; features.skysight
+}</code></pre></div>
+<h2 id="3-本机对应的安装物">3. 本机对应的安装物</h2>
+<p>记录时版本：</p>
+<div class="tw"><table>
+<tr><th>组件</th><th>值</th></tr>
+<tr><td><code>/Applications/ChatGPT.app</code></td><td>bundle <code>com.openai.codex</code>，<code>26.814.41407</code> (build 6720)</td></tr>
+<tr><td>Computer Use / Sky</td><td><code>com.openai.sky.CUAService</code>，<code>26.817.1000761</code></td></tr>
+<tr><td>Computer History 插件</td><td><code>1.0.1000761</code>（与 Computer Use、Record &amp; Replay 同号）</td></tr>
+<tr><td>Codex CLI 缓存版本</td><td><code>0.148.0</code>（<code>~/.codex/version.json</code>）</td></tr>
+<tr><td>官方上线</td><td>2026-08-13（What&#x27;s new：August 10–14, 2026）</td></tr>
+</table></div>
+<p>关键文件：</p>
+<div class="code"><span class="lang">text</span><pre><code>/Applications/ChatGPT.app/Contents/Resources/app.asar
+/Applications/ChatGPT.app/Contents/Resources/plugins/openai-bundled/plugins/computer-history/
+/Applications/ChatGPT.app/Contents/Resources/codex_chronicle          # 旧 sidecar，仍打包
+/Applications/ChatGPT.app/Contents/Resources/computer-history.svg
+/Applications/ChatGPT.app/Contents/Resources/computer-history-pause.svg
+/Applications/ChatGPT.app/Contents/Resources/computer-history-resume.svg
+
+~/.codex/computer-use/Codex Computer Use.app/
+  Contents/MacOS/SkyComputerUseService
+  Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient
+  Contents/Resources/Package_ComputerUse.bundle/Contents/Resources/
+    SkysightSummarizer.md
+    SkysightMemoryInstructions.md</code></pre></div>
+<p>asar 内与 Computer History 直接对应的前端 chunk：</p>
+<div class="code"><span class="lang">text</span><pre><code>webview/assets/chronicle-settings-page-*.js      # 设置 + 时间线 UI
+webview/assets/computer-history-query-*.js       # listHistory / suggestions / intervals
+webview/assets/computer-history-suggestions-*.js
+webview/assets/computer-history-suggestion-prompt-*.js
+.vite/build/main-*.js                            # 主进程 recorder + 时间线解析
+.vite/build/src-*.js                             # App Server 侧 coordinator</code></pre></div>
+<p>没有 <code>.map</code>。源码是压缩 JS，不是原始 TypeScript。</p>
+<h2 id="4-谁能开-什么条件">4. 谁能开、什么条件</h2>
+<p>官方 + 本机代码对齐后的硬条件：</p>
+<ol>
+<li><strong>平台</strong>：macOS。代码里 sidecar/Skysight 额外要求 <code>darwin &amp;&amp; arm64</code>（或 <code>NODE_ENV===test</code>）。Intel Mac 走不通这条。</li>
+<li><strong>套餐</strong>：Pro / Business / Enterprise。API key、Amazon Bedrock 不可用。</li>
+<li><strong>地区</strong>：EEA、瑞士、英国没有（官方文档）。</li>
+<li><strong>双开关</strong>：用户配置必须同时  </li>
+</ol>
+<ul>
+<li><code>features.memories === true</code>  </li>
+<li><code>features.chronicle === true</code>  </li>
+</ul>
+<p>   配置路径由 <code>Yb(name)</code> 写成 <code>features.&lt;name&gt;</code>，经 <code>config/value/write</code> upsert。</p>
+<ol>
+<li><strong>桌面 flag</strong>：<code>features.skysight === true</code>（客户端默认 false，由服务端 / Statsig 打开）。</li>
+<li><strong>组织门闩</strong>：<code>configRequirements.featureRequirements.chronicle !== false</code>。为 false 时抛  </li>
+</ol>
+<p>   <code>Computer History is disabled by your organization</code>。</p>
+<ol>
+<li><strong>权限</strong>：macOS Accessibility。不要 Screen Recording。没批完时：  </li>
+</ol>
+<p>   <code>enabled: true</code>，<code>recorderState: &quot;stopped&quot;</code>，<code>activationState: &quot;waiting_for_permissions&quot;</code>。</p>
+<ol>
+<li>Business / Enterprise：管理员先开 <strong>Enable Computer History</strong>，成员再自己开。管理员批准 ≠ 替用户打开。</li>
+</ol>
+<p><code>isFeatureConfigured()</code>：</p>
+<div class="code"><span class="lang">js</span><pre><code>orgAllowed
+  &amp;&amp; userConfig.features.memories === true
+  &amp;&amp; userConfig.features.chronicle === true</code></pre></div>
+<h2 id="5-架构">5. 架构</h2>
+<div class="code"><span class="lang">text</span><pre><code>允许的 App / 网站
+        │  macOS Accessibility（点击、按键、切窗、AX 文本/diff、选中、焦点、鼠标/键盘目标）
+        ▼
+SkyComputerUseService  （原生，写事件段）
+        │  Apple Events IPC（ComputerUseIPCSkysight*）
+        ▼
+SkyComputerUseClient
+        │  Electron worker 方法 skysightStart/Stop/Pause/Resume/Status/GetSettings/UpdateSettings/ClearHistory
+        ▼
+ChatGPT.app 主进程 recorder
+        │  状态机 + 插件安装 + 旧 skill 归档
+        ▼
+本地事件流（App Group，官方称 ≤48h）
+  &lt;eventStreamRootPath&gt;/segments/&lt;ts&gt;/
+    events.jsonl
+    metadata.json
+  另有 suppressedEventsPath（被策略丢掉的事件）
+        │  周期性 ephemeral Codex session
+        │  提示词：SkysightSummarizer.md
+        ▼
+~/.codex/memories/extensions/skysight/resources/
+    &lt;utc&gt;-&lt;4字母&gt;-10min-memory-summary.md
+    &lt;utc&gt;-&lt;4字母&gt;-6h-memory-summary.md
+        │  phase2：SkysightMemoryInstructions.md
+        ▼
+~/.codex/memories/MEMORY.md 等长期记忆（打 [skysight memory]）
+        │  以后某次对话用到
+        ▼
+记忆正文进入请求上下文（是否训练看 ChatGPT data controls）</code></pre></div>
+<p>同一原生二进制 <code>SkyComputerUseClient</code> 的子命令：</p>
+<div class="tw"><table>
+<tr><th>子命令</th><th>产品</th></tr>
+<tr><td><code>mcp</code></td><td>Computer Use</td></tr>
+<tr><td><code>event-stream mcp</code></td><td>Record &amp; Replay</td></tr>
+<tr><td><code>computer-history mcp</code></td><td>Computer History</td></tr>
+<tr><td><code>turn-ended</code></td><td>Codex 一轮结束通知（<code>config.toml</code> 的 <code>notify</code>）</td></tr>
+</table></div>
+<p>插件启动：</p>
+<div class="code"><span class="lang">text</span><pre><code>computer-use-client-launcher computer-history mcp
+→ $CODEX_HOME/computer-use/Codex Computer Use.app/.../SkyComputerUseClient computer-history mcp</code></pre></div>
+<h2 id="6-打开-暂停-关闭-主进程源码">6. 打开 / 暂停 / 关闭（主进程源码）</h2>
+<p>Recorder 类（asar <code>main-*.js</code>，压缩名 <code>Dre</code>）。</p>
+<p>默认缓存状态：</p>
+<div class="code"><span class="lang">js</span><pre><code>{
+  state: &quot;stopped&quot;,
+  eventStreamRootPath: null,
+  currentSegmentEventsPath: null,
+  currentSegmentMetadataPath: null,
+  suppressedEventsPath: null,
+  startedAtMs: null,
+  endedAtMs: null,
+}</code></pre></div>
+<p>原生时间戳是 Apple 纪元（2001-01-01）。Electron 换算：</p>
+<div class="code"><span class="lang">js</span><pre><code>APPLE_EPOCH = 978307200
+startedAtMs = (startedAt + 978307200) * 1000</code></pre></div>
+<p>状态：<code>stopped</code> | <code>running</code> | <code>paused</code>。  </p>
+<p>激活态：<code>idle</code> | <code>starting</code> | <code>waiting_for_permissions</code> | <code>failed</code>。</p>
+<h3 id="打开-enable">打开 <code>enable()</code></h3>
+<p><code>desiredState = running</code>，串行执行，失败则停采集并回滚：</p>
+<ol>
+<li><code>archiveLegacyChronicleSkill()</code>  </li>
+</ol>
+<p>   见第 14 节。reason = <code>skysight_gate_enabled</code>。</p>
+<ol>
+<li><code>reconcileComputerHistoryPluginInstallation(true)</code>  </li>
+</ol>
+<p>   对齐 bundled 插件 <code>computer-history</code>。</p>
+<ol>
+<li>worker：<code>skysightStart</code>  </li>
+</ol>
+<p>   原生超时 <strong>115 秒</strong>（start/resume）；其它操作 15 秒。</p>
+<p>Apple Event 失败码 <code>-600 / -609 / -1708 / -1717</code> 会退避重试。  </p>
+<p>服务端回 <code>Computer History is not enabled for this user</code> 也会重试。</p>
+<p>权限 <code>pending</code>：配置已写成开启，采集仍 stopped。  </p>
+<p>权限 <code>denied</code>：回滚配置，<code>enabled: false</code>。</p>
+<h3 id="对齐-reconcileenabled">对齐 <code>reconcileEnabled()</code></h3>
+<p>已开过、服务重启后：若 status 已是 running 则只同步 <code>desiredState</code>，否则再 <code>skysightStart</code>。</p>
+<h3 id="暂停-继续">暂停 / 继续</h3>
+<ul>
+<li><code>skysightPause</code>，可选 <code>{ duration }</code>。不带 duration 时 <code>desiredState = paused</code>；带 duration 时仍视为 <code>running</code>（限时暂停）。</li>
+<li>原生枚举 <code>SkysightPauseDuration</code> / protobuf 字段：<code>thirtyMinutes</code>、<code>oneHour</code>、<code>untilTomorrow</code>。MCP 文案：<code>Temporarily pause Computer History without disabling it.</code></li>
+<li><code>skysightResume</code>：若已 stopped 则改 <code>skysightStart</code>；已 running 则原样返回。</li>
+</ul>
+<h3 id="关闭-disable">关闭 <code>disable()</code></h3>
+<p><code>skysightStop</code>。停完后若 <code>currentSegmentEventsPath</code> 或 <code>currentSegmentMetadataPath</code> 仍非空，抛：</p>
+<p><code>Chronicle stopped but did not close its current segment</code></p>
+<p>然后 <code>reconcileComputerHistoryPluginInstallation(false)</code>。</p>
+<h3 id="双后端">双后端</h3>
+<p><code>getSkysightRecorderController()</code> 有值 → 新 Skysight。  </p>
+<p>没有 → 旧 sidecar：<code>$TMPDIR/codex_chronicle/chronicle-started.pid</code>，环境变量 <code>CODEX_CHRONICLE_STARTED_PID_PATH</code>，配置对象 <code>codex_chronicle_config</code>。包里仍带 <code>codex_chronicle</code> 二进制。</p>
+<h2 id="7-原生-ipc">7. 原生 IPC</h2>
+<p>Electron → <code>SkyComputerUseClient</code> → <code>SkyComputerUseService</code>，Apple Events。</p>
+<h3 id="electron-worker-方法">Electron worker 方法</h3>
+<div class="tw"><table>
+<tr><th>方法</th><th>作用</th></tr>
+<tr><td><code>skysightStart</code></td><td>开始采集</td></tr>
+<tr><td><code>skysightStop</code></td><td>停止并关闭当前 segment</td></tr>
+<tr><td><code>skysightPause</code></td><td>暂停，可选 duration</td></tr>
+<tr><td><code>skysightResume</code></td><td>继续</td></tr>
+<tr><td><code>skysightStatus</code></td><td>状态 + 路径</td></tr>
+<tr><td><code>skysightGetSettings</code></td><td>观察策略</td></tr>
+<tr><td><code>skysightUpdateSettings</code></td><td>整份覆盖 settings</td></tr>
+<tr><td><code>skysightClearHistory</code></td><td><code>{ scope, interval? }</code></td></tr>
+</table></div>
+<h3 id="swift-protobuf-类型-client-二进制字符串">Swift / protobuf 类型（Client 二进制字符串）</h3>
+<div class="code"><span class="lang">text</span><pre><code>ComputerUseIPCSkysightStartRequest
+ComputerUseIPCSkysightStopRequest
+ComputerUseIPCSkysightPauseRequest
+ComputerUseIPCSkysightResumeRequest
+ComputerUseIPCSkysightStatusRequest
+ComputerUseIPCSkysightStatus
+ComputerUseIPCSkysightState
+ComputerUseIPCSkysightGetSettingsRequest
+ComputerUseIPCSkysightUpdateSettingsRequest
+ComputerUseIPCSkysightUpdateObservationPolicyRequest
+ComputerUseIPCSkysightSettings
+ComputerUseIPCSkysightObservationSettings
+ComputerUseIPCSkysightObservationRule
+ComputerUseIPCSkysightObservationRuleScope
+ComputerUseIPCSkysightObservationDefaultBehavior
+ComputerUseIPCSkysightClearHistoryRequest
+ComputerUseIPCSkysightClearHistoryScope
+ComputerUseIPCSkysightHistoryInterval</code></pre></div>
+<p>菜单栏另有 <code>ComputerUseIPCCodexStatusItemMenuStateRequest</code>、<code>ComputerUseIPCAppStopRequest</code>。</p>
+<h3 id="分析事件">分析事件</h3>
+<div class="code"><span class="lang">text</span><pre><code>CodexSkysightServiceStarted / Stopped / Paused / Resumed
+CodexSkysightServiceStopReason
+CodexSkysightObservationSettingsUpdated
+CodexSkysightHistoryCleared
+CodexSkysightMemorySummaryFinished
+CodexSkysightMcpServerLaunched
+CodexSkysightMcpToolCalled
+CodexSkysightStatusItemActionClicked</code></pre></div>
+<p>传输：Apple Events + XPC。Client 字符串里有 <code>CodexComputerUseIPC-3</code>、<code>CodexComputerUseNativeBridge-1</code>、<code>ComputerUseIPCXPCTransport</code>、<code>sendRequestWithTypeName:requestData:...</code>。版本不一致会要求用户重启 ChatGPT.app。</p>
+<p><code>events.jsonl</code> <strong>不在 Client 里</strong>。写入器在 Service：<code>EventStreamJSONLWriter</code>、<code>SkysightSegmentWriter</code>。路径经 Status 回传。</p>
+<p>MCP 工具（类 <code>ComputerHistoryMCPServer</code>）完整文案：</p>
+<div class="tw"><table>
+<tr><th>工具</th><th>文案</th></tr>
+<tr><td><code>computer_history_pause</code></td><td>Temporarily pause Computer History without disabling it.</td></tr>
+<tr><td><code>computer_history_resume</code></td><td>Resume a paused Computer History recorder.</td></tr>
+<tr><td><code>computer_history_status</code></td><td>Get Computer History status and paths to recent activity files.</td></tr>
+<tr><td><code>computer_history_get_settings</code></td><td>Get all Computer History settings. Call this immediately before updating settings so unchanged fields can be preserved.</td></tr>
+<tr><td><code>computer_history_update_settings</code></td><td>Replace all Computer History settings. … first calling <code>computer_history_get_settings</code>.</td></tr>
+</table></div>
+<p>Status 回传字段（Client 类型布局）：<code>state</code>、<code>eventStreamRootPath</code>、<code>currentSegmentEventsPath</code>、<code>currentSegmentMetadataPath</code>、<code>suppressedEventsPath</code>、<code>startedAt</code>、<code>endedAt</code>。  </p>
+<p>另有 <code>sessionDirectoryPath</code>、<code>maxDurationSeconds</code>（Record &amp; Replay 共用事件层）。</p>
+<p>工具 JSON schema 没有以明文 JSON 躺在二进制里（<code>additionalProperties</code> 紧挨着 update 文案）。参数形状以 Electron Zod + protobuf 字段名为准。</p>
+<h2 id="8-观察策略-settings">8. 观察策略（settings）</h2>
+<p>Zod 形状（asar 里校验）：</p>
+<div class="code"><span class="lang">ts</span><pre><code>{
+  observation: {
+    defaultApplicationBehavior: &quot;observe&quot; | &quot;do_not_observe&quot;,
+    defaultURLBehavior: &quot;observe&quot; | &quot;do_not_observe&quot;,
+    allowlist: Array&lt;{ scope: &quot;app&quot; | &quot;url&quot;, bundleID?: string | null, urlDomain?: string | null }&gt;,
+    blocklist: Array&lt;{ scope: &quot;app&quot; | &quot;url&quot;, bundleID?: string | null, urlDomain?: string | null }&gt;,
+  }
+}</code></pre></div>
+<p>规则（插件 SKILL.md）：</p>
+<ul>
+<li>App 规则：<code>scope: &quot;app&quot;</code> + <code>bundleID</code></li>
+<li>网站规则：<code>scope: &quot;url&quot;</code> + <code>urlDomain</code>（含子域）</li>
+<li>allow / block 可并存；<strong>同 scope 里 block 永远赢</strong></li>
+<li>浏览器记录必须 App 策略 <strong>和</strong> URL 策略都放行；没有 URL 的记录只看 App</li>
+<li>隐私浏览永远排除</li>
+<li><code>update_settings</code> 是整份覆盖；改之前必须先 <code>get_settings</code></li>
+</ul>
+<p>UI 四套：Exclude these apps / websites，Include only these apps / websites。  </p>
+<p>时间线条目上点 App 图标，可以直接 exclude / include。</p>
+<p>菜单栏策略补丁走 <code>ComputerUseIPCSkysightUpdateObservationPolicyRequest</code>，映射：</p>
+<div class="code"><span class="lang">text</span><pre><code>app.include  → include_application
+app.exclude  → exclude_application
+url.include  → include_url
+url.exclude  → exclude_url</code></pre></div>
+<p>清除映射：</p>
+<div class="code"><span class="lang">text</span><pre><code>application_session → clear_application_session
+last_ten_minutes    → clear_last_ten_minutes
+last_hour           → clear_last_hour
+last_day            → clear_last_day</code></pre></div>
+<p>菜单状态还带：</p>
+<div class="code"><span class="lang">ts</span><pre><code>{
+  computerUse: { activeApplications: App[] },
+  computerHistory: {
+    state: &quot;stopped&quot; | &quot;running&quot; | &quot;paused&quot;,
+    canClearHistory: { lastTenMinutes, lastHour, lastDay },
+    recentApplications: Array&lt;App &amp; {
+      isExcluded,
+      lastSession: { startedAt, endedAt, canClearHistory },
+      domains: Array&lt;{ domain, isExcluded }&gt;,
+    }&gt;,
+  }
+}</code></pre></div>
+<h2 id="9-事件流-采集产物">9. 事件流（采集产物）</h2>
+<p>Service 内嵌提示词与 SKILL 一致，并标明 ephemeral：</p>
+<div class="code"><span class="lang">text</span><pre><code># Raw event stream segments (ephemeral; not persisted)
+&lt;eventStreamRootPath&gt;/
+  segments/
+    &lt;segment_timestamp&gt;/
+      events.jsonl      # append-only activity events
+      metadata.json     # timestamps and event counts
+      suppressed.jsonl  # 被策略丢掉的事件（Service 文件名）</code></pre></div>
+<p><code>eventStreamRootURL</code> 在 <code>SkysightService</code> 上。Status 另回 <code>suppressedEventsPath</code>。  </p>
+<p><code>metadata.json</code> 字段：<code>startedAt</code>、<code>endedAt</code>、<code>endReason</code>、<code>eventCount</code>、<code>suppressedEventCount</code>。  </p>
+<p>Record &amp; Replay 同一套存储还会写 <code>session.json</code>（<code>endReason</code> 如 <code>recording_controls_cancelled</code>）。Computer History 用滚动 segment。</p>
+<p>路径相关字段：<code>rootDirectoryURL</code>、<code>directoryURL</code>、<code>eventsURL</code>、<code>metadataURL</code>、<code>suppressedEventsURL</code>、<code>memoryResourcesURL</code>、<code>memoryExtensionURL</code>、<code>configurationRootURL</code>。  </p>
+<p>容器：<code>appGroupContainerUnavailable</code>（官方 App Group；本机 Group Container <code>2DC432GLL2.com.openai.sky.CUAService</code> 目前只有 IPC socket <code>computeruse.sock</code>，没有 segment 目录——功能没开过）。</p>
+<p><strong>TTL / 删除（补上原先的缺口）：</strong></p>
+<ul>
+<li>存储对象带 <code>ttl</code>、<code>expiresAt</code>、<code>expirationTime</code>、<code>retainUntil</code>。</li>
+<li><code>EventStreamStorageConfiguration</code> / <code>EventStreamStorageError</code> / <code>missingEventsFile</code>。</li>
+<li>产品文档写事件最多 48 小时；Electron 时间线建议窗口也是 <code>2880 <em> 60 </em> 1000</code> ms = <strong>48 小时</strong>。两边用同一量级。</li>
+<li>没有在二进制里看到字面量 <code>&quot;48 hours&quot;</code>；删除走 TTL 字段，不是 cron 文案。</li>
+<li><code>segmentDurationSeconds</code>：每个滚动段时长。10 分钟摘要任务叫 <code>tenMinuteSummaryTasks</code>，因此 segment <strong>不会长过 10 分钟</strong>（常见实现就是 10 分钟一段，值在运行时配置里，不在 reflstr）。</li>
+<li>调度：<code>tenMinuteSummaryTasks</code>、<code>sixHourRollupTasks</code>。</li>
+</ul>
+<p>不录屏、不录音、不要 Screen Recording。隐私浏览：<code>privateBrowsingExcluded</code>、<code>PrivateBrowsingIndicators</code>，以及一长串本地化「无痕/隐私浏览」窗口标题碎片。</p>
+<h3 id="9-1-一条事件-eventstreamrecord">9.1 一条事件（<code>EventStreamRecord</code>）</h3>
+<p><code>__swift5_reflstr</code> 里，记录字段和枚举 case 紧挨着，这就是 Codable 用的名字。</p>
+<p>记录字段：</p>
+<div class="code"><span class="lang">text</span><pre><code>timestamp
+kind
+app
+window
+mouse
+keyboard
+selection
+ax</code></pre></div>
+<p>旁边还有一条 AX 通知记录：<code>timestamp</code>、<code>kind</code>、<code>app</code>、<code>window</code>、<code>notificationKind</code>、<code>selection</code>、<code>windowID</code>、<code>text</code>、<code>eventTarget</code>、<code>ax</code>（<code>_pendingAXNotificationRecords</code>）。</p>
+<p>顶层 / 嵌套字段（同一段反射字符串）：</p>
+<div class="code"><span class="lang">text</span><pre><code>bundleIdentifier, url, windowID, clickCount, text, selectedText
+eventsPath, eventCount, suppressedEventCount
+directoryURL, eventsURL, metadataURL, suppressedEventsURL</code></pre></div>
+<p>Swift 构造器还带 <code>diagnostic: EventStreamDiagnostic?</code>。没有 <code>typedText</code> 这个键；键盘输入走 <code>keyboard</code> + kind <code>keyboardTextInput</code>，缓冲在 <code>_textBuffer</code> / <code>_textFlushTask</code>。</p>
+<h3 id="9-2-eventstreameventkind-完整枚举">9.2 <code>EventStreamEventKind</code>（完整枚举）</h3>
+<p>反射字符串里 8 个 case，与 JSON raw value 一一对应：</p>
+<div class="tw"><table>
+<tr><th>Swift case</th><th>JSON <code>kind</code></th></tr>
+<tr><td><code>appWindowChanged</code></td><td><code>window.changed</code></td></tr>
+<tr><td><code>mouseClick</code></td><td><code>mouse.click</code></td></tr>
+<tr><td><code>mouseContextMenu</code></td><td><code>mouse.context_menu</code></td></tr>
+<tr><td><code>mouseDrag</code></td><td><code>mouse.drag</code></td></tr>
+<tr><td><code>keyboardTextInput</code></td><td><code>keyboard.text_input</code></td></tr>
+<tr><td><code>keyboardSubmit</code></td><td><code>keyboard.submit</code></td></tr>
+<tr><td><code>keyboardShortcut</code></td><td><code>keyboard.shortcut</code></td></tr>
+<tr><td><code>selectionChanged</code></td><td><code>selection.changed</code></td></tr>
+</table></div>
+<p>二进制里另外还有 <code>terminal.value_changed</code>、<code>session.started</code>、<code>session.ended</code>。后两个更像 Record &amp; Replay 的 <code>session.json</code> 边界，不一定是 Computer History 的 EventKind。<code>terminal.value_changed</code> 对着终端 bundle 表，可能是终端专用分类，不在这 8 个 case 里。</p>
+<p>底层 AX 通知（先变成 pending，再 debounce 成上面的 kind）：</p>
+<p><code>AXApplicationActivated</code> / <code>Deactivated</code> / <code>Shown</code> / <code>Hidden</code>，<code>AXFocusedUIElementChanged</code>，<code>AXFocusedWindowChanged</code>，<code>AXMainWindowChanged</code>，<code>AXSelectedTextChanged</code>，<code>AXSelectedChildrenChanged</code>，<code>AXWindowMiniaturized</code> / <code>Deminiaturized</code>，<code>AXUIElementDestroyed</code>，<code>AXMenuItemSelected</code>。</p>
+<p>AX 树：<code>EventStreamAXTree</code> + <code>Mode</code>；<code>isAXTreeDiffingEnabled</code>、feature <code>axTreeDiffing</code>。diff 语法：<code>~</code> / <code>+</code> / <code>-</code>。残留路径：<code>ComputerUse/RefetchableSkyshotAXTree.swift</code>。</p>
+<h3 id="9-2-1-采集循环-service-字段-不再是黑盒">9.2.1 采集循环（Service 字段，不再是黑盒）</h3>
+<p><code>EventStreamRecorder</code> 内部状态（reflstr）：</p>
+<div class="code"><span class="lang">text</span><pre><code>_eventTap
+_currentAppPID
+_frontmostAppObserver
+_axObserver
+_previousWindowRevision
+_previousWindowRevisionWindowID
+_latestURLByWindowID
+_mouseDown
+_textBuffer
+_textFlushTask
+_pendingAXNotificationRecords
+_axNotificationDebounceTasks
+onSuppressedRecord / _onSuppressedRecordStored
+_shouldCaptureApplication</code></pre></div>
+<p>对应 CG 层：<code>clickEventTap</code>、<code>keyboardEventTap</code>、<code>mouseEventTaps</code>、<code>mouseDown</code> / <code>mouseUp</code> / <code>mouseDragged</code> / <code>mouseMoved</code>。</p>
+<p>流程：</p>
+<ol>
+<li>EventTap 收鼠标/键盘；AXObserver 收焦点、选区、窗口。</li>
+<li>鼠标按下记在 <code>_mouseDown</code>，松手合成 <code>mouseClick</code> / <code>mouseDrag</code> / <code>mouseContextMenu</code>。</li>
+<li>按键进 <code>_textBuffer</code>，debounce flush 成 <code>keyboardTextInput</code>；回车/快捷键单独成 <code>keyboardSubmit</code> / <code>keyboardShortcut</code>。</li>
+<li>AX 通知进 <code>_pendingAXNotificationRecords</code>，debounce 后合成 <code>appWindowChanged</code> / <code>selectionChanged</code>。</li>
+<li><code>_latestURLByWindowID</code> 给浏览器记录补 URL。</li>
+<li><code>EventStreamRecordFilter</code> + <code>EventStreamURLPolicyRecordFilter</code>：过不了就 <code>appendSuppressed</code> → <code>suppressed.jsonl</code>。</li>
+<li>通过则 <code>EventStreamJSONLWriter</code> append → 当前 segment 的 <code>events.jsonl</code>。</li>
+</ol>
+<p>抑制原因（reflstr，对应 <code>SkysightObservationSuppressionReason</code>）：</p>
+<div class="code"><span class="lang">text</span><pre><code>applicationExcluded
+privateBrowsingExcluded
+urlExcluded
+urlPolicyBlocked</code></pre></div>
+<p>另有错误态：<code>appNotAllowed</code>、<code>recorderSuppressed</code>、<code>appGroupContainerUnavailable</code>。</p>
+<h3 id="9-3-硬编码特殊-bundle-service-连续字符串表">9.3 硬编码特殊 bundle（Service 连续字符串表）</h3>
+<p>密码器（几乎肯定默认抑制 / 特殊处理）：</p>
+<div class="code"><span class="lang">text</span><pre><code>com.1password.1password
+com.1password.safari
+com.bitwarden.desktop
+com.dashlane.dashlanephonefinal
+com.lastpass.LastPass
+com.nordsec.nordpass
+me.proton.pass.electron
+me.proton.pass.catalyst</code></pre></div>
+<p>终端（对应 <code>terminal.value_changed</code>）：</p>
+<div class="code"><span class="lang">text</span><pre><code>com.apple.Terminal
+com.googlecode.iterm2
+dev.warp.Warp-Stable
+net.kovidgoyal.kitty
+com.github.wez.wezterm
+com.mitchellh.ghostty
+com.raphaelamorim.rio
+dev.commandline.waveterm</code></pre></div>
+<p>本产品（避免录自己）：</p>
+<div class="code"><span class="lang">text</span><pre><code>com.openai.codex / .alpha / .beta / .dev / .nightly
+com.openai.chat.alpha / .beta / .nightly / .mac-debug
+com.openai.atlas / .alpha / .beta</code></pre></div>
+<p>浏览器（走 URL 策略 + 无痕检测，不是一律不记）：</p>
+<div class="code"><span class="lang">text</span><pre><code>com.google.Chrome
+com.apple.Safari
+com.brave.Browser
+com.microsoft.edgemac
+com.operasoftware.Opera
+com.vivaldi.Vivaldi
+company.thebrowser.Browser / .browser / .dia
+org.chromium.Chromium
+ai.perplexity.comet
+com.openai.atlas*</code></pre></div>
+<p>紧接着是 <code>com.apple.UserNotificationCenter</code>、<code>LocalAuthenticationRemoteService</code>、<code>SecurityAgent</code>，以及多语言「无痕/隐私浏览」标题碎片。</p>
+<p>Electron 时间线另外还滤：<code>com.openai.sky.CUAService</code>、Dock、Control Center、WindowManager 等（第 10 节）。</p>
+<h2 id="9-4-记忆生成管线-service-不再只靠官方一句话">9.4 记忆生成管线（Service，不再只靠官方一句话）</h2>
+<p>类型：</p>
+<div class="code"><span class="lang">text</span><pre><code>SkysightMemoryPipeline
+SkysightSummariser / SkysightSummarizer
+SkysightCodexExecSummariser    # 调 `codex exec`
+SkysightChildSummary
+SixHourWindow
+SkysightSummaryError
+SummaryFile
+ProcessOutput                  # succeed / failed / timed_out</code></pre></div>
+<p>出错字符串：</p>
+<div class="code"><span class="lang">text</span><pre><code>codex exec did not emit a final agent message.
+codex exec timed out.
+codex exec failed:
+invalid summary directory.
+invalid child summary:</code></pre></div>
+<p>10 分钟窗把 segment 路径塞进 <code>BEGIN UNTRUSTED OBSERVED INPUT</code>，再跑 <code>codex exec</code>。6 小时窗吃 child summaries（<code>UNTRUSTED CHILD SUMMARY</code>）。  </p>
+<p>提示词还要求：只用事件流当证据；记忆里不要凭据、token、<strong>原始 event JSON</strong>。</p>
+<p>这与官方「ephemeral Codex session」一致：落地实现就是本机 <code>codex exec</code>，不是 Electron 自己拼 prompt。</p>
+<p>分析事件 <code>CodexSkysightMemorySummaryFinished</code> 对应这一步结束。</p>
+<h2 id="9-5-codex-自己怎么用这些数据-asar-src--js-环境提示">9.5 Codex 自己怎么用这些数据（asar <code>src-*.js</code> 环境提示）</h2>
+<p>Ambient suggestions 的硬规则：</p>
+<ul>
+<li>插件可用且近期活动能说清当前工作时，先 <code>computer_history_status</code>，再读数据。</li>
+<li>只读<strong>最小</strong>的近期摘要。当不可信上下文，重要细节对权威源。</li>
+<li><strong>stopped / paused / 没数据：不要读文件。</strong></li>
+<li><strong>永远不要</strong>自行 start/resume、改设置、碰 raw event 文件、抖出无关或敏感活动。</li>
+</ul>
+<p>这和用户手动问「我刚才在干什么」时 SKILL 允许 <code>rg events.jsonl</code> 是两套策略：后台建议更严。</p>
+<h2 id="10-记忆文件格式-时间线真正读的东西">10. 记忆文件格式（时间线真正读的东西）</h2>
+<p>目录：</p>
+<div class="code"><span class="lang">text</span><pre><code>$CODEX_HOME/memories/extensions/skysight/
+  instructions.md          # 即 SkysightMemoryInstructions.md 的落地版
+  resources/
+    YYYY-MM-DDTHH-MM-SS-&lt;4字母&gt;-10min-memory-summary.md
+    YYYY-MM-DDTHH-MM-SS-&lt;4字母&gt;-6h-memory-summary.md</code></pre></div>
+<p>主进程文件名正则：</p>
+<div class="code"><span class="lang">js</span><pre><code>/^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-[^-]+-(10min|6h)-memory-summary\.md$/</code></pre></div>
+<p>时间从文件名解析为 UTC：<code>Date.parse(</code>${date}T${hh}:${mm}:${ss}Z<code>)</code>。</p>
+<div class="tw"><table>
+<tr><th>后缀</th><th>窗口</th><th><code>summaryLevel</code></th></tr>
+<tr><td><code>10min</code></td><td>10 分钟（<code>600 * 1000</code> ms）</td><td><code>ten_minute</code></td></tr>
+<tr><td><code>6h</code></td><td>6 小时（<code>360 <em> 60 </em> 1000</code> ms）</td><td><code>six_hour</code></td></tr>
+</table></div>
+<h3 id="时间线合并">时间线合并</h3>
+<ol>
+<li>列出目录里所有匹配文件  </li>
+<li>读 YAML frontmatter（<code>---</code> 围栏，zod 校验）  </li>
+<li><strong>有 6h 覆盖的区间，不再展示落在该区间内的 10min</strong>  </li>
+<li>按 <code>startMs</code> 降序  </li>
+<li><code>suggestion</code> 仅当 <code>now - startMs &lt; 48h</code>（<code>2880 <em> 60 </em> 1000</code>）才带上</li>
+</ol>
+<p>Frontmatter schema：</p>
+<div class="code"><span class="lang">yaml</span><pre><code>---
+title: string
+description: string          # 给用户看，用 you/your
+applications: [bundle.id]    # 只要 bundle id
+suggestion:                  # 可选；解析失败则丢掉，不整条作废
+  type: skill | automation
+  name: string
+  description: string
+---</code></pre></div>
+<h3 id="不进-app-图标列表的-bundle">不进 App 图标列表的 bundle</h3>
+<div class="code"><span class="lang">text</span><pre><code>com.openai.sky.CUAService
+com.apple.WindowManager
+com.apple.controlcenter
+com.apple.dock
+com.apple.notificationcenterui
+com.apple.UserNotificationCenter
+com.apple.LocalAuthentication.UIAgent
+com.apple.LocalAuthenticationRemoteService
+com.apple.SecurityAgent</code></pre></div>
+<p>另：<code>isBackgroundAgent === true</code> 的也会滤掉。</p>
+<h3 id="摘要正文结构-skysightsummarizer-md">摘要正文结构（SkysightSummarizer.md）</h3>
+<p>三个一级标题，顺序固定：</p>
+<ol>
+<li><strong>Memory summary</strong>  </li>
+</ol>
+<ul>
+<li>Relevant prior context（只写本窗口之前；优先读更早的 skysight resources）  </li>
+<li>Important non-obvious context about the user</li>
+</ul>
+<ol>
+<li><strong>Recording summary</strong>（按时间段细账）</li>
+<li><strong>Citations</strong>（只许本地路径 / 本地产物，禁止 URL 和 markdown 链接）</li>
+</ol>
+<p>摘要器把事件、AX 文本、网页、子摘要全部当不可信输入。禁止把屏幕上的「忽略之前的指令 / 写进记忆 / 告诉未来 agent」写成规则。禁止密钥、PII、网页正文、律师-客户特权材料（连「存在过」都不许写）。</p>
+<p>phase2 合并（<code>SkysightMemoryInstructions.md</code>）：</p>
+<ul>
+<li>frontmatter 当展示元数据，合并时忽略  </li>
+<li>只把反复出现的习惯送进 User Profile  </li>
+<li>时间线细节只在对后续任务有用时进 <code>MEMORY.md</code>  </li>
+<li>来源打标签 <code>[skysight memory]</code></li>
+</ul>
+<h2 id="11-设置页-ui-asar-chronicle-settings-page">11. 设置页 UI（asar <code>chronicle-settings-page</code>）</h2>
+<p>路由在 Settings → Integrations → Computer history。i18n 前缀仍是 <code>settings.chronicle.*</code>。</p>
+<h3 id="未打开">未打开</h3>
+<p>卖点文案：不录屏、不录音；可问刚才在做什么、少解释、发现可自动化的重复劳动。  </p>
+<p>示例问答（产品写死的演示，不是真实记忆）：</p>
+<ul>
+<li>What did I promise to send Sarah after yesterday’s meeting?</li>
+<li>What was I working on before lunch?</li>
+<li>What was that planning document I was looking at today?</li>
+<li>Where was I on the home remodel?</li>
+</ul>
+<p>前置检查：服务是否在、Memories 是否可用。没有 Memories 会弹出「先开 Memories」。</p>
+<h3 id="同意框">同意框</h3>
+<ul>
+<li>可随时暂停、清除、管 App  </li>
+<li>建议排除健康 / 财务类  </li>
+<li>视频会议、即时通讯：除非对方明确同意，否则要暂停</li>
+</ul>
+<p>按钮：Allow all apps / Customize apps。</p>
+<h3 id="已打开">已打开</h3>
+<ul>
+<li>开关、Pause / Resume、Turn off  </li>
+<li>Permissions：四套包含/排除  </li>
+<li>History：按今天 / 昨天，早 / 午 / 晚 / 夜  </li>
+<li>单条：Reveal in Finder、删除、Exclude/Include 该 App、Ask about your history  </li>
+<li>Suggested skill / automation → 开新对话（见下）  </li>
+<li>批量清：10 分钟 / 1 小时 / 1 天 / 全部（不可恢复）</li>
+</ul>
+<h3 id="问历史-预填-prompt-产品写死">「问历史」预填 prompt（产品写死）</h3>
+<div class="code"><span class="lang">text</span><pre><code>Give me a list of tasks I’ve worked on today and their status
+Prepare a summary of what I did yesterday for standup
+Where can I find the proposal document I was looking for earlier today?
+Who contacted me today that I need to follow up with?
+Roast my computer behavior
+How often do I get distracted, and what usually pulls me off task?
+Give me feedback on how I operate day to day
+Analyse the writing samples you have from me and describe my writing style with examples and guidelines
+Create a reusable skill that writes like me
+What keyboard shortcuts do I use most? And which should I be using more?
+Where am I being ineffective, and what should I be using AI for instead?
+What is my most commonly used phrase?
+How do I split my time between focused work, switching tabs, and returning to unfinished tasks?
+What was I working on before my last break?</code></pre></div>
+<h3 id="suggestion-新对话">Suggestion → 新对话</h3>
+<p>skill：</p>
+<div class="code"><span class="lang">text</span><pre><code>Create a new &quot;{name}&quot; skill based on the description below.
+Consult the memory at {memoryFilePath} and the events.jsonl files cited there
+to understand the recorded workflow and my actions.
+
+&quot;{request}&quot;</code></pre></div>
+<p>automation 额外一句：<code>Use my local timezone and a new chat for scheduled runs.</code></p>
+<p>未读 skill 建议会堆在 atom 里；打开相关 UI 后清掉。建议去重：同 <code>type</code> + 小写 trim 后的 <code>name</code> + 时间区间相交。</p>
+<p>Query key：<code>[&quot;chronicle-history&quot;]</code>，suggestions / summary-intervals 是它的派生。<code>staleTime: 0</code>，聚焦窗口会重拉。  </p>
+<p>summary-intervals 默认回看 <code>10080 <em> 60 </em> 1000</code> ms = <strong>7 天</strong>。</p>
+<p>另有 Statsig / 实验 id <code>3488289778</code>：不满足则前端不把 Computer History suggestions 当可用。</p>
+<h2 id="12-插件-mcp-agent-用法">12. 插件 / MCP / Agent 用法</h2>
+<p>插件 <code>computer-history</code> <code>1.0.1000761</code>，Proprietary，category Productivity。</p>
+<p>MCP 工具（SKILL + <code>ComputerHistoryMCPServer</code> 二进制文案）：</p>
+<div class="tw"><table>
+<tr><th>工具</th><th>作用</th></tr>
+<tr><td><code>computer_history_status</code></td><td>状态 + 近期活动文件路径</td></tr>
+<tr><td><code>computer_history_pause</code></td><td>暂停但不关闭功能；原生 duration：<code>thirtyMinutes</code> / <code>oneHour</code> / <code>untilTomorrow</code></td></tr>
+<tr><td><code>computer_history_resume</code></td><td>继续</td></tr>
+<tr><td><code>computer_history_get_settings</code></td><td>读完整策略</td></tr>
+<tr><td><code>computer_history_update_settings</code></td><td>整份覆盖；非法设置报 <code>Invalid Computer History settings:</code></td></tr>
+</table></div>
+<p>SKILL 要求：</p>
+<ol>
+<li>先 <code>computer_history_status</code>，再用 <code>date</code> 对时间  </li>
+<li>问大范围先读 6h，再下钻 10min  </li>
+<li>问刚发生的事：<code>rg</code> <code>events.jsonl</code>（App、窗口、URL、选中、输入、焦点、目标、AX）  </li>
+<li><strong>认到源之后立刻切 connector / 文件系统 / App skill</strong>，不要靠事件残缺文本干活  </li>
+<li>不要用 Record &amp; Replay 的工具回答「我刚才在干什么」  </li>
+<li>不要手改磁盘上的 settings，只用 MCP</li>
+</ol>
+<p>默认快捷 prompt：</p>
+<ul>
+<li>Pause Computer History while I work on something private  </li>
+<li>What was I doing recently?  </li>
+<li>Exclude Slack from Computer History  </li>
+</ul>
+<h2 id="13-和-codex-memories-的关系">13. 和 Codex Memories 的关系</h2>
+<p>Computer History <strong>依赖</strong> Memories，单独开不了。</p>
+<div class="tw"><table>
+<tr><th></th><th>ChatGPT 网页 Memory</th><th>本地 Codex Memories</th><th>Computer History</th></tr>
+<tr><td>来源</td><td>聊天里模型决定记住的</td><td>空闲会话摘要 + 合并</td><td>电脑上的真实操作</td></tr>
+<tr><td>存储</td><td>云端</td><td><code>~/.codex/memories/</code></td><td>事件 → skysight md → 可选并入本地 Memories</td></tr>
+<tr><td>控制</td><td>Personalization</td><td><code>/memories</code>、<code>[features] memories</code></td><td>Settings &gt; Computer history + 菜单栏</td></tr>
+<tr><td>粒度</td><td>长期偏好</td><td>会话 / 项目</td><td>10min / 6h 时间线</td></tr>
+</table></div>
+<p>本地 Memories 自己还会：跳过进行中/太短的会话；额度低了不抽；<code>memories.disable_on_external_context</code> 可排除用过 MCP / web search 的会话。</p>
+<p>摘要消耗 <strong>Codex token</strong>。开着等于后台持续有 summarizer。</p>
+<h2 id="14-从-chronicle-迁到-computer-history">14. 从 Chronicle 迁到 Computer History</h2>
+<p>产品说法：replaces Chronicle, rebuilt system rather than a rename。</p>
+<p>打开 Computer History 时归档旧 skill（主进程 <code>ire()</code>）：</p>
+<div class="tw"><table>
+<tr><th>源</th><th>去向</th></tr>
+<tr><td><code>~/.codex/skills/chronicle</code></td><td><code>~/.codex/skysight/migration/legacy-chronicle-skill/&lt;ts-uuid&gt;/skill</code></td></tr>
+<tr><td><code>~/.codex/.codex-chronicle-assets-to-install.marker</code></td><td>同目录 <code>marker</code></td></tr>
+<tr><td>元数据</td><td>同目录 <code>metadata.json</code>（originalPath、hash、reason=<code>skysight_gate_enabled</code>、时间）</td></tr>
+</table></div>
+<p>跨卷用 copy + rm。归档成功会 <code>broadcastQueryCacheInvalidation([&quot;skills&quot;])</code>。</p>
+<p>旧记忆目录 <code>~/.codex/memories_extensions/chronicle/resources/</code> <strong>新时间线不读</strong>。  </p>
+<p>旧录屏：<code>$TMPDIR/chronicle/screen_recording/</code>（latest.jpg、ocr.jsonl、1min 帧）。约 6 小时删除。需要 Screen Recording。</p>
+<h2 id="15-隐私与安全">15. 隐私与安全</h2>
+<p>官方承诺不进历史：截屏、屏幕录像、麦克风、系统音频、隐私浏览。</p>
+<p>仍会进事件、再被摘要：打的字（安全输入框能否挡住取决于 App）、选中文本、窗口标题、AX 可见文字。</p>
+<p>磁盘：</p>
+<ul>
+<li>skysight Markdown <strong>明文、未加密</strong>  </li>
+<li>事件在 App Group；同用户进程 / 备份 / 同步盘仍可能看到  </li>
+</ul>
+<p>上传：</p>
+<ol>
+<li>周期性：事件 → OpenAI 写记忆。官方称事后不留事件、不训练。  </li>
+<li>以后对话引用记忆：记忆进该次 chat，是否训练看 data controls。</li>
+</ol>
+<p>Prompt injection：文档写明，恶意网页指令可能被 ChatGPT / Codex 执行。摘要器做了隔离；记忆再进后续对话时隔离变弱。</p>
+<p>官方建议：通讯应用先暂停或排除；健康 / 财务 / 密码器直接 exclude。</p>
+<h2 id="16-官方产品能力-文档口径">16. 官方产品能力（文档口径）</h2>
+<p>用途：</p>
+<ul>
+<li>休息前在干什么  </li>
+<li>用记得的说法找回文档 / 对话  </li>
+<li>重复劳动 → 建议 skill / automation，再让 Codex 做  </li>
+</ul>
+<p>定位：history 用来 <strong>认源</strong>，认完去读 Google Doc / Slack / 本地文件，不要把摘要当原文。</p>
+<p>官方文档 <a href="https://learn.chatgpt.com/docs/customization/computer-history">learn.chatgpt.com/docs/customization/computer-history</a></p>
+<p>Memories <a href="https://learn.chatgpt.com/docs/customization/memories">learn.chatgpt.com/docs/customization/memories</a></p>
+<h2 id="17-本机状态-2026-08-19-检查">17. 本机状态（2026-08-19 检查）</h2>
+<div class="tw"><table>
+<tr><th>项</th><th>状态</th></tr>
+<tr><td>ChatGPT.app / Sky</td><td>已装，版本见第 3 节</td></tr>
+<tr><td><code>chronicle-consent-accepted</code></td><td><code>true</code>（旧 Chronicle 同意过）</td></tr>
+<tr><td><code>chronicle-setup-completion-pending</code></td><td><code>false</code></td></tr>
+<tr><td><code>config.toml</code> <code>[features] memories</code></td><td><strong>没有</strong></td></tr>
+<tr><td><code>~/.codex/memories/extensions/skysight/</code></td><td><strong>不存在</strong></td></tr>
+<tr><td>旧 Chronicle 记忆</td><td><code>~/.codex/memories_extensions/chronicle/resources/</code>，<strong>242</strong> 条，2026-04-28～05-12</td></tr>
+<tr><td><code>~/.codex/skills/chronicle</code></td><td>还在（尚未被 <code>skysight_gate_enabled</code> 归档）</td></tr>
+<tr><td>Computer History 插件</td><td>在 ChatGPT.app 和 <code>~/.codex/.tmp/bundled-marketplaces/</code>；<code>plugins/cache</code> 里没有常驻一份</td></tr>
+</table></div>
+<p>结论：这台机器用过旧 Chronicle，<strong>还没让新 Computer History 写出过记忆</strong>。设置页时间线会是空的。旧 242 条不会出现在新时间线里。</p>
+<p>若要开：</p>
+<ol>
+<li>Settings → Personalization → Enable memories  </li>
+<li>Settings → Integrations → Computer history → Turn on  </li>
+<li>排除 1Password / 钥匙串 / 银行 / 医疗 / 不想被记的聊天软件  </li>
+<li>约 20 分钟后看 <code>~/.codex/memories/extensions/skysight/resources/</code> 是否出现第一条 <code>*-10min-memory-summary.md</code></li>
+</ol>
+<h2 id="18-证据清单">18. 证据清单</h2>
+<ul>
+<li><code>/Applications/ChatGPT.app/Contents/Resources/app.asar</code>：<code>main-<em>.js</code>、<code>src-</em>.js</code>、<code>chronicle-settings-page-<em>.js</code>、<code>computer-history-</em>.js</code></li>
+<li><code>SkyComputerUseClient</code>（13.8MB）字符串 / <code>--help</code> / MCP 文案</li>
+<li><code>SkyComputerUseService</code>（21.3MB）类型名、kind 字符串、摘要管线、bundle 表、内嵌提示词、<code>__TEXT.__swift5_reflstr</code> 字段/枚举</li>
+<li>Group Container <code>2DC432GLL2.com.openai.sky.CUAService</code>（仅 <code>IPC/computeruse.sock</code>，无 segment）</li>
+<li>插件 <code>computer-history</code>、<code>record-and-replay</code> 的 SKILL / plugin.json</li>
+<li><code>SkysightSummarizer.md</code>、<code>SkysightMemoryInstructions.md</code></li>
+<li><code>~/.codex/.codex-global-state.json</code>、<code>config.toml</code>、本机目录</li>
+<li>官方 Learn 文档（2026-08）</li>
+</ul>
+<p>没有 <code>.swift</code> 源文件，也没有跑过 Skysight 的真实 <code>events.jsonl</code>。</p>
+<h2 id="19-完整度-相对-实现说明书">19. 完整度（相对「实现说明书」）</h2>
+<div class="tw"><table>
+<tr><th>块</th><th>状态</th></tr>
+<tr><td>命名、开关、归档、时间线读盘</td><td>完整（asar）</td></tr>
+<tr><td>观察策略 schema、清除范围、暂停档位</td><td>完整</td></tr>
+<tr><td>MCP 工具名与文案</td><td>完整；JSON Schema 原文未嵌入二进制</td></tr>
+<tr><td><code>EventStreamEventKind</code> 8 case + JSON raw value</td><td>完整（<code>__swift5_reflstr</code>）</td></tr>
+<tr><td>Record 字段、抑制原因、采集循环内部状态</td><td>完整（reflstr 字段表）</td></tr>
+<tr><td>摘要：<code>codex exec</code> + 10min/6h 任务名</td><td>完整到管线；模型名/超时秒数未出现在字符串里</td></tr>
+<tr><td>硬编码密码器/终端/浏览器/无痕标题</td><td>完整</td></tr>
+<tr><td>事件 TTL</td><td>有 <code>ttl</code> / <code>expiresAt</code> / <code>retainUntil</code>，与文档 48h、建议窗口 48h 对齐；字面量秒数未写出</td></tr>
+<tr><td><code>segmentDurationSeconds</code> 的数字</td><td>字段有，运行时才填；上界是 10 分钟摘要</td></tr>
+<tr><td>真实 <code>events.jsonl</code> 一行样本</td><td>本机没有。要打开 Computer History 才会出现</td></tr>
+<tr><td>App Group 里的 segment 目录</td><td>容器在 <code>2DC432GLL2.com.openai.sky.CUAService</code>，目前只有 <code>IPC/computeruse.sock</code></td></tr>
+<tr><td>设置页 14MB chunk 状态机</td><td>i18n + activation 字段已覆盖产品行为</td></tr>
+</table></div>
+<h2 id="20-压缩结论">20. 压缩结论</h2>
+<p>Computer History 是 ChatGPT.app 在 macOS Apple Silicon 上的被动工作记忆。Electron 管开关、时间线、插件；<code>SkyComputerUseService</code> 用 Accessibility / EventTap 写成 <code>EventStreamRecord</code> JSONL（<code>mouse.click</code>、<code>keyboard.text_input</code> 这类 kind），再 <code>codex exec</code> 跑 <code>SkysightSummarizer.md</code> 变成 <code>memories/extensions/skysight/resources</code> 里的 10 分钟 / 6 小时 Markdown。配置 key 仍叫 <code>chronicle</code>，IPC 叫 <code>skysight</code>。</p>
+<p>采集循环、事件 kind、抑制原因、TTL 字段已经从 Swift 反射段补全。本机仍然没有一行真实 <code>events.jsonl</code>——那要打开功能才会写到 App Group。没开的话，这份就是安装包能还原的全部。</p>
+</main>
+</div>
+</body>
+</html>
