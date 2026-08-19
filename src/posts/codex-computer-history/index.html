@@ -94,6 +94,10 @@
 </nav>
 <main>
 <h1>Codex / ChatGPT App · Computer History 完整记录</h1>
+<figure class="fig">
+  <img src="cover.svg" alt="Computer History、chronicle、skysight 三个名字，以及 App 到 events.jsonl 再到 Markdown 记忆的管线">
+  <figcaption>封面按正文画：三个内部名，再加上采集到记忆的那条路。</figcaption>
+</figure>
 <p>记录日期：2026-08-19  </p>
 <p>对象：ChatGPT 桌面端（macOS）里的 <strong>Computer History</strong>，不是会话 history、不是内置浏览器 OwlHistory、也不是旧 Chronicle 录屏本身。  </p>
 <p>性质：对着本机安装包还原。Electron 来自未加密 <code>app.asar</code>（无 source map）。采集内核是 <code>SkyComputerUseService</code>（Mach-O / Swift），没有 <code>.swift</code> 源文件，但类型名、JSON <code>kind</code>、摘要管线、硬编码 bundle 列表能从字符串完整抽出。  </p>
