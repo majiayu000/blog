@@ -49,7 +49,12 @@
   th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
   th{font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);font-weight:600}
   td:first-child{color:var(--ink)}
-  @media(max-width:900px){.shell{grid-template-columns:1fr}nav{display:none}}
+  figure.fig{margin:18px 0 6px}
+  figure.fig img, figure.fig svg{width:100%;height:auto;border-radius:12px;border:1px solid var(--line);display:block;background:var(--card)}
+  figcaption{font-size:13px;color:var(--faint);margin:8px 0 22px;line-height:1.5}
+  .kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
+  .kinds span{display:block;font-family:var(--mono);font-size:12px;padding:10px 8px;background:var(--soft);border:1px solid var(--line);border-radius:8px;color:var(--ink);text-align:center}
+  @media(max-width:900px){.shell{grid-template-columns:1fr}nav{display:none}.kinds{grid-template-columns:repeat(2,1fr)}}
 
 </style>
 </head>
@@ -89,6 +94,10 @@
 </nav>
 <main>
 <h1>Codex / ChatGPT App · Computer History 完整记录</h1>
+<figure class="fig">
+  <img src="cover.jpg" alt="夜间书桌上的 Mac，键盘上方浮着一层浅青色的界面节点图">
+  <figcaption>它不截屏。它把点击、选中的字和窗口标题收成记忆。</figcaption>
+</figure>
 <p>记录日期：2026-08-19  </p>
 <p>对象：ChatGPT 桌面端（macOS）里的 <strong>Computer History</strong>，不是会话 history、不是内置浏览器 OwlHistory、也不是旧 Chronicle 录屏本身。  </p>
 <p>性质：对着本机安装包还原。Electron 来自未加密 <code>app.asar</code>（无 source map）。采集内核是 <code>SkyComputerUseService</code>（Mach-O / Swift），没有 <code>.swift</code> 源文件，但类型名、JSON <code>kind</code>、摘要管线、硬编码 bundle 列表能从字符串完整抽出。  </p>
@@ -107,6 +116,22 @@
 </table></div>
 <p>Computer History 打开时会把旧 Chronicle <strong>skill</strong> 归档，采集改走 Skysight。旧 Chronicle 的 242 条 md <strong>不会</strong>被新时间线读取。</p>
 <h2 id="2-三个名字对照">2. 三个名字对照</h2>
+<figure class="fig">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 220" role="img" aria-label="同一功能的三个内部名">
+  <rect width="820" height="220" fill="var(--card)"/>
+  <text x="28" y="36" fill="var(--faint)" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="12">one feature, three names</text>
+  <rect x="28" y="56" width="240" height="128" rx="12" fill="var(--soft)" stroke="var(--acc)" stroke-width="1.5"/>
+  <text x="148" y="108" text-anchor="middle" fill="var(--ink)" font-family="PingFang SC, sans-serif" font-size="18" font-weight="650">Computer History</text>
+  <text x="148" y="134" text-anchor="middle" fill="var(--muted)" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="12">settings page</text>
+  <rect x="290" y="56" width="240" height="128" rx="12" fill="var(--soft)" stroke="var(--line)"/>
+  <text x="410" y="108" text-anchor="middle" fill="var(--ink)" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="18" font-weight="650">chronicle</text>
+  <text x="410" y="134" text-anchor="middle" fill="var(--muted)" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="12">config / i18n</text>
+  <rect x="552" y="56" width="240" height="128" rx="12" fill="var(--soft)" stroke="var(--acc2)"/>
+  <text x="672" y="108" text-anchor="middle" fill="var(--ink)" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="18" font-weight="650">skysight</text>
+  <text x="672" y="134" text-anchor="middle" fill="var(--muted)" font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="12">native IPC / flag</text>
+</svg>
+<figcaption>用户看见 Computer History。配置还叫 chronicle。采集叫 skysight。</figcaption>
+</figure>
 <p>同一功能在包里同时存在：</p>
 <div class="tw"><table>
 <tr><th>层</th><th>名字</th></tr>
@@ -196,6 +221,48 @@ webview/assets/computer-history-suggestion-prompt-*.js
   &amp;&amp; userConfig.features.memories === true
   &amp;&amp; userConfig.features.chronicle === true</code></pre></div>
 <h2 id="5-架构">5. 架构</h2>
+<figure class="fig">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 430" role="img" aria-label="Computer History 数据流">
+  <rect width="820" height="430" fill="var(--card)"/>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--faint)"/>
+    </marker>
+  </defs>
+  <g font-family="PingFang SC, sans-serif">
+    <rect x="40" y="28" width="180" height="64" rx="10" fill="var(--soft)" stroke="var(--line)"/>
+    <text x="130" y="56" text-anchor="middle" fill="var(--ink)" font-size="14" font-weight="650">允许的 App / 网站</text>
+    <text x="130" y="76" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="ui-monospace, Menlo, monospace">clicks · AX · URLs</text>
+    <line x1="220" y1="60" x2="268" y2="60" stroke="var(--faint)" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="276" y="28" width="220" height="64" rx="10" fill="var(--soft)" stroke="var(--acc2)"/>
+    <text x="386" y="56" text-anchor="middle" fill="var(--ink)" font-size="14" font-weight="650">SkyComputerUseService</text>
+    <text x="386" y="76" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="ui-monospace, Menlo, monospace">EventTap + AXObserver</text>
+    <line x1="496" y1="60" x2="544" y2="60" stroke="var(--faint)" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="552" y="28" width="228" height="64" rx="10" fill="var(--soft)" stroke="var(--line)"/>
+    <text x="666" y="56" text-anchor="middle" fill="var(--ink)" font-size="14" font-weight="650">SkyComputerUseClient</text>
+    <text x="666" y="76" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="ui-monospace, Menlo, monospace">skysight* IPC</text>
+    <line x1="666" y1="92" x2="666" y2="128" stroke="var(--faint)" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="512" y="136" width="268" height="64" rx="10" fill="var(--soft)" stroke="var(--acc)"/>
+    <text x="646" y="164" text-anchor="middle" fill="var(--ink)" font-size="14" font-weight="650">ChatGPT.app recorder</text>
+    <text x="646" y="184" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="ui-monospace, Menlo, monospace">enable / pause / archive skill</text>
+    <line x1="512" y1="168" x2="308" y2="168" stroke="var(--faint)" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="40" y="136" width="260" height="64" rx="10" fill="var(--soft)" stroke="var(--warn)"/>
+    <text x="170" y="164" text-anchor="middle" fill="var(--ink)" font-size="14" font-weight="650">events.jsonl · 48h TTL</text>
+    <text x="170" y="184" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="ui-monospace, Menlo, monospace">+ suppressed.jsonl</text>
+    <line x1="170" y1="200" x2="170" y2="236" stroke="var(--faint)" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="40" y="244" width="260" height="64" rx="10" fill="var(--soft)" stroke="var(--mag)"/>
+    <text x="170" y="272" text-anchor="middle" fill="var(--ink)" font-size="14" font-weight="650">codex exec</text>
+    <text x="170" y="292" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="ui-monospace, Menlo, monospace">SkysightSummarizer.md</text>
+    <line x1="300" y1="276" x2="388" y2="276" stroke="var(--faint)" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="396" y="244" width="384" height="64" rx="10" fill="var(--soft)" stroke="var(--acc2)"/>
+    <text x="588" y="272" text-anchor="middle" fill="var(--ink)" font-size="14" font-weight="650">~/.codex/memories/extensions/skysight/</text>
+    <text x="588" y="292" text-anchor="middle" fill="var(--muted)" font-size="11" font-family="ui-monospace, Menlo, monospace">10min md  →  6h rollup  →  MEMORY.md</text>
+    <text x="40" y="360" fill="var(--faint)" font-size="13">下次对话若引用记忆，Markdown 正文会进那次请求。原始事件官方称处理后不留。</text>
+    <text x="40" y="384" fill="var(--faint)" font-size="13">同一客户端还提供 Computer Use（mcp）和 Record &amp; Replay（event-stream mcp）。</text>
+  </g>
+</svg>
+<figcaption>Electron 管开关。21MB 的 SkyComputerUseService 管采集。记忆是本机 <code>codex exec</code> 压出来的 Markdown。</figcaption>
+</figure>
 <div class="code"><span class="lang">text</span><pre><code>允许的 App / 网站
         │  macOS Accessibility（点击、按键、切窗、AX 文本/diff、选中、焦点、鼠标/键盘目标）
         ▼
@@ -429,6 +496,16 @@ eventsPath, eventCount, suppressedEventCount
 directoryURL, eventsURL, metadataURL, suppressedEventsURL</code></pre></div>
 <p>Swift 构造器还带 <code>diagnostic: EventStreamDiagnostic?</code>。没有 <code>typedText</code> 这个键；键盘输入走 <code>keyboard</code> + kind <code>keyboardTextInput</code>，缓冲在 <code>_textBuffer</code> / <code>_textFlushTask</code>。</p>
 <h3 id="9-2-eventstreameventkind-完整枚举">9.2 <code>EventStreamEventKind</code>（完整枚举）</h3>
+<p class="kinds" aria-label="八种事件 kind">
+  <span>window.changed</span>
+  <span>mouse.click</span>
+  <span>mouse.context_menu</span>
+  <span>mouse.drag</span>
+  <span>keyboard.text_input</span>
+  <span>keyboard.submit</span>
+  <span>keyboard.shortcut</span>
+  <span>selection.changed</span>
+</p>
 <p>反射字符串里 8 个 case，与 JSON raw value 一一对应：</p>
 <div class="tw"><table>
 <tr><th>Swift case</th><th>JSON <code>kind</code></th></tr>
