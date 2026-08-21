@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Bun 1.4 我在 M2 Max 上对了一遍官方数字</title>
 <meta name="date" content="2026-08-21">
-<meta name="description" content="对照本机 Bun 1.3.12 和 Node 22：isbot 快了约 209 倍，hello 进程 RSS 从 20.9MB 掉到 10.7MB。官方说的 base64url 46 倍和 Promise 1.5 倍，这台机器上对不上。">
+<meta name="description" content="把 1.4.0 和本机还在用的 1.3.12 并排跑。isbot 确实快很多，RSS 掉了将近一半。官方那条 base64url 46 倍，我这边没跑出来。">
 <meta name="tags" content="Bun, JavaScript, 运行时, 测评">
 <meta name="featured" content="true">
 <style>
@@ -92,17 +92,17 @@
 <div class="shell">
 <nav>
   <div class="g">先看</div>
-  <a href="#verdict">结论</a>
+  <a href="#verdict">跑完怎么看</a>
   <a href="#method">怎么测的</a>
-  <a href="#numbers">官方数字对得上吗</a>
-  <div class="g">跑过什么</div>
-  <a href="#apis">新 API</a>
+  <a href="#numbers">数字</a>
+  <div class="g">摸过的</div>
+  <a href="#apis">接口</a>
   <a href="#pm">包管理器</a>
-  <a href="#break">会踩的变更</a>
-  <div class="g">收束</div>
+  <a href="#break">会断的地方</a>
+  <div class="g">然后</div>
   <a href="#rust">Rust 重写</a>
-  <a href="#upgrade">该不该升</a>
-  <a href="#skip">没测的</a>
+  <a href="#upgrade">我怎么升</a>
+  <a href="#skip">没覆盖的</a>
 </nav>
 
 <main>
@@ -116,7 +116,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 560" font-family="system-ui,-apple-system,sans-serif">
   <rect width="1280" height="560" fill="#171310"/>
   <text x="56" y="58" fill="#f3ece3" font-size="34" font-weight="700">Bun 1.4 本机对照</text>
-  <text x="56" y="92" fill="#a89c90" font-size="16">M2 Max · 1.3.12 vs 1.4.0 vs Node 22 · 数字全部现场跑，不抄发布博</text>
+  <text x="56" y="92" fill="#a89c90" font-size="16">M2 Max · 1.3.12 vs 1.4.0 vs Node 22 · 数字是这台机器上跑出来的</text>
 
   <rect x="56" y="126" width="280" height="150" rx="14" fill="#221c17" stroke="#3a322a"/>
   <text x="76" y="158" fill="#e07a38" font-size="13" font-weight="700">ISBOT / REGEXP</text>
@@ -142,7 +142,7 @@
   <text x="76" y="338" fill="#a89c90" font-size="14">对不上的那条</text>
   <text x="76" y="378" fill="#f3ece3" font-size="22" font-weight="700">Buffer.from(base64url) 官方写 46×，1MiB 本机只有 4.2×，而且 Node 22 更快</text>
   <text x="76" y="418" fill="#c9c0b4" font-size="16">hex 解码 4.6×，gzip 压缩 3.5×，gunzip 仍慢于 Node。Linux / Windows 的启动 2× 数字，macOS 上是 1.4×。</text>
-  <text x="76" y="458" fill="#e07a38" font-size="15" font-weight="600">结论：值得升。别为每一个倍数去升。</text>
+  <text x="76" y="458" fill="#e07a38" font-size="15" font-weight="600">我会升。46 倍那条当没看见。</text>
 </svg>
 </div>
 
@@ -154,26 +154,26 @@
 </div>
 
 <span id="verdict"></span>
-<h2>先说结论</h2>
+<h2>跑完怎么看</h2>
 <div class="story">
-  <p>Bun 1.4.0 是 2026-08-20 的 tag。博客把它写成一次「Zig 重写成 Rust」的发布，同时把 1.3.0 之后几个月的功能塞进同一篇文章。我这边全局 bun 还停在 1.3.12，所以对照的是这个版本，不是 1.3.14。</p>
-  <p><strong>值得升。</strong>启动内存几乎腰斩，<code>isbot</code> 那种正则密集路径从不可用变成正常，URL / hex / gzip 明显更快。Image、目录静态资源、Range、<code>bun audit fix</code>、<code>bun pm diff</code> 都能在本机跑通。</p>
-  <p>但发布博里的倍数不要整表相信。<code>base64url</code> 的 46 倍我没跑出来；<code>await Promise.resolve</code> 相对 1.3.12 几乎持平。macOS 二进制还大了约 2MB，和官方「Linux / Windows 变小、macOS 大约 +1MB」对得上。</p>
+  <p>1.4.0 是 8 月 20 号的 tag。发布博把 Zig 换成 Rust 写得很响，又把 1.3.0 之后几个月的功能塞进同一篇。我全局 bun 还停在 1.3.12，对照就是这个版本，不是他们图表里的 1.3.14。</p>
+  <p>我会升。hello 进程 RSS 从 20.9MB 掉到 10.7MB，空 <code>Bun.serve</code> 也差不多这个幅度。跑 <code>isbot</code> 的时候 1.3.12 能把一核打满好几分钟，1.4 按官方那套循环大约 1.5 秒。这个差距不像是写错单位。</p>
+  <p><code>base64url</code> 官方写 46 倍。1MiB 我这边只有 4.2 倍，Node 22 还更快。<code>await Promise.resolve</code> 几乎没动。macOS 二进制大约大了 2MB，这点和官方说的 Linux / Windows 变小、macOS 略增是对得上的。</p>
 </div>
 
 <span id="method"></span>
 <h2>怎么测的</h2>
-<p>1.4 装在独立目录 <code>/tmp/bun-1.4</code>，没有覆盖全局的 1.3.12。同一台机器、同一组脚本，分别丢给三个运行时。</p>
+<p>1.4 装在 <code>/tmp/bun-1.4</code>，全局 1.3.12 没动。同一台机器、同一组脚本，分别丢给三个运行时。</p>
 <div class="callout">
   <div class="k">Machine</div>
   macOS 26.5.2 · Apple M2 Max · 12 核 · 96GB<br>
   Bun 1.4.0+34cbb9a40 · Bun 1.3.12+700fc117a · Node v22.15.0
 </div>
-<p>启动用 Python 连跑 30 次取 median / min。RSS 用 <code>/usr/bin/time -l</code> 跑 5 次取最小。微基准是自己写的循环，先预热再计时。功能测试用 <code>bun:test</code>。包管理器用一个最小的 hono + zod + typescript 项目，再另开一个空 workspace 看 isolated linker 默认值。</p>
-<p>官方博客覆盖的是 1.3.0 到 1.4.0。你如果已经在 1.3.12，markdown、WebView、Terminal、cron、JSON5、<code>bun run --parallel</code> 其实早就在了。相对 1.3.12，<code>Bun</code> 全局上新冒出来的只有 <code>Image</code>、<code>XML</code>、<code>isStandaloneExecutable</code>。1.4 真正的增量是运行时（Rust、内存、启动）、Node 26、lockfile v2，以及一批包管理命令。</p>
+<p>启动用 Python 连跑 30 次，看 median 和 min。RSS 用 <code>/usr/bin/time -l</code>，跑 5 次取最小的。微基准是自己写的循环，先预热再计时。功能测试走 <code>bun:test</code>。包管理器这边用了一个很小的 hono + zod + typescript 项目；另外空开了一个 workspace，看 isolated linker 会不会变成默认。</p>
+<p>发布博写的是 1.3.0 到 1.4.0 的合集。已经在 1.3.12 的人，markdown、WebView、Terminal、cron、JSON5、<code>bun run --parallel</code> 其实早就有了。<code>Bun</code> 全局上新冒出来的，我对下来只有 <code>Image</code>、<code>XML</code>、<code>isStandaloneExecutable</code>。剩下能感觉到的，是内存、启动、Node 26、lockfile v2，再加一批包管理命令。</p>
 
 <span id="numbers"></span>
-<h2>官方数字，哪些站得住</h2>
+<h2>数字</h2>
 <div class="tw">
 <table>
   <thead>
@@ -193,25 +193,25 @@
   </tbody>
 </table>
 </div>
-<p><code>isbot</code> 用的是官方博客里那组 UA、同一个 <code>isbot</code> 5.2.1。1.4 按官方 20 万次循环大约 1.5 秒。1.3.12 按同样规模会把一核打满好几分钟，我中途停掉，改成 N=2000。缩样本之后仍是 209 倍，所以这条不是样本量把戏。</p>
-<p>简单 <code>JSON.parse</code> Node 22 还更快（约 9.1µs vs 1.4 的 11.3µs）。runtime 战争没有一边倒。</p>
-<p><code>bun test --parallel</code>：三个各 sleep 50ms 的文件，串行 156ms，并行 73ms。CLI 层的并行是真的。</p>
+<p><code>isbot</code> 用的是官方博客那组 UA，包是 5.2.1。1.4 按他们写的 20 万次循环大约 1.5 秒。1.3.12 同样规模会把一核打满好几分钟，我中途停掉，改成 N=2000。缩完仍是 209 倍。这条我信。</p>
+<p>简单 <code>JSON.parse</code> Node 22 还更快，大约 9.1µs，1.4 是 11.3µs。不是所有路径都赢。</p>
+<p><code>bun test --parallel</code> 也试了：三个文件各 sleep 50ms，串行 156ms，并行 73ms。至少 CLI 这层的并行是活的。</p>
 
 <span id="apis"></span>
-<h2>新 API，点过哪些</h2>
-<p>下面不是 changelog 摘抄。是本机跑过、有结果的。</p>
+<h2>我点过的接口</h2>
+<p>changelog 太长，下面只写本机跑出结果的。</p>
 
 <h3>Bun.Image</h3>
-<p>1.3.12 没有这个全局。API 很像 sharp：链式、惰性。<code>width</code> / <code>height</code> 在 <code>metadata()</code> 之前是 <code>-1</code>，我一开始当成 bug，其实是还没解码。</p>
-<p>64×64 PNG 走 <code>metadata()</code> 得到正确尺寸，再 <code>resize(32,32).jpeg().bytes()</code>，文件头是 <code>ffd8</code>。HEIC / AVIF / TIFF 官方写 macOS 可用，这次没用真照片压。</p>
+<p>1.3.12 没有这个全局。写法像 sharp，链式、惰性。<code>width</code> / <code>height</code> 在 <code>metadata()</code> 之前是 <code>-1</code>。我第一眼当 bug，后来发现是还没解码。</p>
+<p>64×64 PNG 走 <code>metadata()</code> 尺寸是对的，再 <code>resize(32,32).jpeg().bytes()</code>，文件头 <code>ffd8</code>。HEIC / AVIF / TIFF 官方写 macOS 能用，这次没拿真照片压。</p>
 
 <h3>Bun.WebView</h3>
-<p>用 <code>data:text/html</code> 开一个 headless 页，328ms 拿到 <code>document.title === "bun14"</code>，截图 8324 字节。macOS 走系统 WebKit，不用另装 Chrome。这是 1.4 里最「突然多带了一个浏览器」的能力。</p>
+<p>用 <code>data:text/html</code> 开了一个 headless 页，328ms 拿到 <code>document.title === "bun14"</code>，截图 8324 字节。macOS 走系统 WebKit，不用另装 Chrome。突然多出来一个内置浏览器的感觉，是这篇里最意外的部分。</p>
 
 <h3>Bun.markdown / cron / Terminal</h3>
-<p>这三项 1.3.12 已经有。<code>Bun.markdown.html("# Hi **world**")</code> 输出带 <code>&lt;strong&gt;</code> 的 h1。官方写明<strong>不消毒</strong>，<code>javascript:</code> 和事件属性会原样过，当静态站渲染器之前要自己套一层。</p>
-<p><code>Bun.cron.parse("*/15 * * * *")</code> 返回 Date。只接受 5 段（分 时 日 月 周），6 段带秒直接 <code>ERR_INVALID_ARG_TYPE</code>。OS 级 crontab / launchd 这次没注册，避免改这台机器的定时任务。</p>
-<p><code>Bun.Terminal</code> 拉起 bash，写入 <code>echo hello-pty</code>，回显完整。能替一部分 <code>node-pty</code>。</p>
+<p>这三项 1.3.12 已经有。<code>Bun.markdown.html("# Hi **world**")</code> 会吐带 <code>&lt;strong&gt;</code> 的 h1。文档写了不做消毒，<code>javascript:</code> 和事件属性会原样过。拿去渲静态页的话，消毒得自己做。</p>
+<p><code>Bun.cron.parse("*/15 * * * *")</code> 返回 Date。只吃 5 段（分 时 日 月 周），带秒的 6 段直接 <code>ERR_INVALID_ARG_TYPE</code>。OS 级 crontab / launchd 这次没注册，不想动这台机器的定时任务。</p>
+<p><code>Bun.Terminal</code> 拉起 bash，写入 <code>echo hello-pty</code>，回显是完整的。一部分 <code>node-pty</code> 的活可以丢掉。</p>
 
 <h3>解析器</h3>
 <div class="tw">
@@ -230,62 +230,60 @@
 </div>
 
 <h3>Bun.serve 目录和 Range</h3>
-<p><code>"/static/*": { dir }</code> 自动带 <code>etag</code>、<code>last-modified</code>、<code>accept-ranges</code>。<code>Range: bytes=0-4</code> 返回 206，body 是 <code>hello</code>。能替掉一小截 <code>sirv</code> / <code>express.static</code>。</p>
-<p>顺手跑了 Hono 4.13.3 文本路由，以及 <code>fetch("https://example.com")</code>，200。<code>bun build</code> 一个两行脚本 3ms，产物 Node 也能跑。</p>
+<p><code>"/static/*": { dir }</code> 会带 <code>etag</code>、<code>last-modified</code>、<code>accept-ranges</code>。<code>Range: bytes=0-4</code> 返回 206，body 是 <code>hello</code>。小静态目录不必再挂 <code>sirv</code>。</p>
+<p>Hono 4.13.3 的文本路由能跑。<code>fetch("https://example.com")</code> 返回 200。两行脚本 <code>bun build</code> 用了 3ms，产物用 Node 也能跑。</p>
 
 <span id="pm"></span>
-<h2>包管理器这块，比运行时更「新」</h2>
-<p>相对 1.3.12，这些命令是新的，或者第一次好用：</p>
+<h2>包管理器倒是新东西多</h2>
+<p>相对 1.3.12，我这边新碰到的是这些：</p>
 <ul>
   <li>新 lockfile 默认 <code>lockfileVersion: 2</code>，新 monorepo 还有 <code>configVersion: 1</code></li>
-  <li>新 workspace 默认 isolated linker。空 monorepo 装完，本机确认出现 <code>node_modules/.bun</code></li>
-  <li><code>bun audit</code> / <code>bun audit fix</code>（<code>--dry-run</code>、<code>--latest</code>）</li>
+  <li>新 workspace 默认 isolated linker。空 monorepo 装完，目录里出现了 <code>node_modules/.bun</code></li>
+  <li><code>bun audit</code> / <code>bun audit fix</code>，带 <code>--dry-run</code> 和 <code>--latest</code></li>
   <li><code>bun dedupe --check</code></li>
-  <li><code>bun prune --production</code>：dry-run 正确标出可删的 typescript</li>
+  <li><code>bun prune --production</code>，dry-run 把 typescript 标成可删，是对的</li>
   <li><code>bun pm licenses --prod</code></li>
-  <li><code>bun pm diff zod</code>：3.25 → 4.4 给出文件 diff，并标出新增的 <code>node:crypto</code> / <code>vitest</code> import。升级大版本时很好用</li>
+  <li><code>bun pm diff zod</code>，3.25 对 4.4 能出文件 diff，还会标新增的 <code>node:crypto</code> / <code>vitest</code> import</li>
 </ul>
-<p>现有项目的 hoisted lockfile 会留下旧 linker，升级不会偷偷改 <code>node_modules</code> 布局。新仓库另说。</p>
-<p>v2 lockfile 旧 Bun 读不了。Turbo 曾经直接报 <code>Unsupported bun lockfile version: 2</code>，后来有修复 PR。CI 里如果一半人 1.3、一半人 1.4，会炸。</p>
-<p>官方「暖安装 7×」要 isolated + 全局虚拟 store + 上千包。这次只装了三个包，2.5 秒，没有资格复述那个 7 倍。</p>
+<p>已经在用的 hoisted lockfile 会留下旧 linker，升级不会偷偷改 <code>node_modules</code> 布局。新仓库会走 isolated。</p>
+<p>v2 lockfile 旧 Bun 读不了。Turbo 曾经直接报 <code>Unsupported bun lockfile version: 2</code>，后来有修复 PR。CI 里 1.3 和 1.4 混着用会炸。</p>
+<p>官方「暖安装 7×」要 isolated、全局虚拟 store，再加上千个包。这次只装了三个包，2.5 秒。那个 7 倍我没资格复述。</p>
 
 <span id="break"></span>
-<h2>会踩的变更</h2>
-<p>官方点名五条，本机对上了四条（isolated 只打新 monorepo）：</p>
+<h2>升上去会断的地方</h2>
+<p>官方点了五条。isolated 只打新 monorepo，剩下四条本机对上了。</p>
 <ol>
   <li>Node 目标变成 26.3.0，<code>process.versions.modules</code> 是 147。<code>res.writeHeader()</code> 删了，1.3.12 里还在。</li>
   <li>新 monorepo 默认 isolated。</li>
-  <li>当 <code>node</code> 跑（symlink / <code>--bun</code> shim）不再自动加载 <code>.env</code>。本机 <code>bun env.js</code> 读到 <code>SECRET</code>，同目录 <code>./node env.js</code> 是 unset。</li>
-  <li>YAML 1.2：<code>yes</code> / <code>on</code> / <code>off</code> 是字符串。</li>
-  <li>TOML / <code>bunfig.toml</code> 更严，非法即 SyntaxError。</li>
+  <li>当 <code>node</code> 跑（symlink / <code>--bun</code> shim）不再自动加载 <code>.env</code>。本机 <code>bun env.js</code> 读得到 <code>SECRET</code>，同目录 <code>./node env.js</code> 是 unset。</li>
+  <li>YAML 1.2 里 <code>yes</code> / <code>on</code> / <code>off</code> 是字符串。</li>
+  <li>TOML / <code>bunfig.toml</code> 更严，写歪了就是 SyntaxError。</li>
 </ol>
-<p>另外几条本机或文档对得上、升级前值得扫一眼：</p>
+<p>还有一些零碎的，升之前扫一眼就行：</p>
 <ul>
-  <li><code>fs.rmdir({ recursive: true })</code> 会抛，改 <code>fs.rm</code></li>
-  <li>body 读过之后 <code>Response.clone()</code> 抛</li>
-  <li><code>.xml</code> import 变成文档；runtime <code>.css</code> import 变成 <code>{}</code></li>
-  <li><code>Temporal</code> 默认存在，自己 polyfill 可能撞名</li>
+  <li><code>fs.rmdir({ recursive: true })</code> 会抛，改用 <code>fs.rm</code></li>
+  <li>body 读过之后 <code>Response.clone()</code> 会抛</li>
+  <li><code>.xml</code> import 变成文档对象；runtime 下 <code>.css</code> import 变成 <code>{}</code></li>
+  <li><code>Temporal</code> 默认存在，自己塞过 polyfill 可能撞名</li>
   <li><code>Bun.cron</code> 用本地时区，不是 UTC</li>
   <li><code>bun:ffi</code> 的 <code>cstring</code> 变成普通 string，没有 <code>.ptr</code></li>
-  <li>HTTP/3 和 <code>fetch({ protocol: "http2"|"http3" })</code> 仍标 experimental</li>
+  <li>HTTP/3 和 <code>fetch({ protocol: "http2"|"http3" })</code> 还标着 experimental</li>
 </ul>
-<p>原生 addon 按 NODE_MODULE_VERSION 137 编的，1.4 要 147。sharp、better-sqlite3、node-pty 这类是高风险。好消息是 Image / Terminal / <code>bun:sqlite</code> 能替掉其中一部分。</p>
+<p>原生 addon 按 NODE_MODULE_VERSION 137 编的，1.4 要 147。sharp、better-sqlite3、node-pty 这类我会先确认有没有 147 的预编译包。缺的话就先试内置的 <code>bun:sqlite</code> 和 Image。</p>
 
 <span id="rust"></span>
-<h2>Rust 重写，用户侧现在看到什么</h2>
-<p>1.4 是 Anthropic 收购之后的第一个大版本。Jarred 的 <a href="https://bun.sh/blog/bun-in-rust">Rewriting Bun in Rust</a> 写得很直：用预发布的 Claude 做了大约百万行移植，动机是 Zig 手动内存和 JSC GC 搅在一起，UAF 和泄漏修不完。</p>
-<p>社区吵过这件事。发布还因为 Node 测试套件数字没达标推迟过。我这边只看用户能摸到的东西：二进制里大量 Rust panic 字符串，Zig 编译器特征几乎没了；<code>process.versions.zig</code> 还在，报的是一串 hash。启动 RSS 下来了，<code>isbot</code> 从卡死变成 1µs 量级。Prisma 公开说过 Rust canary 修掉了 Zig 1.3 上的泄漏。</p>
-<p>这不证明百万行移植已经「正确」。只说明 1.4.0 作为可运行产物，在这台机器上没有一打开就炸。</p>
+<h2>重写成 Rust 之后</h2>
+<p>1.4 是 Anthropic 收购之后的第一个大版本。Jarred 的 <a href="https://bun.sh/blog/bun-in-rust">Rewriting Bun in Rust</a> 写得很直：用预发布的 Claude 做了大约百万行移植。他说 Zig 手动内存和 JSC 的 GC 搅在一起，UAF 和泄漏修不完。</p>
+<p>发布还因为 Node 测试套件数字没达标推迟过。我只看摸得到的东西。二进制里全是 Rust panic 字符串，Zig 编译器特征几乎没了；<code>process.versions.zig</code> 还在，报的是一串 hash。启动 RSS 下来了，<code>isbot</code> 从卡死变成大约 1µs。Prisma 写过 Rust canary 修掉了他们在 Zig 1.3 上碰到的泄漏。</p>
+<p>百万行移植对不对，我看不完。1.4.0 在这台机器上能跑，没一打开就崩。</p>
 
 <span id="upgrade"></span>
-<h2>该不该升</h2>
-<ul>
-  <li><strong>日常脚本、新项目、已经把 bun 当默认运行时的：</strong>升。启动和 RSS 的改善肉眼可见，Image / WebView / <code>pm diff</code> 能少装一堆依赖。</li>
-  <li><strong>CI 钉死 1.3.x、仓库里有 Turbo 或自研 lockfile 解析：</strong>CI bun 版本要一起升，接受 lockfile v2 一次 diff。不要一半 1.3、一半 1.4。</li>
-  <li><strong>依赖 native addon：</strong>先看有没有 modules 147 的预编译包，或者改走内置 API。升完立刻跑测试，不要只看 <code>bun --version</code>。</li>
-  <li><strong>长驻进程：</strong>官方数字来自他们自己的生产（Claude Code CPU p99 24%→10%）。本机空服务 RSS 已经降 45%。1.4.0 是重写后第一个稳定 tag，staging 泡几天再全量也合理。</li>
-</ul>
-<p>别为了 HTTP/3、7× install、Promise 1.5× 去升。前两个我没在这台机器上证实，第三个几乎没动。</p>
+<h2>我怎么升</h2>
+<p>自己的脚本和新项目，我会升。RSS 掉一半这件事，开进程的时候能感觉到。<code>pm diff</code> 我也会留着。</p>
+<p>CI 如果还钉着 1.3.x，或者仓库里有 Turbo、自己写的 lockfile 解析，bun 版本要一起动，接受 lockfile v2 来一次 diff。一半人 1.3、一半人 1.4 会很难看。</p>
+<p>项目里有 native addon，先看有没有 modules 147 的预编译包。没有就先试内置 API。升完跑测试，别只看 <code>bun --version</code>。</p>
+<p>长驻进程我不会第一天全切。官方给过 Claude Code 的 CPU 数字（p99 24% 到 10%），那是他们的生产。我这边空服务 RSS 降了 45%。1.4.0 是重写后第一个稳定 tag，staging 泡几天再全量，我觉得正常。</p>
+<p>HTTP/3 和 7× install 这台机器上没跑出来，<code>Promise</code> 几乎没动。我不会为这些去升。</p>
 <div class="code"><span class="lang">sh</span>
 <pre><code>bun upgrade
 # 或先对照，不碰全局：
@@ -294,9 +292,9 @@
 </div>
 
 <span id="skip"></span>
-<h2>没测，所以不能替你打包票</h2>
-<p>Next.js 16 全量 build、Playwright 套件、vitest coverage、dd-trace、长时间泄漏、N-API addon、1400 包 isolated 暖装、闲时 CPU 5×（要更长采样）。这些是发布博里的大字，不是这次会话的数据。</p>
-<p>Node 对照是 22.15.0，不是他们图表里的 Node 26。方向一般还能看，绝对值不要和官方表并排打。</p>
+<h2>这篇没覆盖的</h2>
+<p>Next.js 16 全量 build、Playwright、vitest coverage、dd-trace，我都没装。长时间泄漏、N-API addon、上千包 isolated 暖装、闲时 CPU 5×，也没测。那些是发布博里的大字，不是这次跑出来的。</p>
+<p>Node 对照是 22.15.0，不是他们表里的 Node 26。看方向可以，别拿绝对值和官方表并排打。</p>
 
 <div class="foot">
   本机实测 · 2026-08-21 · Silent Star<br>
