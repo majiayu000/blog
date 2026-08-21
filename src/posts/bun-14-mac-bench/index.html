@@ -193,7 +193,7 @@
   </tbody>
 </table>
 </div>
-<p><code>isbot</code> 用的是官方博客里那组 UA、同一个 <code>isbot@5.2.1</code>。1.4 按官方 20 万次循环大约 1.5 秒。1.3.12 按同样规模会把一核打满好几分钟，我中途停掉，改成 N=2000。缩样本之后仍是 209 倍，所以这条不是样本量把戏。</p>
+<p><code>isbot</code> 用的是官方博客里那组 UA、同一个 <code>isbot</code> 5.2.1。1.4 按官方 20 万次循环大约 1.5 秒。1.3.12 按同样规模会把一核打满好几分钟，我中途停掉，改成 N=2000。缩样本之后仍是 209 倍，所以这条不是样本量把戏。</p>
 <p>简单 <code>JSON.parse</code> Node 22 还更快（约 9.1µs vs 1.4 的 11.3µs）。runtime 战争没有一边倒。</p>
 <p><code>bun test --parallel</code>：三个各 sleep 50ms 的文件，串行 156ms，并行 73ms。CLI 层的并行是真的。</p>
 
