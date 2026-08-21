@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Bun 1.4 我在 M2 Max 上对了一遍官方数字</title>
 <meta name="date" content="2026-08-21">
-<meta name="description" content="把 1.4.0 和本机还在用的 1.3.12 并排跑。isbot 确实快很多，RSS 掉了将近一半。官方那条 base64url 46 倍，我这边没跑出来。">
+<meta name="description" content="M2 Max 和一台 Ubuntu x86_64 上，把 1.4.0 对着 1.3.12 跑。Linux 启动接近官方 2×，RSS 掉大约一半。base64url 46 倍两边都没跑出来。">
 <meta name="tags" content="Bun, JavaScript, 运行时, 测评">
 <meta name="featured" content="true">
 <style>
@@ -94,7 +94,8 @@
   <div class="g">先看</div>
   <a href="#verdict">跑完怎么看</a>
   <a href="#method">怎么测的</a>
-  <a href="#numbers">数字</a>
+  <a href="#numbers">Mac 数字</a>
+  <a href="#linux">Linux x64</a>
   <div class="g">摸过的</div>
   <a href="#apis">接口</a>
   <a href="#pm">包管理器</a>
@@ -108,8 +109,8 @@
 <main>
 <h1>Bun 1.4 我在 M2 Max 上对了一遍官方数字</h1>
 <p class="meta">
-  2026-08-21 · macOS 26.5.2 · Apple M2 Max / 12 核<br>
-  对照：Bun 1.4.0 <code>34cbb9a40</code> · Bun 1.3.12 · Node v22.15.0
+  2026-08-21 · macOS 26.5.2 / M2 Max · Linux Ubuntu 24.04 x86_64 / 1 核 Xeon<br>
+  对照：Bun 1.4.0 <code>34cbb9a40</code> · Bun 1.3.12 · Node 22（Mac）· Node 20（Linux）
 </p>
 
 <div class="herowrap" aria-hidden="true">
@@ -169,7 +170,7 @@
   macOS 26.5.2 · Apple M2 Max · 12 核 · 96GB<br>
   Bun 1.4.0+34cbb9a40 · Bun 1.3.12+700fc117a · Node v22.15.0
 </div>
-<p>启动用 Python 连跑 30 次，看 median 和 min。RSS 用 <code>/usr/bin/time -l</code>，跑 5 次取最小的。微基准是自己写的循环，先预热再计时。功能测试走 <code>bun:test</code>。包管理器这边用了一个很小的 hono + zod + typescript 项目；另外空开了一个 workspace，看 isolated linker 会不会变成默认。</p>
+<p>Mac 上启动用 Python 连跑 30 次，看 median 和 min。RSS 用 <code>/usr/bin/time -l</code>，跑 5 次取最小的。Linux 换成 <code>time -v</code>，启动跑 20 次。微基准是自己写的循环，先预热再计时。Linux 那台是 RackNerd，Ubuntu 24.04.4，x86_64，Intel Xeon E5-2690 v4，1 核，961MB 内存。1.4 和 1.3.12 都装在 <code>/tmp</code>，没动机器原来的 bun 1.3.10。</p>
 <p>发布博写的是 1.3.0 到 1.4.0 的合集。已经在 1.3.12 的人，markdown、WebView、Terminal、cron、JSON5、<code>bun run --parallel</code> 其实早就有了。<code>Bun</code> 全局上新冒出来的，我对下来只有 <code>Image</code>、<code>XML</code>、<code>isStandaloneExecutable</code>。剩下能感觉到的，是内存、启动、Node 26、lockfile v2，再加一批包管理命令。</p>
 
 <span id="numbers"></span>
@@ -180,7 +181,7 @@
     <tr><th>项目</th><th>Bun 1.4.0</th><th>Bun 1.3.12</th><th>Node 22</th><th>1.4 vs 1.3</th><th>和官方比</th></tr>
   </thead>
   <tbody>
-    <tr><td>hello.js 启动 median</td><td class="num win">7.59 ms</td><td class="num">10.67 ms</td><td class="num">24.24 ms</td><td class="num">1.41×</td><td>官方 Linux 写 2×，macOS 更温和</td></tr>
+    <tr><td>hello.js 启动 median</td><td class="num win">7.59 ms</td><td class="num">10.67 ms</td><td class="num">24.24 ms</td><td class="num">1.41×</td><td>官方把 2× 写在 Linux 上，Mac 更温和</td></tr>
     <tr><td>hello.js 最小 RSS</td><td class="num win">10.7 MB</td><td class="num">20.9 MB</td><td class="num">38.2 MB</td><td class="num">−49%</td><td>方向一致</td></tr>
     <tr><td>空 Bun.serve RSS</td><td class="num win">12.9 MB</td><td class="num">23.4 MB</td><td class="num">—</td><td class="num">−45%</td><td>官方说最多 −35%，本机空服务更明显</td></tr>
     <tr><td><code>new URL(abs)</code></td><td class="num win">63 ns</td><td class="num">337 ns</td><td class="num">281 ns</td><td class="num">5.4×</td><td>官方 349→75 ns，对得上</td></tr>
@@ -197,6 +198,33 @@
 <p>简单 <code>JSON.parse</code> Node 22 还更快，大约 9.1µs，1.4 是 11.3µs。不是所有路径都赢。</p>
 <p><code>bun test --parallel</code> 也试了：三个文件各 sleep 50ms，串行 156ms，并行 73ms。至少 CLI 这层的并行是活的。</p>
 
+<span id="linux"></span>
+<h2>Linux x64 又跑了一遍</h2>
+<p>官方把启动 2×、内存腰斩、二进制变小写在 Linux 上。Mac 对不上的，我拿到一台 Ubuntu 24.04 x86_64 再对。1 核、不到 1GB 内存，不是他们图表那种环境，绝对值别和发布博并排打。方向可以看。</p>
+<div class="tw">
+<table>
+  <thead>
+    <tr><th>项目</th><th>Bun 1.4.0</th><th>Bun 1.3.12</th><th>Node 20</th><th>1.4 vs 1.3</th><th>和官方比</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>hello.js 启动 median</td><td class="num win">7.20 ms</td><td class="num">13.29 ms</td><td class="num">35.51 ms</td><td class="num">1.85×</td><td>官方 10.9→5.1 ms，大约 2×，这边接近</td></tr>
+    <tr><td>hello.js 最小 RSS</td><td class="num win">12.4 MB</td><td class="num">28.5 MB</td><td class="num">38.0 MB</td><td class="num">−56%</td><td>官方 Linux 33→14.6 MB（−56%），对上了</td></tr>
+    <tr><td>空 Bun.serve RSS</td><td class="num win">15.6 MB</td><td class="num">31.4 MB</td><td class="num">—</td><td class="num">−50%</td><td></td></tr>
+    <tr><td>二进制</td><td class="num win">78 MB</td><td class="num">96 MB</td><td class="num">—</td><td class="num">−19%</td><td>官方 Linux x64 88.5→77.0 MB</td></tr>
+    <tr><td><code>new URL(abs)</code></td><td class="num win">370 ns</td><td class="num">1143 ns</td><td class="num">963 ns</td><td class="num">3.1×</td><td>官方约 4.6×</td></tr>
+    <tr><td><code>Buffer.from(hex)</code> 1MiB</td><td class="num win">0.49 ms</td><td class="num">2.21 ms</td><td class="num">1.89 ms</td><td class="num">4.5×</td><td>官方 8×</td></tr>
+    <tr><td><code>Buffer.from(base64url)</code> 1MiB</td><td class="num win">0.33 ms</td><td class="num">0.38 ms</td><td class="num">1.02 ms</td><td class="num lose">1.1×</td><td class="lose">官方 46× 还是没有；但这边 1.4 快过 Node 20</td></tr>
+    <tr><td><code>gzipSync</code> ~1MB</td><td class="num win">0.64 ms</td><td class="num">4.09 ms</td><td class="num">3.76 ms</td><td class="num">6.4×</td><td></td></tr>
+    <tr><td><code>gunzipSync</code> ~1MB</td><td class="num">1.31 ms</td><td class="num win">1.18 ms</td><td class="num">2.02 ms</td><td class="num lose">0.9×</td><td>1.4 略慢于 1.3</td></tr>
+    <tr><td><code>isbot()</code></td><td class="num win">2339 ns</td><td class="num">375581 ns</td><td class="num">2413 ns</td><td class="num">161×</td><td>官方约 200×，方向对</td></tr>
+    <tr><td><code>await Promise.resolve</code></td><td class="num">162 ns</td><td class="num">175 ns</td><td class="num">190 ns</td><td class="num">1.08×</td><td>还是几乎没动</td></tr>
+  </tbody>
+</table>
+</div>
+<p>空服务闲着测了 8 秒：1.4 的 CPU 是 0，1.3 吃了 1 个 jiffy，大约 0.125%。官方写闲时 CPU 降 5×，这台 1 核机器上两边都几乎睡着，量不出 5 倍那种差。</p>
+<p>Image 能转出 JPEG。Terminal 拉 bash，<code>hello-pty</code> 回显完整。目录静态资源和 <code>Range: bytes=0-4</code> 返回 206。Hono 4.13.3 能跑，lockfile 是 v2。WebView 在这台 Linux 上起不来，报的是没找到 Chrome，要设 <code>BUN_CHROME_PATH</code> 或装 Chromium。macOS 走系统 WebKit，这边没有那个福气。</p>
+<p>1 核上 <code>bun test --parallel</code> 三个 sleep 50ms 的文件，串行 167ms，并行 123ms。有一点重叠，但远没有 Mac 12 核那么明显。</p>
+
 <span id="apis"></span>
 <h2>我点过的接口</h2>
 <p>changelog 太长，下面只写本机跑出结果的。</p>
@@ -206,7 +234,7 @@
 <p>64×64 PNG 走 <code>metadata()</code> 尺寸是对的，再 <code>resize(32,32).jpeg().bytes()</code>，文件头 <code>ffd8</code>。HEIC / AVIF / TIFF 官方写 macOS 能用，这次没拿真照片压。</p>
 
 <h3>Bun.WebView</h3>
-<p>用 <code>data:text/html</code> 开了一个 headless 页，328ms 拿到 <code>document.title === "bun14"</code>，截图 8324 字节。macOS 走系统 WebKit，不用另装 Chrome。突然多出来一个内置浏览器的感觉，是这篇里最意外的部分。</p>
+<p>Mac 上用 <code>data:text/html</code> 开了一个 headless 页，328ms 拿到 <code>document.title === "bun14"</code>，截图 8324 字节。走系统 WebKit，不用另装 Chrome。Linux 那台没有 WebKit 可借，直接报没找到 Chrome。文档说可以设 <code>BUN_CHROME_PATH</code>，我没往那台 1GB 机器上塞浏览器。</p>
 
 <h3>Bun.markdown / cron / Terminal</h3>
 <p>这三项 1.3.12 已经有。<code>Bun.markdown.html("# Hi **world**")</code> 会吐带 <code>&lt;strong&gt;</code> 的 h1。文档写了不做消毒，<code>javascript:</code> 和事件属性会原样过。拿去渲静态页的话，消毒得自己做。</p>
@@ -282,8 +310,8 @@
 <p>自己的脚本和新项目，我会升。RSS 掉一半这件事，开进程的时候能感觉到。<code>pm diff</code> 我也会留着。</p>
 <p>CI 如果还钉着 1.3.x，或者仓库里有 Turbo、自己写的 lockfile 解析，bun 版本要一起动，接受 lockfile v2 来一次 diff。一半人 1.3、一半人 1.4 会很难看。</p>
 <p>项目里有 native addon，先看有没有 modules 147 的预编译包。没有就先试内置 API。升完跑测试，别只看 <code>bun --version</code>。</p>
-<p>长驻进程我不会第一天全切。官方给过 Claude Code 的 CPU 数字（p99 24% 到 10%），那是他们的生产。我这边空服务 RSS 降了 45%。1.4.0 是重写后第一个稳定 tag，staging 泡几天再全量，我觉得正常。</p>
-<p>HTTP/3 和 7× install 这台机器上没跑出来，<code>Promise</code> 几乎没动。我不会为这些去升。</p>
+<p>长驻进程我不会第一天全切。官方给过 Claude Code 的 CPU 数字（p99 24% 到 10%），那是他们的生产。Mac 上空服务 RSS 降了 45%，Linux 上大约一半。1.4.0 是重写后第一个稳定 tag，staging 泡几天再全量，我觉得正常。</p>
+<p>HTTP/3 和 7× install 没跑出来，<code>Promise</code> 几乎没动。Linux 上闲时 CPU 5× 也没量出来。我不会为这些去升。</p>
 <div class="code"><span class="lang">sh</span>
 <pre><code>bun upgrade
 # 或先对照，不碰全局：
@@ -293,11 +321,11 @@
 
 <span id="skip"></span>
 <h2>这篇没覆盖的</h2>
-<p>Next.js 16 全量 build、Playwright、vitest coverage、dd-trace，我都没装。长时间泄漏、N-API addon、上千包 isolated 暖装、闲时 CPU 5×，也没测。那些是发布博里的大字，不是这次跑出来的。</p>
-<p>Node 对照是 22.15.0，不是他们表里的 Node 26。看方向可以，别拿绝对值和官方表并排打。</p>
+<p>Next.js 16 全量 build、Playwright、vitest coverage、dd-trace，我都没装。长时间泄漏、N-API addon、上千包 isolated 暖装，也没测。Linux 上 WebView 没装 Chrome，闲时 CPU 8 秒窗口量不出官方说的 5×。</p>
+<p>Mac 的 Node 对照是 22.15.0，Linux 是 20.20.0，都不是他们表里的 Node 26。看方向可以，别拿绝对值和官方表并排打。</p>
 
 <div class="foot">
-  本机实测 · 2026-08-21 · Silent Star<br>
+  Mac 实测 + Linux x64 实测 · 2026-08-21 · Silent Star<br>
   数字来自当场命令输出，未混用厂商图表。<br>
   来源：<a href="https://bun.sh/blog/bun-v1.4">Bun 1.4 发布博</a> ·
   <a href="https://bun.sh/blog/bun-in-rust">Rewriting Bun in Rust</a> ·
