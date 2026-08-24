@@ -16,6 +16,7 @@ export default {
   // RSS 里的绝对 URL 依赖它。默认给正式域名，忘了设环境变量也不会产出坏链接。
   url: siteUrl.replace(/\/+$/, ""),
   author: process.env.SITE_AUTHOR ?? "",
+  authorUrl: process.env.SITE_AUTHOR_URL ?? "https://github.com/majiayu000",
   language: process.env.SITE_LANG ?? "zh-CN",
   comments: {
     enabled: booleanEnv("GISCUS_ENABLED", true),

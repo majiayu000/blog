@@ -1,5 +1,6 @@
 import path from "node:path";
 import { enhanceBuiltPosts } from "./lib/enhance-posts.js";
+import { generateOgImages } from "./lib/og-images.js";
 import { readPosts } from "./lib/posts.js";
 import site from "./src/_data/site.js";
 
@@ -15,6 +16,11 @@ export default function (eleventyConfig) {
   eleventyConfig.on("eleventy.after", () => {
     const posts = readPosts(path.join(import.meta.dirname, "src", "posts"));
     enhanceBuiltPosts({
+      posts,
+      outputDir: path.join(import.meta.dirname, "_site"),
+      site,
+    });
+    generateOgImages({
       posts,
       outputDir: path.join(import.meta.dirname, "_site"),
       site,

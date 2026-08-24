@@ -241,4 +241,8 @@
     width: 4.8rem;
     height: 4.8rem;
   }
+
+  .search-panel__controls {
+    grid-template-columns: 1fr;
+  }
 }

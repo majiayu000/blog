@@ -3,7 +3,6 @@ layout: shell.njk
 title: 搜索
 permalink: /search/
 navKey: search
-extraHead: '<link rel="stylesheet" href="/pagefind/pagefind-ui.css">'
 ---
 <div class="page-shell">
   <header class="page-heading">
@@ -12,13 +11,117 @@ extraHead: '<link rel="stylesheet" href="/pagefind/pagefind-ui.css">'
     <p>按标题、正文或主题查找内容。</p>
   </header>
 
-  <div id="search"></div>
+  <form class="search-panel" id="search-form" role="search">
+    <label for="search-input">输入标题、正文关键词或技术名词</label>
+    <div class="search-panel__controls">
+      <input id="search-input" name="q" type="search" autocomplete="off" placeholder="例如：Grok Bot、上下文压缩、Bun">
+      <button type="submit">搜索 <span aria-hidden="true">↵</span></button>
+    </div>
+  </form>
 
-  <script src="/pagefind/pagefind-ui.js"></script>
-  <script>
-    new PagefindUI({ element: "#search", showSubResults: true, translations: {
-      placeholder: "搜索文章", zero_results: "没有找到 [SEARCH_TERM] 相关的内容",
-    }});
+  <p class="search-status" id="search-status" role="status" aria-live="polite">只搜索公开文章，不混入标签页和归档页。</p>
+  <ol class="search-results" id="search-results"></ol>
+
+  <script type="module">
+    const form = document.querySelector("#search-form");
+    const input = document.querySelector("#search-input");
+    const status = document.querySelector("#search-status");
+    const list = document.querySelector("#search-results");
+    let pagefindPromise;
+    let timer;
+    let searchVersion = 0;
+
+    const getPagefind = () => {
+      pagefindPromise ??= import("/pagefind/pagefind.js");
+      return pagefindPromise;
+    };
+
+    const textFromExcerpt = (excerpt) => {
+      const parsed = new DOMParser().parseFromString(excerpt || "", "text/html");
+      return parsed.body.textContent.trim();
+    };
+
+    const safeResultUrl = (value) => {
+      const url = new URL(value, window.location.origin);
+      if (url.origin !== window.location.origin || !url.pathname.startsWith("/posts/")) {
+        throw new Error(`搜索结果包含非法 URL: ${value}`);
+      }
+      return url.pathname;
+    };
+
+    const renderResult = (data) => {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      const meta = document.createElement("p");
+      const title = document.createElement("h2");
+      const excerpt = document.createElement("p");
+      const arrow = document.createElement("span");
+
+      item.className = "search-result";
+      link.href = safeResultUrl(data.url);
+      meta.className = "search-result__meta";
+      meta.textContent = [data.meta.date, data.meta.topic].filter(Boolean).join(" · ");
+      title.textContent = data.meta.title || "未命名文章";
+      excerpt.className = "search-result__excerpt";
+      excerpt.textContent = textFromExcerpt(data.excerpt);
+      arrow.className = "search-result__arrow";
+      arrow.setAttribute("aria-hidden", "true");
+      arrow.textContent = "↗";
+
+      link.append(meta, title, excerpt, arrow);
+      item.append(link);
+      return item;
+    };
+
+    const search = async (rawQuery) => {
+      const query = rawQuery.trim();
+      const version = ++searchVersion;
+      list.replaceChildren();
+      if (!query) {
+        status.textContent = "只搜索公开文章，不混入标签页和归档页。";
+        history.replaceState(null, "", window.location.pathname);
+        return;
+      }
+
+      status.textContent = `正在搜索“${query}”…`;
+      try {
+        const pagefind = await getPagefind();
+        const response = await pagefind.search(query);
+        const data = await Promise.all(response.results.slice(0, 12).map((result) => result.data()));
+        if (version !== searchVersion) return;
+
+        const fragment = document.createDocumentFragment();
+        for (const result of data) fragment.append(renderResult(result));
+        list.replaceChildren(fragment);
+        status.textContent = data.length
+          ? `找到 ${response.results.length} 篇与“${query}”相关的文章。`
+          : `没有找到与“${query}”相关的文章。`;
+        const url = new URL(window.location.href);
+        url.searchParams.set("q", query);
+        history.replaceState(null, "", url);
+      } catch (error) {
+        console.error("Search failed", error);
+        if (version !== searchVersion) return;
+        list.replaceChildren();
+        status.textContent = "搜索暂时不可用，请稍后重试或浏览文章归档。";
+      }
+    };
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      window.clearTimeout(timer);
+      search(input.value);
+    });
+    input.addEventListener("input", () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => search(input.value), 180);
+    });
+
+    const initialQuery = new URLSearchParams(window.location.search).get("q") || "";
+    if (initialQuery) {
+      input.value = initialQuery;
+      search(initialQuery);
+    }
   </script>
 
   <noscript><p class="empty">搜索需要 JavaScript，你也可以直接看<a href="/archive/">归档</a>。</p></noscript>

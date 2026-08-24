@@ -13,7 +13,7 @@ eleventyExcludeFromCollections: true
     <lastmod>{{ post.date }}</lastmod>
   </url>
   {% endfor %}
-  {% for group in blog.tags %}
-  <url><loc>{{ site.url }}/tags/{{ group.tag | tagPath | urlencode }}/</loc></url>
+  {% for topic in blog.topics %}
+  <url><loc>{{ site.url }}/topics/{{ topic.slug }}/</loc></url>
   {% endfor %}
 </urlset>

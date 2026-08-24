@@ -23,3 +23,6 @@
 
 /pagefind/*
   Cache-Control: public, max-age=3600
+
+/og/*
+  Cache-Control: public, max-age=86400

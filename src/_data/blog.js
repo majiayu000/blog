@@ -2,6 +2,7 @@ import path from "node:path";
 import {
   readPosts,
   groupByTag,
+  groupByPrimaryTopic,
   groupByYear,
   selectHomepagePosts,
 } from "../../lib/posts.js";
@@ -15,6 +16,7 @@ export default () => {
     posts,
     featured,
     recent,
+    topics: groupByPrimaryTopic(posts),
     tags: groupByTag(posts),
     years: groupByYear(posts),
   };

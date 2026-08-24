@@ -6,6 +6,7 @@ pagination:
   alias: group
 permalink: "/tags/{{ group.tag | tagPath }}/"
 navKey: tags
+extraHead: '<meta name="robots" content="noindex,follow">'
 eleventyComputed:
   title: "标签：{{ group.tag }}"
 ---

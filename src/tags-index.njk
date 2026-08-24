@@ -7,17 +7,20 @@ navKey: tags
 <div class="page-shell">
   <header class="page-heading">
     <p class="eyebrow">// TOPICS</p>
-    <h1>全部主题 <span lang="en">Browse by topic</span></h1>
-    <p>从 Agent 架构、工具链与工程实践进入文章。</p>
+    <h1>阅读专题 <span lang="en">Reading paths</span></h1>
+    <p>五条长期更新的阅读路径，先进入一个问题，再沿着文章继续读。</p>
   </header>
 
-  {% if blog.tags.length %}
-  <ul class="topic-grid topic-grid--page">
-    {% for group in blog.tags %}
+  {% if blog.topics.length %}
+  <ul class="topic-grid topic-grid--page topic-grid--primary">
+    {% for group in blog.topics %}
     <li>
-      <a href="/tags/{{ group.tag | tagPath | urlencode }}/">
+      <a href="/topics/{{ group.slug }}/">
         <i aria-hidden="true"></i>
-        <span><strong>{{ group.tag }}</strong><small>Topic {{ loop.index }}</small></span>
+        <span>
+          <strong>{{ group.title }}</strong>
+          <small>{{ group.english }} · {{ group.description }}</small>
+        </span>
         <b>{{ group.posts.length }}</b>
       </a>
     </li>
@@ -25,5 +28,19 @@ navKey: tags
   </ul>
   {% else %}
   <p class="empty">还没有主题。</p>
+  {% endif %}
+
+  {% if blog.tags.length %}
+  <section class="tag-index" aria-labelledby="tag-index-heading">
+    <div class="section-label" id="tag-index-heading">全部标签 · INDEX</div>
+    <p>标签用于精确定位技术名词；只有一篇文章的标签仍可访问，但不再占据主要导航。</p>
+    <div class="tag-cloud">
+      {% for group in blog.tags %}
+      <a href="/tags/{{ group.tag | tagPath | urlencode }}/">
+        <span>#{{ group.tag }}</span><b>{{ group.posts.length }}</b>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
   {% endif %}
 </div>

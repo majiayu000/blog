@@ -1,0 +1,24 @@
+---
+layout: shell.njk
+pagination:
+  data: blog.topics
+  size: 1
+  alias: topic
+permalink: "/topics/{{ topic.slug }}/"
+navKey: tags
+eleventyComputed:
+  title: "专题：{{ topic.title }}"
+---
+<div class="page-shell topic-page">
+  <header class="page-heading topic-page__heading">
+    <p class="eyebrow">// READING PATH · {{ topic.english | upper }}</p>
+    <h1>{{ topic.title }}</h1>
+    <p>{{ topic.description }}</p>
+    <div class="topic-page__count"><strong>{{ topic.posts.length }}</strong><span>篇文章，按时间倒序</span></div>
+  </header>
+
+  {% set items = topic.posts %}
+  {% include "post-list.njk" %}
+
+  <a class="back-link" href="/tags/">← 所有阅读专题</a>
+</div>

@@ -95,10 +95,101 @@
     update();
   }
 
+  function initializeArticleToc() {
+    const headings = [...document.querySelectorAll("h2")].filter(
+      (heading) => !heading.closest(".ss-afterword, .ss-article-rail, .ss-article-drawer"),
+    );
+    const seen = new Set();
+    headings.forEach((heading, index) => {
+      const valid = /^[A-Za-z][\w:.-]*$/.test(heading.id) && !seen.has(heading.id);
+      if (!valid) {
+        let generated = `ss-section-${String(index + 1).padStart(2, "0")}`;
+        while (seen.has(generated)) generated = `${generated}-generated`;
+        heading.id = generated;
+      }
+      seen.add(heading.id);
+    });
+
+    const railLinks = [...document.querySelectorAll('.ss-article-rail a[href^="#"]')];
+    if (!("IntersectionObserver" in window) || !railLinks.length) return;
+    const linksById = new Map(
+      railLinks.map((link) => [decodeURIComponent(link.hash.slice(1)), link]),
+    );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.find((entry) => entry.isIntersecting);
+        if (!visible) return;
+        for (const link of railLinks) link.removeAttribute("aria-current");
+        linksById.get(visible.target.id)?.setAttribute("aria-current", "location");
+      },
+      { rootMargin: "-18% 0px -70%" },
+    );
+    for (const heading of headings) observer.observe(heading);
+
+    const drawer = document.querySelector(".ss-article-drawer");
+    drawer?.addEventListener("click", (event) => {
+      if (event.target.closest('a[href^="#"]')) drawer.removeAttribute("open");
+    });
+  }
+
+  function initializeGiscus() {
+    const host = document.querySelector("[data-giscus-repo]");
+    if (!host) return;
+    const section = host.closest(".ss-afterword__comments");
+    const status = section?.querySelector("[data-giscus-status]");
+    let loaded = false;
+
+    const load = () => {
+      if (loaded) return;
+      loaded = true;
+      if (status) status.textContent = "正在加载评论…";
+
+      const script = document.createElement("script");
+      script.className = "giscus-script";
+      script.src = "https://giscus.app/client.js";
+      script.async = true;
+      script.crossOrigin = "anonymous";
+      script.dataset.repo = host.dataset.giscusRepo;
+      script.dataset.repoId = host.dataset.giscusRepoId;
+      script.dataset.category = host.dataset.giscusCategory;
+      script.dataset.categoryId = host.dataset.giscusCategoryId;
+      script.dataset.mapping = "pathname";
+      script.dataset.strict = "1";
+      script.dataset.reactionsEnabled = "1";
+      script.dataset.emitMetadata = "0";
+      script.dataset.inputPosition = "top";
+      script.dataset.theme = "preferred_color_scheme";
+      script.dataset.lang = "zh-CN";
+      script.addEventListener("load", () => {
+        if (status) status.remove();
+      });
+      script.addEventListener("error", () => {
+        if (status) status.textContent = "评论加载失败，请使用下面的 GitHub Discussions 链接。";
+      });
+      host.append(script);
+    };
+
+    if (!("IntersectionObserver" in window) || !section) {
+      load();
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        load();
+      },
+      { rootMargin: "1000px 0px" },
+    );
+    observer.observe(section);
+  }
+
   function initialize() {
     initializePageCopy();
     initializeCodeCopy();
     initializeReadingProgress();
+    initializeArticleToc();
+    initializeGiscus();
   }
 
   if (document.readyState === "loading") {

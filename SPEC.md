@@ -7,7 +7,7 @@
 一篇文章 = 一个自包含目录：`src/posts/<slug>/index.html` + 同目录内的资源。
 源文章 HTML 保持自包含，作者写下的正文和样式不由模板引擎改写。
 
-生成器只负责"外壳"：首页、标签页、归档、搜索索引、RSS。
+生成器只负责"外壳"：首页、专题/标签页、归档、搜索索引、RSS。
 
 构建完成后，站点拥有一个受控的文章增强步骤。它只在 `</head>` 和 `</body>`
 前追加由仓库维护的 SEO 元数据、局部样式、阅读工具和 afterword，不改写源文章
@@ -21,13 +21,27 @@
 增强器输出以下内容：
 
 - canonical、Open Graph、Twitter Card 和 article 元数据；
+- 构建期生成的 1200×630 PNG 分享卡片；
 - 同站点的 `post-enhancement.css` / `post-enhancement.js`；
+- 预计阅读时间、作者信息和由现有二级标题生成的页内目录；
 - 更新一篇、更早一篇、继续阅读、复制链接和回到首页；
 - 可选的 giscus 评论区。
 
 源文章继续禁止远程样式、脚本、字体和媒体。giscus 的远程脚本只能由增强器根据
-固定站点配置生成，不能写进文章源文件。关闭评论时不加载第三方资源；开启评论但
+固定站点配置生成，不能写进文章源文件。评论脚本只在读者接近评论区时加载；关闭评论时不加载第三方资源；开启评论但
 缺少 repo/category ID 时构建失败，不能静默隐藏评论。
+
+## 内容发现
+
+原始标签继续来自文章 `<meta name="tags">`，既有 `/tags/<tag>/` URL 保留，避免旧链接失效。
+它们是辅助索引，不进入站点地图，也不参与站内全文搜索。
+
+首页和主题入口使用五个稳定的编辑专题：产品 X-Ray、Agent 架构、工具与运行时实测、
+模型与训练、技术人物与历史。专题由现有标签按优先级归类，每篇文章只进入一个主专题；
+无法归类时直接构建失败，防止新文章悄悄消失在内容导航之外。
+
+Pagefind 只扫描 `posts/*/index.html`。文章 afterword 已带 `data-pagefind-ignore`，搜索结果
+因此只来自文章自身，不混入首页、归档、专题、标签、404 或评论内容。
 
 ## 选型
 
@@ -54,6 +68,7 @@
 <meta name="tags" content="架构, 工具链">            <!-- 可选，逗号分隔 -->
 <meta name="draft" content="true">                  <!-- 可选，草稿不进产物 -->
 <meta name="featured" content="true">               <!-- 可选，首页编辑推荐 -->
+<meta name="updated" content="2026-08-24">           <!-- 可选，最后更新日期 -->
 ```
 
 一篇文章因此是**单文件自洽**的，复制走仍是完整的一篇。
@@ -96,7 +111,7 @@ blog/
 bun run build
   ├─ eleventy          → _site/（文章 passthrough + 外壳页面）
   │  └─ eleventy.after → 为文章产物追加 SEO 与 afterword
-  └─ pagefind          → _site/pagefind/（索引增强后的 HTML）
+  └─ pagefind          → _site/pagefind/（仅索引 posts/*/index.html）
 ```
 
 `bun run dev` 起本地预览，端口 5567（避开已占用的 5568/5569）。

@@ -95,12 +95,12 @@ navKey: home
         <h2>按主题浏览 <span lang="en">Browse by topic</span></h2>
       </div>
     </header>
-    <ul class="topic-grid">
-      {% for group in blog.tags %}
+    <ul class="topic-grid topic-grid--primary">
+      {% for group in blog.topics %}
       <li>
-        <a href="/tags/{{ group.tag | tagPath | urlencode }}/">
+        <a href="/topics/{{ group.slug }}/">
           <i aria-hidden="true"></i>
-          <span><strong>{{ group.tag }}</strong><small>Topic {{ loop.index }}</small></span>
+          <span><strong>{{ group.title }}</strong><small>{{ group.english }}</small></span>
           <b>{{ group.posts.length }}</b>
         </a>
       </li>

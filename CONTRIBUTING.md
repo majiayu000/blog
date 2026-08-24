@@ -25,7 +25,7 @@ CI runs the same two commands.
 ## Ground rules
 
 - **Authored post bytes are preserved.** The build may append only the controlled
-  SEO head block and afterword defined in `lib/enhance-posts.js`; rewriting,
+  SEO head block plus article-tools/afterword block defined in `lib/enhance-posts.js`; rewriting,
   reformatting or re-rendering the source article remains out of scope.
 - **Keep metadata parsing fail-closed.** Missing or invalid metadata must fail
   the build and name the file. Do not add fallbacks that infer a title from the

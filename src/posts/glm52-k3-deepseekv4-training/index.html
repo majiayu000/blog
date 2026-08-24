@@ -43,7 +43,7 @@
 
 <h1>拆完 GLM-5.2、Kimi K3、DeepSeek V4 三份技术报告：后训练吃掉 75% 算力，架构是最不重要的部分</h1>
 
-<p><img src="cover.png" alt="三家模型与训练管线封面图"></p>
+<p><picture><source srcset="cover.webp" type="image/webp"><img src="cover.png" alt="三家模型与训练管线封面图" width="1536" height="1024" decoding="async" fetchpriority="high"></picture></p>
 
 <p>三份技术报告全部读完：Kimi K3（arXiv 2607.24653，47 页）、DeepSeek V4（arXiv 2606.19348，58 页）、GLM-5（arXiv 2602.15763；GLM-5.2 没有独立报告，其改动来自 GLM-5 报告 + 官方 research 页）。加上三家的 checkpoint 结构、许可证和部署方案，做一个完整拆解。</p>
 
@@ -125,7 +125,7 @@
 </table></div>
 
 <h2>2 · 训练算力与成本：K3 是唯一把账算明白的</h2>
-<p><img src="compute-ledger.png" alt="后训练吃掉约 75% 算力示意图"></p>
+<p><picture><source srcset="compute-ledger.webp" type="image/webp"><img src="compute-ledger.png" alt="后训练吃掉约 75% 算力示意图" width="1536" height="1024" loading="lazy" decoding="async"></picture></p>
 <p>这一节是全篇信息密度最高的。<strong>K3 的 Table 5 是三份报告里唯一一份完整的算力账本</strong>，值得逐行看（<strong>事实</strong>）：</p>
 <div class="tw"><table>
 <tr><th>阶段</th><th>tokens</th><th>kH800</th><th>PFU-days</th><th>FLOPs</th><th>MFU</th></tr>
@@ -177,7 +177,7 @@
 <p>K3 的上下文扩展候选池有 <strong>31.5T</strong>，但真正用于扩展的只有 108B（<strong>事实</strong>）。Table 16 的消融显示最优课程是 <strong>80K→240K→480K</strong> 分阶段拉长。<strong>结论</strong>：1M 上下文不是喂长文本喂出来的，是精心设计的课程 + 从超大候选池里筛出来的少量高质量长样本。</p>
 
 <h2>4 · 端到端管线走查：数据 → 预训练 → mid-train → post-train → checkpoint</h2>
-<p><img src="pipeline.png" alt="训练管线五阶段示意图"></p>
+<p><picture><source srcset="pipeline.webp" type="image/webp"><img src="pipeline.png" alt="训练管线五阶段示意图" width="1536" height="1024" loading="lazy" decoding="async"></picture></p>
 <p>把三家管线并排走一遍，差异立刻清楚。</p>
 
 <h3>4.1 K3 管线（披露最完整）</h3>
@@ -229,7 +229,7 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 <p><strong>结论</strong>：Agent 数据是单阶段提升最大的（7.6→41.6），Thinking 模式的收尾提升也很可观。<strong>推断</strong>：K3 的 Thinking / Instruct 双版本，本质是这条流水线开不开最后一级开关的产物。</p>
 
 <h3>5.2 K3：环境规模化（Table 22，事实）</h3>
-<p><img src="rl-env-scaling.png" alt="RL 并行环境规模化示意图"></p>
+<p><picture><source srcset="rl-env-scaling.webp" type="image/webp"><img src="rl-env-scaling.png" alt="RL 并行环境规模化示意图" width="1536" height="1024" loading="lazy" decoding="async"></picture></p>
 <p>并行环境从 256 扩到 65,536：</p>
 <div class="tw"><table>
 <tr><th>指标</th><th>256 环境</th><th>65,536 环境</th></tr>

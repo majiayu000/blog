@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "eleventy --serve --port=${PORT:-5567}",
     "clean": "bun -e 'import { rmSync } from \"node:fs\"; rmSync(\"_site\", { recursive: true, force: true });'",
-    "build": "bun run clean && eleventy && pagefind --site _site",
+    "build": "bun run clean && eleventy && pagefind --site _site --glob 'posts/*/index.html'",
     "test": "bun test"
   },
   "devDependencies": {
     "@11ty/eleventy": "^3.1.2",
+    "@resvg/resvg-js": "^2.6.2",
     "pagefind": "^1.4.0"
   }
 }
