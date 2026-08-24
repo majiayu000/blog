@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Grok Bot X-Ray：聊天从桌面发出，Agent 在云端动手</title>
+  <title>Grok Bot 0.24.0 X-Ray｜聊天从桌面发出，Agent 在云端动手</title>
   <meta name="date" content="2026-08-24">
-  <meta name="description" content="静态拆解 Grok Bot 0.16.0：Mac App 如何连接云端 Sand Box、驱动 Agent loop，并在工具执行、持久状态与人工审批之间划清边界。">
+  <meta name="description" content="静态拆解 Grok Bot。0.16.0 源码映射用于还原架构，0.24.0 已签名安装包用于复核模型选择、Grok 4.6 支持和每周额度显示。">
   <meta name="tags" content="Grok Bot, Agent, Electron, macOS, 安全">
   <style>
     :root {
@@ -196,6 +196,53 @@
     .implication strong { display: block; margin-bottom: 7px; font-size: 1.02rem; }
     .implication p { margin: 0; color: var(--muted); }
 
+    .update-note {
+      margin-top: 30px;
+      padding: 20px 22px;
+      border: 1px solid rgba(98, 216, 208, .36);
+      border-radius: 16px;
+      background: rgba(14, 37, 39, .32);
+      color: #c7dedc;
+    }
+
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-top: 28px;
+    }
+
+    .model-card {
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+    }
+
+    .model-card small { display: block; margin-bottom: 8px; color: var(--cyan); font-weight: 720; }
+    .model-card strong { display: block; margin-bottom: 8px; font-size: 1.08rem; }
+    .model-card p { margin: 0; color: var(--muted); font-size: .94rem; }
+
+    .usage-grid {
+      display: grid;
+      grid-template-columns: .72fr 1.28fr;
+      gap: 18px;
+      margin-top: 34px;
+    }
+
+    .usage-display, .usage-detail {
+      padding: 26px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+    }
+
+    .usage-display .big { display: block; color: var(--amber); font-size: clamp(2.3rem, 6vw, 4.8rem); font-weight: 820; line-height: 1; letter-spacing: -.06em; }
+    .usage-display p, .usage-detail p { margin: 12px 0 0; color: var(--muted); }
+    .usage-detail h3 { margin: 0; font-size: 1.15rem; }
+    .usage-detail ul { margin: 14px 0 0; padding-left: 1.2em; color: var(--muted); }
+    .usage-detail li + li { margin-top: 9px; }
+
     .evidence-wrap {
       border-top: 1px solid var(--soft-line);
       border-bottom: 1px solid var(--soft-line);
@@ -320,7 +367,7 @@
       h1 { font-size: clamp(2.45rem, 12vw, 3.05rem); line-height: 1.01; letter-spacing: -.055em; }
       h2 { font-size: clamp(1.82rem, 8.5vw, 2.35rem); line-height: 1.12; }
       p, dd, h3, .node, .detail-body, .anchor { overflow-wrap: anywhere; word-break: break-word; }
-      .facts, .implications, .evidence-grid, .boundary-grid, .verdict { grid-template-columns: 1fr; }
+      .facts, .implications, .model-grid, .usage-grid, .evidence-grid, .boundary-grid, .verdict { grid-template-columns: 1fr; }
       .facts { gap: 1px; }
       .fact { min-height: auto; }
       .flow { grid-template-columns: 1fr; padding: 18px; }
@@ -337,17 +384,17 @@
   <main>
     <header class="hero shell">
       <div>
-        <p class="eyebrow">X-Ray · Grok Bot 0.16.0</p>
+        <p class="eyebrow">X-Ray · Grok Bot 0.24.0</p>
         <h1>聊天从桌面发出，Agent 在云端动手</h1>
-        <p class="lede">Grok Bot 把一个长期存在的 AI 队友放进每位用户的云端电脑。Mac App 负责身份、界面、连接与人工接管，云端 Host 负责 Agent loop、工具、会话和后台任务。</p>
+        <p class="lede">Grok Bot 把一个长期存在的 AI 队友放进每位用户的云端电脑。Mac App 负责身份、界面、连接与人工接管，云端 Host 负责 Agent loop、工具、会话和后台任务。本文现已补到本机 0.24.0 版本。</p>
         <div class="plain-answer">
-          一条消息会穿过 Electron 的受限桥接层，再经 coordinator 连到用户专属 Sand Box。Host 选定模型，默认请求 <code>grok-4.5</code>，让 Agent 调插件、浏览器、终端或本机能力。执行事件沿同一条连接流回界面，持久状态留在云端，所以合上电脑以后工作仍可继续。
+          一条消息会穿过 Electron 的受限桥接层，再经 coordinator 连到用户专属 Sand Box。Host 按会话、设置、环境变量与实验配置解析模型，最后才落到内置兜底 <code>grok-4.5</code>。包里已有 Grok 4.6 支持，后端返回的 <code>responseInfo.model</code> 才能说明某一轮实际解析成了哪个模型。
         </div>
         <dl class="facts" aria-label="已安装版本信息">
-          <div class="fact"><dt>本机版本</dt><dd>0.16.0</dd></div>
+          <div class="fact"><dt>本机版本</dt><dd>0.24.0</dd></div>
           <div class="fact"><dt>应用身份</dt><dd><code>com.anysphere.sand</code></dd></div>
           <div class="fact"><dt>签名</dt><dd>Anysphere · Apple 已公证</dd></div>
-          <div class="fact"><dt>默认主模型</dt><dd>Grok 4.5 · high · fast</dd></div>
+          <div class="fact"><dt>内置兜底请求</dt><dd>Grok 4.5 · high · fast · max</dd></div>
         </dl>
       </div>
     </header>
@@ -407,11 +454,64 @@
       </div>
     </section>
 
+    <section class="shell" aria-labelledby="update-title">
+      <p class="section-kicker">0.24.0 最新复核</p>
+      <h2 id="update-title">模型已经不止一个名字，先看它在链路里负责什么</h2>
+      <p class="section-intro">我重新拆了当前安装包。0.24.0 的第一方 bundle 没有公开源码映射，所以这次按压缩文件中的稳定字符串和字节位置复核。能确认的是客户端怎样选、怎样发、怎样接收结果。</p>
+      <div class="update-note">
+        当前包的硬编码兜底仍是 <code>grok-4.5</code>，参数为 <code>effort high</code>、<code>fast true</code> 和 <code>maxMode true</code>。这只说明没有其他配置命中时客户端会请求什么，不能单凭这一行断定你账号里的每次对话都跑在 Grok 4.5。
+      </div>
+
+      <div class="model-grid" aria-label="Grok Bot 0.24.0 模型分工">
+        <article class="model-card">
+          <small>主 Agent 兜底</small>
+          <strong>Grok 4.5</strong>
+          <p>显式会话模型、环境变量、实验设置与保存的默认值都排在它前面。</p>
+        </article>
+        <article class="model-card">
+          <small>新模型支持</small>
+          <strong>Grok 4.6</strong>
+          <p>兼容分支和模型选择实验都已出现 4.6，内置兜底尚未跟着改成 4.6。</p>
+        </article>
+        <article class="model-card">
+          <small>摘要任务</small>
+          <strong>Gemini 2.5 Flash</strong>
+          <p>摘要流程可以走独立模型，不应拿它代替主对话模型来判断一次 turn。</p>
+        </article>
+        <article class="model-card">
+          <small>电脑与浏览器子 Agent</small>
+          <strong>Claude Opus 4.8</strong>
+          <p>电脑操作的后备选择关闭 thinking、使用 low effort。浏览器分支还受功能配置控制。</p>
+        </article>
+      </div>
+
+      <div class="usage-grid" aria-labelledby="usage-title">
+        <article class="usage-display">
+          <span class="big">% + 重置</span>
+          <p>0.24.0 的周额度界面拿到使用百分比、下次重置时间、是否仍有额度和套餐标签。</p>
+        </article>
+        <article class="usage-detail">
+          <h3 id="usage-title">每周到底有多少 token</h3>
+          <p>当前包里没有记录一个固定的每周 token 总数，也没有把周额度百分比换算成 token 的公式。</p>
+          <ul>
+            <li><code>GetSandUsageStatusResponse</code> 返回 <code>usage_percent</code>、<code>next_reset_timestamp_utc</code> 与额度状态，没有 raw token 字段。</li>
+            <li>按量使用另记 <code>usedCents</code> 和 <code>limitCents</code>，它是金额口径。</li>
+            <li>生成代码中虽有通用 <code>GetTokenUsage</code> RPC 定义，渲染层没有消费它，也找不到 Grok Bot 周额度的调用链。</li>
+          </ul>
+          <p>官方 FAQ 也把这套共享周额度写成百分比。不同产品和任务消耗的计算量不同，因此不能从百分比可靠倒推一个固定 token 数。</p>
+        </article>
+      </div>
+
+      <div class="update-note">
+        0.24.0 的解析顺序可以概括为摘要或专用子 Agent、显式会话模型、<code>SAND_AGENT_MODEL</code>、实验或已保存默认值、内置 Grok 4.5 兜底。请求会带上 <code>requestedModel</code>，响应再给出已解析模型。包内证据位于 <code>host-main.cjs</code> 字节 3,729,286、5,745,415、10,944,249 与 11,698,298 附近。
+      </div>
+    </section>
+
     <div class="evidence-wrap">
       <section class="shell" aria-labelledby="evidence-title">
         <p class="section-kicker">源码证据层</p>
         <h2 id="evidence-title">打开以后能看到的真实分工</h2>
-        <p class="section-intro">本机包保留了 source map。下面每项都能从已签名的 <code>app.asar</code> 重新定位。展开时看到的是同一条流程的技术细节。</p>
+        <p class="section-intro">下面的架构证据来自首次拆解的 0.16.0 安装包。它保留了 source map，因此可以回到源码文件和行号。0.24.0 的模型与额度补充来自当前已签名安装包，证据按压缩 bundle 的字节位置记录。</p>
 
         <div class="evidence-grid">
           <details open>
@@ -447,9 +547,9 @@
           </details>
 
           <details>
-            <summary><span class="step-pill">5</span><span>默认模型确实是 Grok 4.5</span></summary>
+            <summary><span class="step-pill">5</span><span>内置模型兜底是 Grok 4.5</span></summary>
             <div class="detail-body">
-              <p>包内默认选择写成 <code>grok-4.5</code>、<code>maxMode true</code>、<code>effort high</code> 和 <code>fast true</code>。设置、环境变量、实验配置和特定子 Agent 可以改写选择。最终请求通过 Cursor 后端的 <code>InferenceService</code> 流式发送。</p>
+              <p>0.16.0 包内的默认选择写成 <code>grok-4.5</code>、<code>maxMode true</code>、<code>effort high</code> 和 <code>fast true</code>。设置、环境变量、实验配置和特定子 Agent 可以改写选择。0.24.0 仍保留同一兜底，也加入了 Grok 4.6 的兼容与选择入口。</p>
               <p class="anchor"><code>src/shared/agents/agent-model.ts</code> 第 10 至 38 行<br><code>src/host/extensions/inference/cursor-session.ts</code> 第 58 至 86 行、第 166 至 209 行<br><code>src/shared/node/cursor-backend/cursor-inference.ts</code> 第 413 至 485 行</p>
             </div>
           </details>
@@ -490,7 +590,7 @@
       </div>
       <aside class="unknown">
         <h3>这次静态检查没有跨过的线</h3>
-        <p>我没有启动 App、附加调试器、读取账户数据、抓取流量或查看凭据。静态包能证明客户端请求的模型 ID、路由与本地安全检查，无法独立证明后端收到请求后采用的每一步服务端调度，也无法证明每个打包模块在当前账号上都已开放。</p>
+        <p>我没有启动 App、附加调试器、读取账户数据、抓取流量或查看凭据。静态包能证明客户端请求的模型 ID、路由与本地安全检查，也能证明客户端会读取后端返回的已解析模型。它无法独立证明某个账号、某一轮对话最后跑了哪个模型，也无法证明每个打包模块在当前账号上都已开放。</p>
       </aside>
     </section>
 
@@ -500,7 +600,7 @@
         <div>
           <p class="section-kicker">我的判断</p>
           <h2 id="verdict-title">Grok Bot 是一套完整的远程 Agent 产品，Mac App 主要承担控制台和可信接管</h2>
-          <p>“Bot 有自己的电脑”这句话在包内有完整实现对应。桌面端没有把模型和工具都塞进一个聊天窗口，它连接一台长期存在的 Linux Box，Box 里有网关、Agent runner、工具、SQLite、自动任务和独立更新。Grok 4.5 是默认推理模型，Cursor 身份、计费与后端仍处在请求链上。</p>
+          <p>“Bot 有自己的电脑”这句话在包内有完整实现对应。桌面端没有把模型和工具都塞进一个聊天窗口，它连接一台长期存在的 Linux Box，Box 里有网关、Agent runner、工具、SQLite、自动任务和独立更新。Grok 4.5 是客户端兜底请求，Grok 4.6 已进入选择链，最终解析仍由账号配置与后端响应共同决定。</p>
           <p>这也给出了最实用的判断标准。把它当成能操作真实系统的远程同事，先给一个有明确结果的一次性任务，把外部副作用留在审批后，再把跑顺的过程保存成 Skill 或 routine。</p>
         </div>
       </div>
@@ -512,7 +612,7 @@
       <div class="sources">
         <article class="source">
           <strong>本机已安装包</strong>
-          <p><code>/Applications/Grok Bot.app</code> · 版本 0.16.0 · 主程序 SHA-256 <code>d6ac6431236c47f926df02cdfb086a3ee87d5f1af168f1e5c6e95060d44f734f</code> · <code>app.asar</code> SHA-256 <code>d4f2ebd3f1580281bd7950d936a0b5201fb427c24c196c25acbe0bfe3b75924b</code></p>
+          <p><code>/Applications/Grok Bot.app</code> · 版本 0.24.0 · 主程序 SHA-256 <code>c958d80cdd126cb95f1d60ef6bf451037a7569994a75a6c06b2863ae0781250a</code> · <code>app.asar</code> SHA-256 <code>41f7d5008db4edcb198d9e466c9c1e776bb8a75a7651951257ff9a4f885a4540</code></p>
         </article>
         <article class="source">
           <strong>PR #174 的 X-Ray 工作流</strong>
@@ -526,9 +626,13 @@
           <strong>SpaceXAI 官方安全与自动任务说明</strong>
           <p><a href="https://docs.x.ai/grok-bot/approvals-security-and-privacy">审批、安全与隐私</a> · <a href="https://docs.x.ai/grok-bot/skills-routines-and-automations">Skills 与 routines</a> · <a href="https://docs.x.ai/grok-bot/teams-and-enterprises">团队架构</a></p>
         </article>
+        <article class="source">
+          <strong>SpaceXAI 官方额度说明</strong>
+          <p><a href="https://docs.x.ai/grok/faq">Grok 使用额度 FAQ</a> · <a href="https://docs.x.ai/grok-bot/settings-and-notifications">Grok Bot 设置与用量提醒</a></p>
+        </article>
       </div>
     </section>
   </main>
-  <footer class="shell">静态只读检查完成于 2026-08-24。页面未包含账户、凭据、聊天记录或运行时流量。</footer>
+  <footer class="shell">架构快照来自 0.16.0，模型与额度于 2026-08-24 使用 0.24.0 静态复核。页面未包含账户、凭据、聊天记录或运行时流量。</footer>
 </body>
 </html>
