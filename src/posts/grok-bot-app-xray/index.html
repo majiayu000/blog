@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grok Bot X-Ray：聊天从桌面发出，Agent 在云端动手</title>
+  <meta name="date" content="2026-08-24">
+  <meta name="description" content="静态拆解 Grok Bot 0.16.0：Mac App 如何连接云端 Sand Box、驱动 Agent loop，并在工具执行、持久状态与人工审批之间划清边界。">
+  <meta name="tags" content="Grok Bot, Agent, Electron, macOS, 安全">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080a0d;
+      --panel: #10141a;
+      --panel-2: #151a21;
+      --ink: #f3f5f7;
+      --muted: #a8b0bb;
+      --line: #2b333e;
+      --soft-line: #202731;
+      --silver: #d7dde4;
+      --blue: #70a7ff;
+      --cyan: #62d8d0;
+      --amber: #f1b661;
+      --red: #ef7b7b;
+      --green: #75d39b;
+      --shadow: 0 24px 70px rgba(0, 0, 0, .34);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { max-width: 100%; scroll-behavior: smooth; overflow-x: hidden; }
+
+    body {
+      margin: 0;
+      min-width: 280px;
+      background:
+        radial-gradient(circle at 82% -10%, rgba(112, 167, 255, .15), transparent 34rem),
+        radial-gradient(circle at 7% 22%, rgba(98, 216, 208, .08), transparent 28rem),
+        var(--bg);
+      color: var(--ink);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    a { color: #a9c9ff; text-underline-offset: .2em; }
+    a:hover { color: #d2e2ff; }
+    a:focus-visible, summary:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .92em;
+      color: #d8e6ff;
+      overflow-wrap: anywhere;
+    }
+
+    .shell { width: min(1180px, calc(100% - 36px)); max-width: calc(100vw - 36px); margin: 0 auto; }
+
+    .hero {
+      min-height: 78vh;
+      display: grid;
+      align-items: center;
+      padding: 72px 0 54px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 18px;
+      color: var(--cyan);
+      font-size: .78rem;
+      font-weight: 760;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 1px;
+      background: currentColor;
+    }
+
+    h1 {
+      max-width: 880px;
+      margin: 0;
+      font-size: clamp(3rem, 8vw, 6.8rem);
+      line-height: .92;
+      letter-spacing: -.065em;
+      overflow-wrap: anywhere;
+    }
+
+    .lede {
+      max-width: 780px;
+      margin: 30px 0 0;
+      color: var(--silver);
+      font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+      line-height: 1.48;
+    }
+
+    .plain-answer {
+      max-width: 930px;
+      margin-top: 36px;
+      padding: 24px 26px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--blue);
+      border-radius: 14px;
+      background: rgba(16, 20, 26, .82);
+      box-shadow: var(--shadow);
+      font-size: 1.06rem;
+    }
+
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      margin-top: 28px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--line);
+    }
+
+    .fact { min-height: 108px; padding: 18px; background: rgba(16, 20, 26, .95); }
+    .fact dt { margin: 0 0 7px; color: var(--muted); font-size: .78rem; }
+    .fact dd { margin: 0; color: var(--ink); font-weight: 720; }
+
+    section { padding: 72px 0; }
+    .section-kicker { margin: 0 0 10px; color: var(--cyan); font-size: .8rem; font-weight: 760; letter-spacing: .14em; text-transform: uppercase; }
+    h2 { max-width: 860px; margin: 0; font-size: clamp(2rem, 4.8vw, 3.8rem); line-height: 1.07; letter-spacing: -.04em; overflow-wrap: anywhere; }
+    .section-intro { max-width: 760px; margin: 18px 0 0; color: var(--muted); font-size: 1.08rem; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(140px, 1fr));
+      gap: 30px 18px;
+      margin: 42px 0 0;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(155deg, rgba(21, 26, 33, .96), rgba(11, 14, 18, .96));
+      box-shadow: var(--shadow);
+    }
+
+    .node {
+      position: relative;
+      min-width: 0;
+      width: 100%;
+      min-height: 168px;
+      padding: 19px 17px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #10151b;
+    }
+
+    .node:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -21px;
+      z-index: 2;
+      color: #667282;
+      font-size: 1.35rem;
+      transform: translateY(-50%);
+    }
+
+    .node .num { color: var(--blue); font: 700 .74rem ui-monospace, monospace; letter-spacing: .12em; }
+    .node h3 { margin: 12px 0 8px; font-size: 1.02rem; line-height: 1.28; }
+    .node p { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.48; }
+    .node.cloud { border-color: rgba(98, 216, 208, .48); }
+    .node.model { border-color: rgba(112, 167, 255, .6); }
+
+    .return-path {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      min-height: 54px;
+      border-top: 1px solid var(--soft-line);
+      color: var(--cyan);
+      font-size: .93rem;
+      text-align: center;
+    }
+
+    .implications {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .implication { padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+    .implication strong { display: block; margin-bottom: 7px; font-size: 1.02rem; }
+    .implication p { margin: 0; color: var(--muted); }
+
+    .evidence-wrap {
+      border-top: 1px solid var(--soft-line);
+      border-bottom: 1px solid var(--soft-line);
+      background: rgba(12, 15, 19, .58);
+    }
+
+    .evidence-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 36px;
+    }
+
+    details {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+    }
+
+    summary {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: 20px;
+      cursor: pointer;
+      list-style: none;
+      font-weight: 740;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--blue); font-size: 1.2rem; }
+    details[open] summary::after { content: "×"; }
+
+    .step-pill {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 99px;
+      background: rgba(112, 167, 255, .14);
+      color: var(--blue);
+      font: 700 .8rem ui-monospace, monospace;
+    }
+
+    .detail-body { padding: 0 20px 22px 64px; color: var(--muted); }
+    .detail-body p { margin: 0 0 14px; }
+    .detail-body p:last-child { margin-bottom: 0; }
+    .anchor { padding: 11px 13px; border: 1px solid var(--soft-line); border-radius: 10px; background: #0a0d11; color: #bcc6d3; font-size: .82rem; line-height: 1.5; }
+
+    .boundary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 36px;
+    }
+
+    .boundary { padding: 26px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); }
+    .boundary h3 { margin: 0 0 13px; font-size: 1.12rem; }
+    .boundary ul { margin: 0; padding-left: 1.2em; color: var(--muted); }
+    .boundary li + li { margin-top: 10px; }
+    .boundary.good h3 { color: var(--green); }
+    .boundary.caution h3 { color: var(--amber); }
+
+    .unknown {
+      margin-top: 18px;
+      padding: 22px 24px;
+      border: 1px solid rgba(239, 123, 123, .42);
+      border-radius: 16px;
+      background: rgba(53, 22, 25, .26);
+    }
+
+    .unknown h3 { margin: 0 0 9px; color: #ffaaaa; font-size: 1.05rem; }
+    .unknown p { margin: 0; color: #d1b8bb; }
+
+    .verdict {
+      display: grid;
+      grid-template-columns: .8fr 1.2fr;
+      gap: 28px;
+      align-items: start;
+      padding: 34px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(145deg, rgba(112, 167, 255, .09), rgba(98, 216, 208, .04));
+    }
+
+    .verdict .mark { font-size: clamp(3rem, 8vw, 7rem); font-weight: 830; line-height: .85; letter-spacing: -.08em; color: #edf3fb; }
+    .verdict h2 { font-size: clamp(1.8rem, 3.6vw, 3rem); }
+    .verdict p { color: var(--muted); }
+
+    .sources { display: grid; gap: 12px; margin-top: 28px; }
+    .source { padding: 15px 17px; border-left: 2px solid var(--line); color: var(--muted); }
+    .source strong { color: var(--ink); }
+    .source p { margin: 5px 0 0; }
+
+    .home-link {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 20;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(8, 10, 13, .88);
+      color: var(--silver);
+      font-size: .8rem;
+      text-decoration: none;
+      backdrop-filter: blur(12px);
+    }
+    .home-link:hover { border-color: var(--blue); }
+
+    footer { padding: 42px 0 70px; color: #77818d; font-size: .84rem; }
+
+    @media (max-width: 1040px) {
+      .flow { grid-template-columns: repeat(3, 1fr); }
+      .node:nth-child(3)::after { display: none; }
+    }
+
+    @media (max-width: 760px) {
+      .shell { width: calc(100% - 24px); max-width: calc(100vw - 24px); }
+      .hero { min-height: auto; padding-top: 54px; }
+      h1 { font-size: clamp(2.45rem, 12vw, 3.05rem); line-height: 1.01; letter-spacing: -.055em; }
+      h2 { font-size: clamp(1.82rem, 8.5vw, 2.35rem); line-height: 1.12; }
+      p, dd, h3, .node, .detail-body, .anchor { overflow-wrap: anywhere; word-break: break-word; }
+      .facts, .implications, .evidence-grid, .boundary-grid, .verdict { grid-template-columns: 1fr; }
+      .facts { gap: 1px; }
+      .fact { min-height: auto; }
+      .flow { grid-template-columns: 1fr; padding: 18px; }
+      .node { min-height: auto; }
+      .node:not(:last-child)::after { display: block; top: auto; right: 50%; bottom: -29px; transform: translateX(50%) rotate(90deg); }
+      .return-path { margin-top: 8px; }
+      .detail-body { padding-left: 20px; }
+      section { padding: 56px 0; }
+    }
+  </style>
+</head>
+<body>
+  <a class="home-link" href="/">← Silent Star</a>
+  <main>
+    <header class="hero shell">
+      <div>
+        <p class="eyebrow">X-Ray · Grok Bot 0.16.0</p>
+        <h1>聊天从桌面发出，Agent 在云端动手</h1>
+        <p class="lede">Grok Bot 把一个长期存在的 AI 队友放进每位用户的云端电脑。Mac App 负责身份、界面、连接与人工接管，云端 Host 负责 Agent loop、工具、会话和后台任务。</p>
+        <div class="plain-answer">
+          一条消息会穿过 Electron 的受限桥接层，再经 coordinator 连到用户专属 Sand Box。Host 选定模型，默认请求 <code>grok-4.5</code>，让 Agent 调插件、浏览器、终端或本机能力。执行事件沿同一条连接流回界面，持久状态留在云端，所以合上电脑以后工作仍可继续。
+        </div>
+        <dl class="facts" aria-label="已安装版本信息">
+          <div class="fact"><dt>本机版本</dt><dd>0.16.0</dd></div>
+          <div class="fact"><dt>应用身份</dt><dd><code>com.anysphere.sand</code></dd></div>
+          <div class="fact"><dt>签名</dt><dd>Anysphere · Apple 已公证</dd></div>
+          <div class="fact"><dt>默认主模型</dt><dd>Grok 4.5 · high · fast</dd></div>
+        </dl>
+      </div>
+    </header>
+
+    <section class="shell" aria-labelledby="flow-title">
+      <p class="section-kicker">一条消息怎么走</p>
+      <h2 id="flow-title">六个环节，把聊天变成持续执行</h2>
+      <p class="section-intro">这张图把本机 App、云端电脑和模型服务放在同一条因果线上。它也解释了为何 Bot 能离线工作，以及本机权限为何另算一层。</p>
+
+      <div class="flow" role="img" aria-label="Grok Bot 从消息输入到结果回传的六步流程">
+        <article class="node">
+          <span class="num">01</span>
+          <h3>React 界面收下任务</h3>
+          <p>渲染层只拿到明确开放的桌面能力和 coordinator 端口。</p>
+        </article>
+        <article class="node">
+          <span class="num">02</span>
+          <h3>Electron 主进程守住边界</h3>
+          <p>它处理 Cursor 登录、附件、设置、升级和本机权限。</p>
+        </article>
+        <article class="node">
+          <span class="num">03</span>
+          <h3>Coordinator 接管长连接</h3>
+          <p>主进程把一次性 MessagePort 交给界面，连接断开后重新收敛。</p>
+        </article>
+        <article class="node cloud">
+          <span class="num">04</span>
+          <h3>用户的 Sand Box 接单</h3>
+          <p>后端创建或找到共享云端电脑，再返回网关地址和短期凭据。</p>
+        </article>
+        <article class="node model">
+          <span class="num">05</span>
+          <h3>Host 驱动 Agent loop</h3>
+          <p>Host 组装上下文、工具和模型请求，默认选择 Grok 4.5。</p>
+        </article>
+        <article class="node">
+          <span class="num">06</span>
+          <h3>工具把结果落进真实系统</h3>
+          <p>插件、浏览器、文件、终端和获准的本机动作完成实际工作。</p>
+        </article>
+        <div class="return-path">SSE 事件、审批卡、进度与最终消息持续回到桌面和移动端</div>
+      </div>
+
+      <div class="implications">
+        <article class="implication">
+          <strong>关掉 Mac 也能继续</strong>
+          <p>执行主体在云端 Host。官方 FAQ 也确认后台 turn 与 routine 不依赖笔记本保持开启。</p>
+        </article>
+        <article class="implication">
+          <strong>多个 Bot 共用一台电脑</strong>
+          <p>每个 Bot 有独立角色、会话和屏幕，共享文件、浏览器登录与云端凭据。</p>
+        </article>
+        <article class="implication">
+          <strong>本机执行是单独能力</strong>
+          <p>云端工具默认可用，本机命令另走反向通道和审批设置，默认应当逐次询问。</p>
+        </article>
+      </div>
+    </section>
+
+    <div class="evidence-wrap">
+      <section class="shell" aria-labelledby="evidence-title">
+        <p class="section-kicker">源码证据层</p>
+        <h2 id="evidence-title">打开以后能看到的真实分工</h2>
+        <p class="section-intro">本机包保留了 source map。下面每项都能从已签名的 <code>app.asar</code> 重新定位。展开时看到的是同一条流程的技术细节。</p>
+
+        <div class="evidence-grid">
+          <details open>
+            <summary><span class="step-pill">1</span><span>界面没有直接拿到 Node</span></summary>
+            <div class="detail-body">
+              <p><code>BrowserWindow</code> 开启 <code>contextIsolation</code>，关闭 <code>nodeIntegration</code>。preload 只向页面公开 <code>desktop</code> 与 <code>coordinatorPort</code>，聊天界面通过 IPC 和 MessagePort 请求能力。</p>
+              <p class="anchor"><code>src/electron-main/main.cts</code> 第 693 至 720 行<br><code>src/electron-preload/preload.cts</code> 第 142 至 161 行、第 806 至 815 行</p>
+            </div>
+          </details>
+
+          <details open>
+            <summary><span class="step-pill">2</span><span>桌面连接用户的云端 Box</span></summary>
+            <div class="detail-body">
+              <p><code>BrokeredHostConnector</code> 通过 <code>GrokBotService.ensureSandBox</code> 找到或创建云端电脑。返回值包含网关 URL、每 Box bearer、网络路由 token 和 VNC 地址。</p>
+              <p class="anchor"><code>src/electron-main/box/box-host-connector.ts</code> 第 1 至 25 行、第 122 至 213 行</p>
+            </div>
+          </details>
+
+          <details>
+            <summary><span class="step-pill">3</span><span>网关使用 HTTP 命令与 SSE 事件</span></summary>
+            <div class="detail-body">
+              <p>Host 网关提供 <code>/api/&lt;method&gt;</code>、<code>/events</code>、<code>/health</code> 等入口。敏感命令和事件流在配置 token 时必须携带 bearer，比较过程使用 <code>timingSafeEqual</code>。本机 shell 与 WebAuthn 反向通道缺少 token 会直接返回 401。</p>
+              <p class="anchor"><code>src/host/gateway-server.ts</code> 第 216 至 227 行、第 583 至 725 行</p>
+            </div>
+          </details>
+
+          <details>
+            <summary><span class="step-pill">4</span><span>Host 才是 Agent 的长期大脑</span></summary>
+            <div class="detail-body">
+              <p><code>SandHost.start</code> 按依赖顺序启动插件，再装配 roster、runner、审批、MCP、持久会话和后台任务。用户发消息以后，<code>turn-runtime</code> 调用 runner，runner 负责模型流和工具循环。</p>
+              <p class="anchor"><code>src/host/sand-host.ts</code> 第 140 至 270 行<br><code>src/host/extensions/transcript/turn-runtime.ts</code> 第 394 至 512 行</p>
+            </div>
+          </details>
+
+          <details>
+            <summary><span class="step-pill">5</span><span>默认模型确实是 Grok 4.5</span></summary>
+            <div class="detail-body">
+              <p>包内默认选择写成 <code>grok-4.5</code>、<code>maxMode true</code>、<code>effort high</code> 和 <code>fast true</code>。设置、环境变量、实验配置和特定子 Agent 可以改写选择。最终请求通过 Cursor 后端的 <code>InferenceService</code> 流式发送。</p>
+              <p class="anchor"><code>src/shared/agents/agent-model.ts</code> 第 10 至 38 行<br><code>src/host/extensions/inference/cursor-session.ts</code> 第 58 至 86 行、第 166 至 209 行<br><code>src/shared/node/cursor-backend/cursor-inference.ts</code> 第 413 至 485 行</p>
+            </div>
+          </details>
+
+          <details>
+            <summary><span class="step-pill">6</span><span>会话和记忆拥有持久存储</span></summary>
+            <div class="detail-body">
+              <p>每个 Agent 的数据目录下有 <code>store.db</code> 和对话 blob。SQLite 使用 WAL，并在快照前检查 checkpoint，避免复制一个落后的主库。根目录可以由运行环境重定位，所以桌面端与云端 Host 可以共用同一套路径规则。</p>
+              <p class="anchor"><code>src/host/extensions/session/session-paths.ts</code> 第 10 至 51 行<br><code>src/host/storage/store-db.ts</code> 第 47 至 109 行</p>
+            </div>
+          </details>
+        </div>
+      </section>
+    </div>
+
+    <section class="shell" aria-labelledby="boundary-title">
+      <p class="section-kicker">可信边界</p>
+      <h2 id="boundary-title">这套设计有几道硬门，也有清楚的共享面</h2>
+      <div class="boundary-grid">
+        <article class="boundary good">
+          <h3>静态检查确认的保护</h3>
+          <ul>
+            <li>本机 App 通过 Anysphere Developer ID 签名，Apple 公证票据有效，深度签名验证通过。</li>
+            <li>渲染页默认没有 Node 能力，外部导航会被主进程拦下并交给系统浏览器。</li>
+            <li>云端网关敏感面使用 bearer。涉及本机 shell 和 WebAuthn 的通道在无 token 时关闭。</li>
+            <li>模型请求带 Cursor 登录凭据、机器标识、请求 ID 和隐私模式。隐私查询失败时选择禁止训练的保守值。</li>
+          </ul>
+        </article>
+        <article class="boundary caution">
+          <h3>使用时要记住的共享面</h3>
+          <ul>
+            <li>同一用户的 Bot 共用云端电脑。Bot 之间不能充当权限隔离边界。</li>
+            <li>Grok Bot 依赖云端数据存储，Legacy Privacy Mode 无法运行这项产品。</li>
+            <li>Auto Review 会辅助判断，官方仍建议给发送、发布、购买、删除和生产修改设窄而明确的人工审批。</li>
+            <li>本机包声明 Apple Events、相机、麦克风和 JIT 权限。声明只证明能力存在，不能证明某次运行实际调用。</li>
+          </ul>
+        </article>
+      </div>
+      <aside class="unknown">
+        <h3>这次静态检查没有跨过的线</h3>
+        <p>我没有启动 App、附加调试器、读取账户数据、抓取流量或查看凭据。静态包能证明客户端请求的模型 ID、路由与本地安全检查，无法独立证明后端收到请求后采用的每一步服务端调度，也无法证明每个打包模块在当前账号上都已开放。</p>
+      </aside>
+    </section>
+
+    <section class="shell" aria-labelledby="verdict-title">
+      <div class="verdict">
+        <div class="mark" aria-hidden="true">GB</div>
+        <div>
+          <p class="section-kicker">我的判断</p>
+          <h2 id="verdict-title">Grok Bot 是一套完整的远程 Agent 产品，Mac App 主要承担控制台和可信接管</h2>
+          <p>“Bot 有自己的电脑”这句话在包内有完整实现对应。桌面端没有把模型和工具都塞进一个聊天窗口，它连接一台长期存在的 Linux Box，Box 里有网关、Agent runner、工具、SQLite、自动任务和独立更新。Grok 4.5 是默认推理模型，Cursor 身份、计费与后端仍处在请求链上。</p>
+          <p>这也给出了最实用的判断标准。把它当成能操作真实系统的远程同事，先给一个有明确结果的一次性任务，把外部副作用留在审批后，再把跑顺的过程保存成 Skill 或 routine。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="shell" aria-labelledby="sources-title">
+      <p class="section-kicker">来源</p>
+      <h2 id="sources-title">本机包与公开资料互相校准</h2>
+      <div class="sources">
+        <article class="source">
+          <strong>本机已安装包</strong>
+          <p><code>/Applications/Grok Bot.app</code> · 版本 0.16.0 · 主程序 SHA-256 <code>d6ac6431236c47f926df02cdfb086a3ee87d5f1af168f1e5c6e95060d44f734f</code> · <code>app.asar</code> SHA-256 <code>d4f2ebd3f1580281bd7950d936a0b5201fb427c24c196c25acbe0bfe3b75924b</code></p>
+        </article>
+        <article class="source">
+          <strong>PR #174 的 X-Ray 工作流</strong>
+          <p>本次检查使用 <a href="https://github.com/majiayu000/spellbook/pull/174">PR #174</a> head <code>c349718d58d171c8721bbaac12b7ee0a01a51639</code> 的静态应用分析、证据和双层解释规则。</p>
+        </article>
+        <article class="source">
+          <strong>SpaceXAI 官方产品说明</strong>
+          <p><a href="https://x.ai/news/introducing-grok-bot">发布说明</a> · <a href="https://docs.x.ai/grok-bot/overview">工作方式</a> · <a href="https://docs.x.ai/grok-bot/faq">共享电脑与后台运行</a></p>
+        </article>
+        <article class="source">
+          <strong>SpaceXAI 官方安全与自动任务说明</strong>
+          <p><a href="https://docs.x.ai/grok-bot/approvals-security-and-privacy">审批、安全与隐私</a> · <a href="https://docs.x.ai/grok-bot/skills-routines-and-automations">Skills 与 routines</a> · <a href="https://docs.x.ai/grok-bot/teams-and-enterprises">团队架构</a></p>
+        </article>
+      </div>
+    </section>
+  </main>
+  <footer class="shell">静态只读检查完成于 2026-08-24。页面未包含账户、凭据、聊天记录或运行时流量。</footer>
+</body>
+</html>
