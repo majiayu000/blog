@@ -33,6 +33,14 @@ try {
 </script>
 <link rel="stylesheet" href="/css/main.css">
 <link rel="stylesheet" href="/css/support.css">
+<script src="/js/search-shortcut.js" defer></script>
+{% if site.analytics.enabled %}
+<script>window.__SS_ANALYTICS__={"endpoint":{{ site.analytics.endpoint | dump | safe }},"pageType":{{ (navKey or "page") | dump | safe }}};</script>
+<script src="/js/analytics.js" defer></script>
+{% endif %}
+{% if site.cloudflareWebAnalytics.token %}
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token":"{{ site.cloudflareWebAnalytics.token | escape }}"}'></script>
+{% endif %}
 {% if extraHead %}{{ extraHead | safe }}{% endif %}
 </head>
 <body{% if navKey %} class="page-{{ navKey }}"{% endif %}>

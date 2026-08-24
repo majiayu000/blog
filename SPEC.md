@@ -22,14 +22,18 @@
 
 - canonical、Open Graph、Twitter Card 和 article 元数据；
 - 构建期生成的 1200×630 PNG 分享卡片；
-- 同站点的 `post-enhancement.css` / `post-enhancement.js`；
+- 同站点的 `post-enhancement.css` / `post-enhancement.js` / `search-shortcut.js`；
 - 预计阅读时间、作者信息和由现有二级标题生成的页内目录；
 - 更新一篇、更早一篇、继续阅读、复制链接和回到首页；
-- 可选的 giscus 评论区。
+- 可选的 giscus 评论区；
+- 可选的第一方分析脚本，以及仅在提供 token 时注入的 Cloudflare Web Analytics beacon。
 
-源文章继续禁止远程样式、脚本、字体和媒体。giscus 的远程脚本只能由增强器根据
-固定站点配置生成，不能写进文章源文件。评论脚本只在读者接近评论区时加载；关闭评论时不加载第三方资源；开启评论但
-缺少 repo/category ID 时构建失败，不能静默隐藏评论。
+源文章继续禁止远程样式、脚本、字体和媒体。giscus 与 Cloudflare Web Analytics
+的远程脚本只能由增强器或外壳根据固定站点配置生成，不能写进文章源文件。
+评论脚本只在读者接近评论区时加载；关闭评论时不加载第三方资源；开启评论但
+缺少 repo/category ID 时构建失败，不能静默隐藏评论。分析开启但缺少 endpoint、
+或 token 格式非法时同样构建失败。继续阅读只推荐同主专题或标签交集大于 0 的文章，
+不用日期把无关文章填满三个空位。
 
 ## 内容发现
 
@@ -50,6 +54,7 @@ Pagefind 只扫描 `posts/*/index.html`。文章 afterword 已带 `data-pagefind
 | 生成器 | Eleventy (11ty) v3 | 把 `.html` 当一等公民，不强迫转 markdown |
 | 搜索 | Pagefind | 直接索引构建后的 HTML，纯静态无后端 |
 | 托管 | Cloudflare Pages | 免费、全球 CDN、自动 HTTPS |
+| 分析 | 第一方 `/api/event` + 可选 CF Web Analytics | 不把 GA 写进文章源；可关；配置不完整则构建失败 |
 | 媒体 | 先自包含在文章目录内 | 起步内容量小，不上 R2 |
 
 排除：Docusaurus / VitePress / MkDocs / Jekyll —— markdown-first，塞整页 HTML 是逆水行舟。
@@ -78,7 +83,8 @@ Pagefind 只扫描 `posts/*/index.html`。文章 afterword 已带 `data-pagefind
 
 ## Fail closed
 
-缺 `<title>` 或 `<date>`、日期格式非法、slug 重复、引用远程样式/脚本/字体/媒体
+缺 `<title>` 或 `<date>`、日期格式非法、slug 重复、引用远程样式/脚本/字体/媒体、
+公开文章无法归入五个主专题、评论或分析已启用但配置不完整
 —— **构建直接失败并指出是哪个文件**。普通的外部来源链接不受影响。
 不用文件名兜底、不用当天日期兜底。宁可构建红，不要站上线后悄悄显示错误的元数据。
 
@@ -87,12 +93,13 @@ Pagefind 只扫描 `posts/*/index.html`。文章 afterword 已带 `data-pagefind
 ```
 blog/
 ├── eleventy.config.js      # 11ty 配置：passthrough 文章目录 + 忽略模板化
+├── functions/api/event.js  # Cloudflare Pages Function：第一方埋点入口
 ├── lib/posts.js            # 扫描 + 解析文章元数据（唯一有逻辑的地方）
 ├── lib/enhance-posts.js    # 为构建产物追加 SEO 与 afterword
 ├── lib/posts.test.js       # 解析与 fail-closed 行为的测试
 └── src/
     ├── _data/site.js       # 站点配置，从环境变量读，带默认值
-    ├── _data/posts.js      # global data：调用 lib/posts.js
+    ├── _data/blog.js       # global data：调用 lib/posts.js
     ├── _includes/shell.njk # 外壳布局（唯一模板 + 内联样式）
     ├── index.njk           # 首页：文章列表
     ├── tags.njk            # 每个标签一页
@@ -102,6 +109,8 @@ blog/
     ├── 404.njk / sitemap.njk / robots.njk
     ├── css/post-enhancement.css
     ├── js/post-enhancement.js
+    ├── js/search-shortcut.js
+    ├── js/analytics.js
     └── posts/<slug>/index.html
 ```
 
@@ -124,6 +133,9 @@ bun run build
 评论使用 GitHub Discussions + giscus。仓库必须公开、开启 Discussions、安装 giscus
 App，并提供固定 category。配置由 `src/_data/site.js` 读取；非敏感 ID 可以作为站点
 默认值，部署环境可以覆盖。
+
+第一方埋点由仓库根目录 `functions/` 提供。Cloudflare Pages 把它映射到 `/api/event`，
+不进入 `_site/`。列表页和文章页的分析脚本分别由外壳和增强器注入。
 
 ## 验证
 

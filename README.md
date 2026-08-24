@@ -80,18 +80,42 @@ Site details come from environment variables (see `src/_data/site.js`):
 | `GISCUS_REPO_ID` | `R_kgDOTm_R6Q` |
 | `GISCUS_CATEGORY` | `Announcements` |
 | `GISCUS_CATEGORY_ID` | `DIC_kwDOTm_R6c4DEEKR` |
+| `ANALYTICS_ENABLED` | `true` |
+| `ANALYTICS_ENDPOINT` | `/api/event` |
+| `CF_WEB_ANALYTICS_TOKEN` | empty |
 | `PORT` | `5567` |
 
 `SITE_URL` determines absolute links in RSS, canonical metadata and the sitemap.
-`GISCUS_ENABLED` accepts only `true` or `false`. Enabling it without a complete
-repository/category configuration fails the build instead of silently removing
-the comment UI.
+`GISCUS_ENABLED` and `ANALYTICS_ENABLED` accept only `true` or `false`. Enabling
+either without complete configuration fails the build instead of silently
+removing the UI or dropping events.
 
 Comments use the repository's `Announcements` category and are mapped by article
 pathname. The repository must keep Discussions enabled and the
 [giscus app](https://github.com/apps/giscus) installed. Set `GISCUS_ENABLED=false`
 for a third-party-free preview or emergency rollback. The giscus script is not
 requested until a reader approaches the comment section.
+
+Press `/` anywhere on the site (except when typing in a field) to jump to search.
+
+### Analytics
+
+Two layers, both optional to disable, neither is allowed in post source HTML:
+
+1. **Cloudflare Web Analytics** — page views, referrers, countries. Open the
+   Pages project → Web Analytics → Enable. Do **not** also set
+   `CF_WEB_ANALYTICS_TOKEN` if the dashboard already injects the beacon, or
+   visits will be counted twice. Use the token only when dashboard injection is
+   unavailable.
+2. **First-party events** — `page_view`, `scroll` (50/100), `search`,
+   `search_result_click`, `related_click`, `journey_click`, `copy_link`,
+   `copy_code`, `outbound_click`, `comments_view`. The browser posts them to
+   `/api/event` (`functions/api/event.js`). Cloudflare Pages deploys that
+   function automatically. Events are written to function logs; bind an
+   Analytics Engine dataset named `blog_events` to `ANALYTICS` if you want SQL.
+   Set `ANALYTICS_ENABLED=false` to stop injecting the tracker.
+
+The tracker honors `DNT`. It does not set cookies or assign a visitor id.
 
 The build generates a 1200×630 PNG social card for the site and every post under
 `_site/og/`. Cards intentionally use the stable ASCII slug as their visual title;

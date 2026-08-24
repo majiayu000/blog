@@ -494,6 +494,13 @@ input:focus-visible {
   font-size: 0.72rem;
 }
 
+.post-card__byline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
 .post-card__read {
   color: var(--accent);
   font-weight: 600;

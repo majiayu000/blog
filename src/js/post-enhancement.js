@@ -34,6 +34,7 @@
       try {
         await writeClipboard(window.location.href);
         showButtonState(button, "链接已复制");
+        window.ssTrack?.("copy_link");
       } catch (error) {
         console.error("Unable to copy page URL", error);
         showButtonState(button, "复制失败");
@@ -60,6 +61,7 @@
         try {
           await writeClipboard(source);
           showButtonState(button, "已复制");
+          window.ssTrack?.("copy_code");
         } catch (error) {
           console.error("Unable to copy code block", error);
           showButtonState(button, "失败");
@@ -142,6 +144,7 @@
     const load = () => {
       if (loaded) return;
       loaded = true;
+      window.ssTrack?.("comments_view");
       if (status) status.textContent = "正在加载评论…";
 
       const script = document.createElement("script");

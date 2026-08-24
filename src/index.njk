@@ -35,12 +35,15 @@ navKey: home
       <div class="featured-story__content">
         <div class="featured-story__topline">
           <span>编辑推荐</span>
-          {% if blog.featured.tags.length %}<a href="/tags/{{ blog.featured.tags[0] | tagPath | urlencode }}/">{{ blog.featured.tags[0] }}</a>{% endif %}
+          {% if blog.featured.topic %}<a href="/topics/{{ blog.featured.topic.slug }}/">{{ blog.featured.topic.title }}</a>{% elif blog.featured.tags.length %}<a href="/tags/{{ blog.featured.tags[0] | tagPath | urlencode }}/">{{ blog.featured.tags[0] }}</a>{% endif %}
         </div>
         <h3><a href="{{ blog.featured.url }}">{{ blog.featured.title }}</a></h3>
         {% if blog.featured.description %}<p>{{ blog.featured.description }}</p>{% endif %}
         <div class="featured-story__meta">
-          <time datetime="{{ blog.featured.date }}">{{ blog.featured.date | cnDate }}</time>
+          <span class="post-card__byline">
+            <time datetime="{{ blog.featured.date }}">{{ blog.featured.date | cnDate }}</time>
+            {% if blog.featured.readingMinutes %}<span aria-hidden="true">·</span><span>约 {{ blog.featured.readingMinutes }} 分钟</span>{% endif %}
+          </span>
           <a href="{{ blog.featured.url }}">阅读全文 <span aria-hidden="true">→</span></a>
         </div>
       </div>
@@ -49,7 +52,7 @@ navKey: home
         <strong aria-hidden="true">01</strong>
         <dl>
           <div><dt>FORMAT</dt><dd>深度长文</dd></div>
-          <div><dt>TOPICS</dt><dd>{{ blog.featured.tags.length }}</dd></div>
+          <div><dt>READ</dt><dd>约 {{ blog.featured.readingMinutes }} 分钟</dd></div>
         </dl>
         <span>{{ blog.featured.slug }}.html</span>
       </aside>

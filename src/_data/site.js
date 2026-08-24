@@ -8,7 +8,22 @@ function booleanEnv(name, fallback = false) {
 
 const siteUrl = process.env.SITE_URL ?? "https://blog.silencestar.com";
 
-// 站点配置。部署环境可以覆盖默认值；启用评论后缺少任一 ID 会由增强器直接终止构建。
+const analytics = {
+  enabled: booleanEnv("ANALYTICS_ENABLED", true),
+  endpoint: (process.env.ANALYTICS_ENDPOINT ?? "/api/event").trim(),
+};
+if (analytics.enabled && !analytics.endpoint) {
+  throw new Error("ANALYTICS_ENABLED=true 但 ANALYTICS_ENDPOINT 为空");
+}
+
+const cloudflareWebAnalytics = {
+  token: (process.env.CF_WEB_ANALYTICS_TOKEN ?? "").trim(),
+};
+if (cloudflareWebAnalytics.token && !/^[A-Za-z0-9_-]+$/.test(cloudflareWebAnalytics.token)) {
+  throw new Error("CF_WEB_ANALYTICS_TOKEN 只能包含字母、数字、下划线和连字符");
+}
+
+// 站点配置。部署环境可以覆盖默认值；启用评论或分析后缺少必要配置会直接终止构建。
 export default {
   title: process.env.SITE_TITLE ?? "Silent Star",
   description:
@@ -25,4 +40,6 @@ export default {
     category: process.env.GISCUS_CATEGORY ?? "Announcements",
     categoryId: process.env.GISCUS_CATEGORY_ID ?? "DIC_kwDOTm_R6c4DEEKR",
   },
+  analytics,
+  cloudflareWebAnalytics,
 };

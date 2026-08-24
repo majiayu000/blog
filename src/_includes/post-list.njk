@@ -5,7 +5,7 @@
     <div class="post-card__content">
       <div class="post-card__top">
         <span class="post-card__type">ARTICLE</span>
-        {% if post.tags.length %}<span class="post-card__topic"><i aria-hidden="true"></i>{{ post.tags[0] }}</span>{% endif %}
+        {% if post.topic %}<span class="post-card__topic"><i aria-hidden="true"></i>{{ post.topic.title }}</span>{% elif post.tags.length %}<span class="post-card__topic"><i aria-hidden="true"></i>{{ post.tags[0] }}</span>{% endif %}
       </div>
       <h2><a class="title" href="{{ post.url }}">{{ post.title }}</a></h2>
       {% if post.description %}<p class="post-card__description">{{ post.description }}</p>{% endif %}
@@ -15,7 +15,10 @@
       </div>
       {% endif %}
       <div class="post-card__meta">
-        <time datetime="{{ post.date }}">{{ post.date | cnDate }}</time>
+        <span class="post-card__byline">
+          <time datetime="{{ post.date }}">{{ post.date | cnDate }}</time>
+          {% if post.readingMinutes %}<span aria-hidden="true">·</span><span>约 {{ post.readingMinutes }} 分钟</span>{% endif %}
+        </span>
         <a class="post-card__read" href="{{ post.url }}">读全文 <span aria-hidden="true">→</span></a>
       </div>
     </div>

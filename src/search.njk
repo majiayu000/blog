@@ -14,7 +14,7 @@ navKey: search
   <form class="search-panel" id="search-form" role="search">
     <label for="search-input">输入标题、正文关键词或技术名词</label>
     <div class="search-panel__controls">
-      <input id="search-input" name="q" type="search" autocomplete="off" placeholder="例如：Grok Bot、上下文压缩、Bun">
+      <input id="search-input" name="q" type="search" autocomplete="off" autofocus placeholder="例如：Grok Bot、上下文压缩、Bun">
       <button type="submit">搜索 <span aria-hidden="true">↵</span></button>
     </div>
   </form>
@@ -49,7 +49,7 @@ navKey: search
       return url.pathname;
     };
 
-    const renderResult = (data) => {
+    const renderResult = (data, query) => {
       const item = document.createElement("li");
       const link = document.createElement("a");
       const meta = document.createElement("p");
@@ -69,6 +69,9 @@ navKey: search
       arrow.textContent = "↗";
 
       link.append(meta, title, excerpt, arrow);
+      link.addEventListener("click", () => {
+        window.ssTrack?.("search_result_click", { query, href: link.pathname });
+      });
       item.append(link);
       return item;
     };
@@ -91,8 +94,9 @@ navKey: search
         if (version !== searchVersion) return;
 
         const fragment = document.createDocumentFragment();
-        for (const result of data) fragment.append(renderResult(result));
+        for (const result of data) fragment.append(renderResult(result, query));
         list.replaceChildren(fragment);
+        window.ssTrack?.("search", { query, result_count: response.results.length });
         status.textContent = data.length
           ? `找到 ${response.results.length} 篇与“${query}”相关的文章。`
           : `没有找到与“${query}”相关的文章。`;
