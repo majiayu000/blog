@@ -45,8 +45,9 @@ and a post stays self-contained when copied elsewhere:
 ```
 
 The homepage shows one editor's pick and four recent posts. If several posts
-are marked `featured`, the newest one wins; if none are marked, the newest post
-is used so the homepage still has a lead story.
+are marked `featured`, the newest one wins and the build prints a warning naming
+the posts that will not appear as the lead story; if none are marked, the newest
+post is used so the homepage still has a lead story.
 
 **Fail closed:** a missing title or date, an invalid date, a remote resource,
 or two slugs that collide will *fail the build* and name the offending file.

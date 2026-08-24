@@ -10,7 +10,7 @@ eleventyExcludeFromCollections: true
   {% for post in blog.posts %}
   <url>
     <loc>{{ site.url }}{{ post.url }}</loc>
-    <lastmod>{{ post.date }}</lastmod>
+    <lastmod>{{ post.updated or post.date }}</lastmod>
   </url>
   {% endfor %}
   {% for topic in blog.topics %}

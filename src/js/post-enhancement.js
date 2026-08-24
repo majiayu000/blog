@@ -187,7 +187,29 @@
     observer.observe(section);
   }
 
+  function applyShellTheme(value) {
+    if (value === "light" || value === "dark") {
+      document.documentElement.dataset.ssShellTheme = value;
+      return;
+    }
+    delete document.documentElement.dataset.ssShellTheme;
+  }
+
+  function initializeShellTheme() {
+    try {
+      applyShellTheme(localStorage.getItem("blog-theme"));
+    } catch (error) {
+      console.error("Unable to restore theme preference", error);
+    }
+
+    window.addEventListener("storage", (event) => {
+      if (event.key !== "blog-theme") return;
+      applyShellTheme(event.newValue);
+    });
+  }
+
   function initialize() {
+    initializeShellTheme();
     initializePageCopy();
     initializeCodeCopy();
     initializeReadingProgress();

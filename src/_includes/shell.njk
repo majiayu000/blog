@@ -18,6 +18,7 @@
 <meta name="twitter:title" content="{% if title %}{{ title | escape }} · {% endif %}{{ site.title | escape }}">
 {% if site.description %}<meta name="twitter:description" content="{{ site.description | escape }}">{% endif %}
 <meta name="twitter:image" content="{{ site.url | escape }}/og/site.png">
+{% if navKey == "home" %}<script type="application/ld+json">{{ site.websiteJsonLd | safe }}</script>{% endif %}
 <meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#131211" media="(prefers-color-scheme: dark)">
 <link rel="alternate" type="application/rss+xml" title="{{ site.title }}" href="/feed.xml">

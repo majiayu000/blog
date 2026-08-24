@@ -410,6 +410,20 @@
   letter-spacing: -0.035em;
 }
 
+.ss-afterword__related--empty p {
+  margin: 0;
+  padding: 1.2rem 0 0.4rem;
+  border-top: 1px solid var(--ss-line);
+  color: var(--ss-muted);
+  font-size: 0.95rem;
+}
+
+.ss-afterword__related--empty a {
+  color: var(--ss-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 .ss-afterword__related ol {
   display: grid;
   margin: 0;
@@ -425,7 +439,7 @@
   list-style: none;
 }
 
-.ss-afterword__related a {
+.ss-afterword__related ol a {
   display: grid;
   grid-template-columns: 3rem minmax(0, 1fr) auto;
   align-items: center;
@@ -459,8 +473,8 @@
   line-height: 1.35;
 }
 
-.ss-afterword__related a:hover .ss-afterword__related-copy strong,
-.ss-afterword__related a:hover .ss-afterword__related-arrow {
+.ss-afterword__related ol a:hover .ss-afterword__related-copy strong,
+.ss-afterword__related ol a:hover .ss-afterword__related-arrow {
   color: var(--ss-accent);
 }
 
@@ -568,8 +582,8 @@ pre.ss-code-copy-host {
 }
 
 @media (prefers-color-scheme: dark) {
-  .ss-article-rail,
-  .ss-article-drawer {
+  :root:not([data-ss-shell-theme="light"]) .ss-article-rail,
+  :root:not([data-ss-shell-theme="light"]) .ss-article-drawer {
     --ss-tools-bg: #1e1d1a;
     --ss-tools-ink: #f1eee7;
     --ss-tools-muted: #bbb5a9;
@@ -578,7 +592,7 @@ pre.ss-code-copy-host {
     --ss-tools-accent: #8da4ff;
   }
 
-  .ss-afterword {
+  :root:not([data-ss-shell-theme="light"]) .ss-afterword {
     --ss-bg: #151412;
     --ss-panel: #1e1d1a;
     --ss-ink: #f1eee7;
@@ -589,6 +603,36 @@ pre.ss-code-copy-host {
     --ss-accent-ink: #12110f;
     box-shadow: 0 28px 80px rgb(0 0 0 / 0.35);
   }
+
+  :root:not([data-ss-shell-theme="light"]) .ss-reading-progress::after {
+    background: #8da4ff;
+  }
+}
+
+:root[data-ss-shell-theme="dark"] .ss-article-rail,
+:root[data-ss-shell-theme="dark"] .ss-article-drawer {
+  --ss-tools-bg: #1e1d1a;
+  --ss-tools-ink: #f1eee7;
+  --ss-tools-muted: #bbb5a9;
+  --ss-tools-faint: #938d81;
+  --ss-tools-line: #393630;
+  --ss-tools-accent: #8da4ff;
+}
+
+:root[data-ss-shell-theme="dark"] .ss-afterword {
+  --ss-bg: #151412;
+  --ss-panel: #1e1d1a;
+  --ss-ink: #f1eee7;
+  --ss-muted: #bbb5a9;
+  --ss-faint: #938d81;
+  --ss-line: #393630;
+  --ss-accent: #8da4ff;
+  --ss-accent-ink: #12110f;
+  box-shadow: 0 28px 80px rgb(0 0 0 / 0.35);
+}
+
+:root[data-ss-shell-theme="dark"] .ss-reading-progress::after {
+  background: #8da4ff;
 }
 
 @media (min-width: 84rem) {
@@ -660,7 +704,7 @@ pre.ss-code-copy-host {
     gap: 0.35rem;
   }
 
-  .ss-afterword__related a {
+  .ss-afterword__related ol a {
     grid-template-columns: 2rem minmax(0, 1fr) auto;
     gap: 0.55rem;
     padding-inline: 0.2rem;

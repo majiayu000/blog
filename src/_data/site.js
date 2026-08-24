@@ -23,8 +23,7 @@ if (cloudflareWebAnalytics.token && !/^[A-Za-z0-9_-]+$/.test(cloudflareWebAnalyt
   throw new Error("CF_WEB_ANALYTICS_TOKEN 只能包含字母、数字、下划线和连字符");
 }
 
-// 站点配置。部署环境可以覆盖默认值；启用评论或分析后缺少必要配置会直接终止构建。
-export default {
+const site = {
   title: process.env.SITE_TITLE ?? "Silent Star",
   description:
     process.env.SITE_DESCRIPTION ?? "关于 AI 工具、Agent 架构与工程实践的独立记录。",
@@ -43,3 +42,23 @@ export default {
   analytics,
   cloudflareWebAnalytics,
 };
+
+site.websiteJsonLd = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: site.title,
+  url: site.url,
+  description: site.description,
+  inLanguage: site.language,
+  potentialAction: {
+    "@type": "SearchAction",
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: `${site.url}/search/?q={search_term_string}`,
+    },
+    "query-input": "required name=search_term_string",
+  },
+}).replaceAll("<", "\\u003c");
+
+// 站点配置。部署环境可以覆盖默认值；启用评论或分析后缺少必要配置会直接终止构建。
+export default site;
