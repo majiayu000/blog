@@ -1,0 +1,19 @@
+---
+permalink: /sitemap.xml
+eleventyExcludeFromCollections: true
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>{{ site.url }}/</loc></url>
+  <url><loc>{{ site.url }}/archive/</loc></url>
+  <url><loc>{{ site.url }}/tags/</loc></url>
+  {% for post in blog.posts %}
+  <url>
+    <loc>{{ site.url }}{{ post.url }}</loc>
+    <lastmod>{{ post.date }}</lastmod>
+  </url>
+  {% endfor %}
+  {% for group in blog.tags %}
+  <url><loc>{{ site.url }}/tags/{{ group.tag | tagPath | urlencode }}/</loc></url>
+  {% endfor %}
+</urlset>

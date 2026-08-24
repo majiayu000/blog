@@ -147,6 +147,16 @@
     grid-template-columns: auto 1fr;
   }
 
+  .not-found {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .not-found__code {
+    margin-left: -0.08em;
+    font-size: clamp(8rem, 40vw, 13rem);
+  }
+
   .about-copy {
     grid-column: 1 / -1;
   }

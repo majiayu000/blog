@@ -24,8 +24,9 @@ CI runs the same two commands.
 
 ## Ground rules
 
-- **Posts are never modified by the build.** Anything that rewrites, reformats
-  or re-renders post HTML is out of scope.
+- **Authored post bytes are preserved.** The build may append only the controlled
+  SEO head block and afterword defined in `lib/enhance-posts.js`; rewriting,
+  reformatting or re-rendering the source article remains out of scope.
 - **Keep metadata parsing fail-closed.** Missing or invalid metadata must fail
   the build and name the file. Do not add fallbacks that infer a title from the
   directory name or default a date to today.

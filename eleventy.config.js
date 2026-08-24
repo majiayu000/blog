@@ -1,9 +1,25 @@
+import path from "node:path";
+import { enhanceBuiltPosts } from "./lib/enhance-posts.js";
+import { readPosts } from "./lib/posts.js";
+import site from "./src/_data/site.js";
+
 export default function (eleventyConfig) {
   // 文章是已渲染好的整页 HTML —— 原样拷贝，绝不经过模板引擎。
   eleventyConfig.addPassthroughCopy("src/posts");
   eleventyConfig.addPassthroughCopy("src/css");
+  eleventyConfig.addPassthroughCopy("src/js");
   eleventyConfig.addPassthroughCopy({ "src/_headers": "_headers" });
   eleventyConfig.ignores.add("src/posts/**");
+
+  // 正式构建和 dev server 每次重建都走同一个增强步骤，避免本地预览与线上产物分叉。
+  eleventyConfig.on("eleventy.after", () => {
+    const posts = readPosts(path.join(import.meta.dirname, "src", "posts"));
+    enhanceBuiltPosts({
+      posts,
+      outputDir: path.join(import.meta.dirname, "_site"),
+      site,
+    });
+  });
 
   // 点分数字而非"2026 年 7 月 29 日"：元数据用等宽字体排版，
   // 等宽字体拉开中文字距，纯数字才排得紧。

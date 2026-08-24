@@ -895,3 +895,50 @@ input:focus-visible {
   --pagefind-ui-border-radius: 0.7rem;
   --pagefind-ui-font: var(--body);
 }
+
+/* 404 */
+
+.not-found {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 0.8fr) minmax(19rem, 1fr);
+  align-items: center;
+  gap: clamp(2rem, 7vw, 7rem);
+}
+
+.not-found__code {
+  color: color-mix(in srgb, var(--accent) 15%, var(--line));
+  font-family: var(--display);
+  font-size: clamp(8rem, 24vw, 17rem);
+  font-weight: 700;
+  line-height: 0.72;
+  letter-spacing: -0.12em;
+  user-select: none;
+}
+
+.not-found__copy {
+  position: relative;
+  z-index: 1;
+}
+
+.not-found__copy h1 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(2.8rem, 6vw, 5rem);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.not-found__copy > p:not(.eyebrow) {
+  max-width: 32rem;
+  margin: 1.4rem 0 0;
+  color: var(--muted);
+}
+
+.not-found__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 2rem;
+}

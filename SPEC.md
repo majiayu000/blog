@@ -5,13 +5,29 @@
 ## 核心前提
 
 一篇文章 = 一个自包含目录：`src/posts/<slug>/index.html` + 同目录内的资源。
-文章 HTML **原样输出**，构建过程不修改其内容。
+源文章 HTML 保持自包含，作者写下的正文和样式不由模板引擎改写。
 
 生成器只负责"外壳"：首页、标签页、归档、搜索索引、RSS。
 
-**代价：外壳的导航不会进入文章页。** 所以每篇文章必须自己带一个回 `/` 的链接，
-否则读者点进去就是死胡同。这是"文章逐字节不被改动"换来的，不是疏漏——
-要消除它就只能让构建往文章里注入 HTML，那会推翻上面这条核心前提。
+构建完成后，站点拥有一个受控的文章增强步骤。它只在 `</head>` 和 `</body>`
+前追加由仓库维护的 SEO 元数据、局部样式、阅读工具和 afterword，不改写源文章
+已有字节。增强器遇到结构不完整、重复注入或配置不完整时直接失败。
+
+文章仍不套用外壳模板，各篇可以保留完全不同的视觉。统一导航、继续阅读和评论
+只出现在正文后的 afterword；每篇文章自己的回 `/` 链接仍然是无脚本环境下的必要退路。
+
+## 文章增强边界
+
+增强器输出以下内容：
+
+- canonical、Open Graph、Twitter Card 和 article 元数据；
+- 同站点的 `post-enhancement.css` / `post-enhancement.js`；
+- 更新一篇、更早一篇、继续阅读、复制链接和回到首页；
+- 可选的 giscus 评论区。
+
+源文章继续禁止远程样式、脚本、字体和媒体。giscus 的远程脚本只能由增强器根据
+固定站点配置生成，不能写进文章源文件。关闭评论时不加载第三方资源；开启评论但
+缺少 repo/category ID 时构建失败，不能静默隐藏评论。
 
 ## 选型
 
@@ -57,6 +73,7 @@
 blog/
 ├── eleventy.config.js      # 11ty 配置：passthrough 文章目录 + 忽略模板化
 ├── lib/posts.js            # 扫描 + 解析文章元数据（唯一有逻辑的地方）
+├── lib/enhance-posts.js    # 为构建产物追加 SEO 与 afterword
 ├── lib/posts.test.js       # 解析与 fail-closed 行为的测试
 └── src/
     ├── _data/site.js       # 站点配置，从环境变量读，带默认值
@@ -67,6 +84,9 @@ blog/
     ├── archive.njk         # 按年归档
     ├── search.njk          # Pagefind 搜索页
     ├── feed.njk            # RSS
+    ├── 404.njk / sitemap.njk / robots.njk
+    ├── css/post-enhancement.css
+    ├── js/post-enhancement.js
     └── posts/<slug>/index.html
 ```
 
@@ -75,7 +95,8 @@ blog/
 ```
 bun run build
   ├─ eleventy          → _site/（文章 passthrough + 外壳页面）
-  └─ pagefind          → _site/pagefind/（索引构建后的 HTML）
+  │  └─ eleventy.after → 为文章产物追加 SEO 与 afterword
+  └─ pagefind          → _site/pagefind/（索引增强后的 HTML）
 ```
 
 `bun run dev` 起本地预览，端口 5567（避开已占用的 5568/5569）。
@@ -83,9 +104,14 @@ bun run build
 ## 部署
 
 产物 `_site/` 是纯静态目录，可直接交给 Cloudflare Pages：
-构建命令 `bun run build`，输出目录 `_site`。域名待定，先用 `*.pages.dev`。
+构建命令 `bun run build`，输出目录 `_site`，正式域名是 `blog.silencestar.com`。
+
+评论使用 GitHub Discussions + giscus。仓库必须公开、开启 Discussions、安装 giscus
+App，并提供固定 category。配置由 `src/_data/site.js` 读取；非敏感 ID 可以作为站点
+默认值，部署环境可以覆盖。
 
 ## 验证
 
 - `bun test` —— 元数据解析 + fail-closed 行为
-- `bun run build` —— 构建通过，`_site/` 内文章 HTML 与源文件逐字节一致
+- `bun run build` —— 构建通过，文章正文保持不变，增强标记只出现一次
+- 随机不存在路径返回 Cloudflare 使用的 `/404.html`，不能回退首页并返回 200

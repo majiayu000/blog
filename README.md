@@ -5,9 +5,10 @@
 
 Personal blog at [blog.silencestar.com](https://blog.silencestar.com).
 
-Posts are **fully rendered, self-contained HTML pages**, copied to the output
-byte-for-byte. The generator only builds the shell around them: home, tags,
-archive, search and RSS. It never touches post content.
+Posts are **fully rendered, self-contained HTML pages**. The generator preserves
+their authored content and appends a controlled afterword at build time for SEO,
+navigation, reading tools and comments. Home, tags, archive, search, RSS,
+sitemap and the real 404 page remain generated separately.
 
 Built with [Eleventy](https://11ty.dev) and [Pagefind](https://pagefind.app),
 deployed to Cloudflare Pages.
@@ -51,9 +52,9 @@ or two slugs that collide will *fail the build* and name the offending file.
 Nothing is inferred from the directory name and no date is defaulted to today —
 a red build beats a site that silently shows wrong metadata.
 
-**Include a link back to `/` in the post itself.** The shell's navigation is
-never injected into posts — that is the price of keeping them byte-for-byte
-untouched — so a post without its own back link is a dead end for readers.
+**Keep a link back to `/` in the post itself.** The generated afterword also
+links home, but the source article should remain portable and navigable before
+it goes through this site's build.
 
 ## Configuration
 
@@ -66,9 +67,22 @@ Site details come from environment variables (see `src/_data/site.js`):
 | `SITE_URL` | `https://blog.silencestar.com` |
 | `SITE_AUTHOR` | empty |
 | `SITE_LANG` | `zh-CN` |
+| `GISCUS_ENABLED` | `true` |
+| `GISCUS_REPO` | `majiayu000/blog` |
+| `GISCUS_REPO_ID` | `R_kgDOTm_R6Q` |
+| `GISCUS_CATEGORY` | `Announcements` |
+| `GISCUS_CATEGORY_ID` | `DIC_kwDOTm_R6c4DEEKR` |
 | `PORT` | `5567` |
 
-`SITE_URL` determines the absolute links in the RSS feed.
+`SITE_URL` determines absolute links in RSS, canonical metadata and the sitemap.
+`GISCUS_ENABLED` accepts only `true` or `false`. Enabling it without a complete
+repository/category configuration fails the build instead of silently removing
+the comment UI.
+
+Comments use the repository's `Announcements` category and are mapped by article
+pathname. The repository must keep Discussions enabled and the
+[giscus app](https://github.com/apps/giscus) installed. Set `GISCUS_ENABLED=false`
+for a third-party-free preview or emergency rollback.
 
 ## Deployment
 
@@ -83,7 +97,7 @@ The install step is spelled out on purpose: the Pages build image installs the
 Bun runtime but does not install dependencies on its own for this project, so a
 bare `bun run build` fails with `eleventy: command not found`.
 
-`src/_headers` ships the cache policy. CSS and `pagefind-ui.js` have no content
+`src/_headers` ships the cache policy. CSS, local JS and `pagefind-ui.js` have no content
 hash in their filenames, so they deliberately use a short max-age instead of
 `immutable` — otherwise a changed file keeps its URL and visitors are stuck with
 a stale copy that cannot be invalidated.

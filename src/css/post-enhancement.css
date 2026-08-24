@@ -1,0 +1,473 @@
+/* Generated article afterword. Every selector is scoped to avoid changing post-owned design. */
+
+.ss-afterword {
+  --ss-bg: #f7f5ee;
+  --ss-panel: #fffef9;
+  --ss-ink: #181713;
+  --ss-muted: #68645c;
+  --ss-faint: #8a857a;
+  --ss-line: #d9d5ca;
+  --ss-accent: #3657ee;
+  --ss-accent-ink: #fff;
+  isolation: isolate;
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: min(70rem, calc(100% - 2rem));
+  margin: clamp(5rem, 10vw, 9rem) auto 2rem;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  border: 1px solid var(--ss-line);
+  border-radius: 1.5rem;
+  background:
+    linear-gradient(135deg, transparent 78%, rgb(54 87 238 / 0.08)),
+    var(--ss-bg);
+  box-shadow: 0 28px 80px rgb(24 23 19 / 0.12);
+  color: var(--ss-ink);
+  font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.55;
+  text-align: left;
+}
+
+.ss-afterword,
+.ss-afterword * {
+  box-sizing: border-box;
+}
+
+.ss-afterword__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--ss-line);
+  color: var(--ss-faint);
+  font-family: "SFMono-Regular", "Cascadia Code", Menlo, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+}
+
+.ss-afterword__brand,
+.ss-afterword__edition {
+  margin: 0;
+  color: var(--ss-ink);
+  font: inherit;
+  text-decoration: none;
+}
+
+.ss-afterword__brand {
+  font-weight: 700;
+}
+
+.ss-afterword__brand span {
+  color: var(--ss-accent);
+}
+
+.ss-afterword__lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(15rem, 0.75fr);
+  align-items: end;
+  gap: clamp(2rem, 6vw, 6rem);
+  padding-block: clamp(3rem, 7vw, 5.5rem);
+}
+
+.ss-afterword__lead p {
+  margin: 0 0 0.85rem;
+  color: var(--ss-accent);
+  font-family: "SFMono-Regular", "Cascadia Code", Menlo, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+}
+
+.ss-afterword__lead h2 {
+  max-width: 13ch;
+  margin: 0;
+  color: var(--ss-ink);
+  font-family: "Avenir Next", "PingFang SC", sans-serif;
+  font-size: clamp(2.35rem, 6vw, 4.7rem);
+  font-style: normal;
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+}
+
+.ss-afterword__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.ss-afterword__actions button,
+.ss-afterword__actions a {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  min-height: 2.85rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--ss-line);
+  border-radius: 0.7rem;
+  background: var(--ss-panel);
+  color: var(--ss-ink);
+  cursor: pointer;
+  font-family: "SFMono-Regular", "Cascadia Code", Menlo, monospace;
+  font-size: 0.7rem;
+  text-decoration: none;
+  transition: border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.ss-afterword__actions button {
+  grid-column: 1 / -1;
+  background: var(--ss-accent);
+  color: var(--ss-accent-ink);
+}
+
+.ss-afterword__actions button:hover,
+.ss-afterword__actions a:hover {
+  border-color: var(--ss-accent);
+  color: var(--ss-accent);
+  transform: translateY(-2px);
+}
+
+.ss-afterword__actions button:hover {
+  color: var(--ss-accent-ink);
+}
+
+.ss-afterword__actions button:focus-visible,
+.ss-afterword__actions a:focus-visible,
+.ss-afterword__tags a:focus-visible,
+.ss-afterword__journey-link:focus-visible,
+.ss-afterword__related a:focus-visible {
+  outline: 2px solid var(--ss-accent);
+  outline-offset: 3px;
+}
+
+.ss-afterword__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: -1.5rem 0 2.5rem;
+}
+
+.ss-afterword__tags a {
+  padding: 0.38rem 0.65rem;
+  border: 1px solid var(--ss-line);
+  border-radius: 999px;
+  color: var(--ss-muted);
+  font-family: "SFMono-Regular", "Cascadia Code", Menlo, monospace;
+  font-size: 0.64rem;
+  text-decoration: none;
+}
+
+.ss-afterword__tags a:hover {
+  border-color: var(--ss-accent);
+  color: var(--ss-accent);
+}
+
+.ss-afterword__journey {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--ss-line);
+  border-bottom: 1px solid var(--ss-line);
+}
+
+.ss-afterword__journey-link,
+.ss-afterword__journey-empty {
+  display: flex;
+  min-height: 9rem;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.35rem;
+  color: var(--ss-ink);
+  text-decoration: none;
+}
+
+.ss-afterword__journey-link:first-child,
+.ss-afterword__journey-empty:first-child {
+  border-right: 1px solid var(--ss-line);
+}
+
+.ss-afterword__journey-link span {
+  color: var(--ss-faint);
+  font-family: "SFMono-Regular", "Cascadia Code", Menlo, monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+}
+
+.ss-afterword__journey-link strong {
+  color: var(--ss-ink);
+  font-family: "Avenir Next", "PingFang SC", sans-serif;
+  font-size: clamp(1rem, 2vw, 1.35rem);
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.ss-afterword__journey-link--older {
+  text-align: right;
+}
+
+.ss-afterword__journey-link:hover strong {
+  color: var(--ss-accent);
+}
+
+.ss-afterword__related,
+.ss-afterword__comments {
+  padding-top: clamp(3.5rem, 7vw, 5.5rem);
+}
+
+.ss-afterword__section-heading {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.4fr) 1fr;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1.35rem;
+}
+
+.ss-afterword__section-heading span {
+  color: var(--ss-accent);
+  font-family: "SFMono-Regular", "Cascadia Code", Menlo, monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.13em;
+}
+
+.ss-afterword__section-heading h3 {
+  margin: 0;
+  color: var(--ss-ink);
+  font-family: "Avenir Next", "PingFang SC", sans-serif;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+
+.ss-afterword__related ol {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--ss-line);
+  list-style: none;
+}
+
+.ss-afterword__related li {
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--ss-line);
+  list-style: none;
+}
+
+.ss-afterword__related a {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  min-height: 6rem;
+  padding: 1rem 0.75rem;
+  color: var(--ss-ink);
+  text-decoration: none;
+}
+
+.ss-afterword__related-index,
+.ss-afterword__related-copy small,
+.ss-afterword__related-arrow {
+  color: var(--ss-faint);
+  font-family: "SFMono-Regular", "Cascadia Code", Menlo, monospace;
+  font-size: 0.65rem;
+}
+
+.ss-afterword__related-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ss-afterword__related-copy strong {
+  color: var(--ss-ink);
+  font-family: "Avenir Next", "PingFang SC", sans-serif;
+  font-size: 1.02rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ss-afterword__related a:hover .ss-afterword__related-copy strong,
+.ss-afterword__related a:hover .ss-afterword__related-arrow {
+  color: var(--ss-accent);
+}
+
+.ss-afterword__comments {
+  margin-top: clamp(3rem, 6vw, 5rem);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: 1px solid var(--ss-line);
+  border-radius: 1rem;
+  background: var(--ss-panel);
+}
+
+.ss-afterword__comments .ss-afterword__section-heading {
+  margin-bottom: 1rem;
+}
+
+.ss-afterword__comments > p {
+  max-width: 44rem;
+  margin: 0 0 1.5rem;
+  color: var(--ss-muted);
+  font-family: "Avenir Next", "PingFang SC", sans-serif;
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.ss-afterword__comments--pending {
+  border-style: dashed;
+}
+
+.ss-afterword__comments--pending > p {
+  margin-bottom: 0;
+}
+
+.ss-afterword__comments-fallback {
+  margin: 1.25rem 0 0 !important;
+  font-family: "SFMono-Regular", "Cascadia Code", Menlo, monospace !important;
+  font-size: 0.68rem !important;
+}
+
+.ss-afterword__comments-fallback a {
+  color: var(--ss-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.ss-reading-progress {
+  position: fixed;
+  z-index: 2147483000;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  pointer-events: none;
+}
+
+.ss-reading-progress::after {
+  display: block;
+  width: var(--ss-reading-progress, 0%);
+  height: 100%;
+  background: #3657ee;
+  content: "";
+  transition: width 90ms linear;
+}
+
+pre.ss-code-copy-host {
+  position: relative !important;
+}
+
+.ss-code-copy {
+  all: unset;
+  box-sizing: border-box;
+  position: absolute;
+  z-index: 3;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: inline-flex;
+  min-width: 3.2rem;
+  min-height: 1.9rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid rgb(128 128 128 / 0.35);
+  border-radius: 0.4rem;
+  background: rgb(20 20 20 / 0.78);
+  color: #fff;
+  cursor: pointer;
+  font-family: "SFMono-Regular", "Cascadia Code", Menlo, monospace;
+  font-size: 0.62rem;
+  line-height: 1;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+
+.ss-code-copy:hover,
+.ss-code-copy:focus-visible {
+  border-color: #8da4ff;
+  outline: 2px solid #8da4ff;
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ss-afterword {
+    --ss-bg: #151412;
+    --ss-panel: #1e1d1a;
+    --ss-ink: #f1eee7;
+    --ss-muted: #bbb5a9;
+    --ss-faint: #938d81;
+    --ss-line: #393630;
+    --ss-accent: #8da4ff;
+    --ss-accent-ink: #12110f;
+    box-shadow: 0 28px 80px rgb(0 0 0 / 0.35);
+  }
+}
+
+@media (max-width: 42rem) {
+  .ss-afterword {
+    width: calc(100% - 1rem);
+    margin-top: 4rem;
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  .ss-afterword__edition {
+    display: none;
+  }
+
+  .ss-afterword__lead {
+    grid-template-columns: 1fr;
+    gap: 2.3rem;
+    padding-block: 3.2rem;
+  }
+
+  .ss-afterword__lead h2 {
+    font-size: clamp(2.3rem, 13vw, 3.6rem);
+  }
+
+  .ss-afterword__tags {
+    margin-top: -0.8rem;
+  }
+
+  .ss-afterword__journey {
+    grid-template-columns: 1fr;
+  }
+
+  .ss-afterword__journey-link:first-child,
+  .ss-afterword__journey-empty:first-child {
+    border-right: 0;
+    border-bottom: 1px solid var(--ss-line);
+  }
+
+  .ss-afterword__journey-link--older {
+    text-align: left;
+  }
+
+  .ss-afterword__section-heading {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .ss-afterword__related a {
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+    gap: 0.55rem;
+    padding-inline: 0.2rem;
+  }
+
+  .ss-afterword__comments {
+    padding: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-afterword *,
+  .ss-reading-progress::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
