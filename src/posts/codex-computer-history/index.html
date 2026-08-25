@@ -24,12 +24,8 @@
   .top .in{max-width:1200px;margin:0 auto;padding:13px 24px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
   .top b{color:var(--ink);font-weight:650;font-size:15px}
   .top .tag{font-family:var(--mono);font-size:11px;color:var(--faint);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
-  .shell{max-width:1200px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:220px 1fr;gap:44px;align-items:start}
-  nav{position:sticky;top:64px;padding:34px 0;font-size:13.5px;max-height:calc(100vh - 64px);overflow:auto}
-  nav a{display:block;color:var(--muted);padding:5px 0 5px 12px;border-left:2px solid var(--line);line-height:1.4}
-  nav a:hover{color:var(--ink);border-left-color:var(--acc);text-decoration:none}
-  nav .g{color:var(--faint);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin:18px 0 6px;padding-left:12px}
-  main{padding:30px 0 90px;min-width:0;max-width:820px}
+  .shell{max-width:1200px;margin:0 auto;padding:0 24px}
+  main{max-width:820px;min-width:0;margin:0 auto;padding:30px 0 90px}
   h1{font-size:clamp(24px,3.4vw,32px);line-height:1.2;letter-spacing:-.01em;color:var(--ink);font-weight:680;margin:6px 0 14px}
   h2{font-size:22px;color:var(--ink);font-weight:660;margin:52px 0 6px;padding-top:12px;scroll-margin-top:64px;border-top:1px solid var(--line)}
   h2:first-of-type{border-top:none}
@@ -54,7 +50,7 @@
   figcaption{font-size:13px;color:var(--faint);margin:8px 0 22px;line-height:1.5}
   .kinds{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
   .kinds span{display:block;font-family:var(--mono);font-size:12px;padding:10px 8px;background:var(--soft);border:1px solid var(--line);border-radius:8px;color:var(--ink);text-align:center}
-  @media(max-width:900px){.shell{grid-template-columns:1fr}nav{display:none}.kinds{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:900px){.kinds{grid-template-columns:repeat(2,1fr)}}
 
 </style>
 </head>
@@ -66,32 +62,6 @@
   <span class="tag">ChatGPT · Codex · macOS</span>
 </div></div>
 <div class="shell">
-<nav>
-  <div class="g">目录</div>
-<a href="#0-一句话">0. 一句话</a>
-<a href="#1-不要和这些搞混">1. 不要和这些搞混</a>
-<a href="#2-三个名字对照">2. 三个名字对照</a>
-<a href="#3-本机对应的安装物">3. 本机对应的安装物</a>
-<a href="#4-谁能开-什么条件">4. 谁能开、什么条件</a>
-<a href="#5-架构">5. 架构</a>
-<a href="#6-打开-暂停-关闭-主进程源码">6. 打开 / 暂停 / 关闭（主进程源码）</a>
-<a href="#7-原生-ipc">7. 原生 IPC</a>
-<a href="#8-观察策略-settings">8. 观察策略（settings）</a>
-<a href="#9-事件流-采集产物">9. 事件流（采集产物）</a>
-<a href="#9-4-记忆生成管线-service-不再只靠官方一句话">9.4 记忆生成管线（Service，不再只靠官</a>
-<a href="#9-5-codex-自己怎么用这些数据-asar-src--js-环境提示">9.5 Codex 自己怎么用这些数据（asar</a>
-<a href="#10-记忆文件格式-时间线真正读的东西">10. 记忆文件格式（时间线真正读的东西）</a>
-<a href="#11-设置页-ui-asar-chronicle-settings-page">11. 设置页 UI（asar `chronic</a>
-<a href="#12-插件-mcp-agent-用法">12. 插件 / MCP / Agent 用法</a>
-<a href="#13-和-codex-memories-的关系">13. 和 Codex Memories 的关系</a>
-<a href="#14-从-chronicle-迁到-computer-history">14. 从 Chronicle 迁到 Compu</a>
-<a href="#15-隐私与安全">15. 隐私与安全</a>
-<a href="#16-官方产品能力-文档口径">16. 官方产品能力（文档口径）</a>
-<a href="#17-本机状态-2026-08-19-检查">17. 本机状态（2026-08-19 检查）</a>
-<a href="#18-证据清单">18. 证据清单</a>
-<a href="#19-完整度-相对-实现说明书">19. 完整度（相对「实现说明书」）</a>
-<a href="#20-压缩结论">20. 压缩结论</a>
-</nav>
 <main>
 <h1>Codex / ChatGPT App · Computer History 完整记录</h1>
 <figure class="fig">
