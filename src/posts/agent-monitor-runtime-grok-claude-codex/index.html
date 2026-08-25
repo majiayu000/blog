@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Monitor 发出事件以后，三个 Coding Agent 怎么开下一回合</title>
+  <meta name="date" content="2026-08-25">
+  <meta name="description" content="继续追踪 Grok Build、Claude Code 和 Codex 的长任务完成路径，拆开进程退出、界面更新、消息入队和模型重新运行之间的差别。">
+  <meta name="tags" content="Agent, Claude Code, Codex, Grok Build, 逆向分析">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070a0f;
+      --panel: #101720;
+      --panel-2: #151e29;
+      --ink: #f4f7fb;
+      --body: #c5ced9;
+      --muted: #8d9aaa;
+      --line: #293544;
+      --green: #68d8aa;
+      --blue: #79aaff;
+      --amber: #efbc69;
+      --pink: #f08fa2;
+      --violet: #bd9cff;
+      --shadow: 0 28px 90px rgba(0, 0, 0, .34);
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      --sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        color-scheme: light;
+        --bg: #f3f6f8;
+        --panel: #ffffff;
+        --panel-2: #f7f9fc;
+        --ink: #17212d;
+        --body: #354354;
+        --muted: #687789;
+        --line: #d7dee7;
+        --green: #147a56;
+        --blue: #315fc8;
+        --amber: #9b5e0b;
+        --pink: #bd465d;
+        --violet: #7048bb;
+        --shadow: 0 24px 70px rgba(31, 41, 55, .1);
+      }
+    }
+    * { box-sizing: border-box; }
+    html { max-width: 100%; scroll-behavior: smooth; overflow-x: hidden; }
+    body {
+      margin: 0;
+      min-width: 280px;
+      overflow-x: hidden;
+      color: var(--body);
+      background:
+        radial-gradient(circle at 12% -8%, color-mix(in srgb, var(--violet) 14%, transparent), transparent 31rem),
+        radial-gradient(circle at 92% 12%, color-mix(in srgb, var(--green) 10%, transparent), transparent 28rem),
+        var(--bg);
+      font: 17px/1.8 var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--blue); text-decoration-thickness: 1px; text-underline-offset: .22em; }
+    a:hover { color: var(--green); }
+    a:focus-visible, summary:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+    code { font: .86em var(--mono); overflow-wrap: anywhere; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(14px);
+    }
+    .topbar-inner, .shell { width: min(1160px, calc(100% - 36px)); margin: 0 auto; }
+    .topbar-inner {
+      padding: 11px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      font: 700 .72rem var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .topbar a { color: var(--muted); text-decoration: none; }
+    .topbar a:hover { color: var(--ink); }
+    .signal { display: inline-flex; align-items: center; gap: 9px; color: var(--green); }
+    .signal::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 14%, transparent); }
+    .hero { padding: 80px 0 58px; }
+    .eyebrow, .kicker { margin: 0 0 12px; color: var(--green); font: 760 .76rem var(--mono); letter-spacing: .13em; text-transform: uppercase; }
+    h1 { max-width: 1020px; margin: 0; color: var(--ink); font-size: clamp(2.7rem, 7.1vw, 6.25rem); line-height: 1; letter-spacing: -.06em; text-wrap: balance; }
+    .deck { max-width: 870px; margin: 28px 0 0; color: var(--body); font-size: clamp(1.18rem, 2.2vw, 1.58rem); line-height: 1.58; }
+    .meta { margin: 20px 0 0; color: var(--muted); font: .78rem/1.7 var(--mono); }
+    .answer {
+      margin-top: 36px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--green);
+      border-radius: 18px;
+      background: color-mix(in srgb, var(--panel) 94%, transparent);
+      box-shadow: var(--shadow);
+    }
+    .answer strong { display: block; color: var(--ink); font-size: 1.16rem; }
+    .answer p { margin: 9px 0 0; }
+    .wake-map {
+      margin-top: 34px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(145deg, color-mix(in srgb, var(--panel-2) 96%, transparent), color-mix(in srgb, var(--panel) 92%, transparent));
+      box-shadow: var(--shadow);
+    }
+    .visual-title { margin: 0 0 18px; color: var(--muted); font: 700 .7rem var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .pipeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; align-items: stretch; }
+    .node { min-height: 112px; padding: 15px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--line); border-radius: 13px; background: var(--panel); }
+    .node b { color: var(--ink); font-size: .91rem; }
+    .node small { color: var(--muted); font: .7rem/1.45 var(--mono); }
+    .node.hot { border-color: color-mix(in srgb, var(--green) 62%, var(--line)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--green) 12%, transparent); }
+    .node.ui { border-color: color-mix(in srgb, var(--amber) 62%, var(--line)); }
+    .node.model { border-color: color-mix(in srgb, var(--blue) 62%, var(--line)); }
+    .arrow { align-self: center; color: var(--muted); text-align: center; font: .73rem/1.45 var(--mono); }
+    .legend { margin: 16px 0 0; display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--muted); font-size: .78rem; }
+    .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--green); }
+    .dot.ui { background: var(--amber); }
+    .dot.model { background: var(--blue); }
+    .layout { display: grid; grid-template-columns: 190px minmax(0, 820px); gap: 54px; align-items: start; }
+    .toc { position: sticky; top: 58px; padding: 42px 0; font-size: .78rem; }
+    .toc b { display: block; margin-bottom: 10px; color: var(--muted); font: 700 .68rem var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .toc a { display: block; padding: 5px 0 5px 12px; border-left: 1px solid var(--line); color: var(--muted); text-decoration: none; }
+    .toc a:hover { border-left-color: var(--green); color: var(--ink); }
+    article { min-width: 0; padding-bottom: 96px; }
+    section { padding: 54px 0; border-top: 1px solid var(--line); scroll-margin-top: 58px; }
+    section:first-child { border-top: 0; }
+    h2 { margin: 0 0 20px; color: var(--ink); font-size: clamp(1.85rem, 4vw, 3.2rem); line-height: 1.14; letter-spacing: -.04em; text-wrap: balance; }
+    h3 { margin: 35px 0 10px; color: var(--ink); font-size: 1.2rem; line-height: 1.4; }
+    p { margin: 14px 0; }
+    strong { color: var(--ink); }
+    .callout { margin: 24px 0; padding: 20px 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+    .callout.green { border-left: 4px solid var(--green); }
+    .callout.amber { border-left: 4px solid var(--amber); }
+    .callout.pink { border-left: 4px solid var(--pink); }
+    .callout p:first-child { margin-top: 0; }
+    .callout p:last-child { margin-bottom: 0; }
+    .layers, .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; margin: 24px 0; }
+    .card { padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+    .card .label { color: var(--muted); font: 700 .68rem var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .card h3 { margin: 9px 0 7px; font-size: 1.06rem; }
+    .card p { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.58; }
+    .trace { margin: 24px 0; display: grid; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--panel); }
+    .trace-row { display: grid; grid-template-columns: 64px 200px 1fr; gap: 14px; padding: 15px 17px; border-top: 1px solid var(--line); align-items: baseline; }
+    .trace-row:first-child { border-top: 0; }
+    .trace-row .n { color: var(--green); font: 700 .72rem var(--mono); }
+    .trace-row code { color: var(--blue); }
+    .trace-row span { color: var(--muted); font-size: .9rem; }
+    .codebox { position: relative; margin: 20px 0; }
+    .codebox .lang { position: absolute; top: 0; right: 0; padding: 4px 9px; border: 1px solid var(--line); border-radius: 0 11px 0 9px; color: var(--muted); background: var(--panel-2); font: .66rem var(--mono); }
+    pre { margin: 0; padding: 19px; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: #0a1017; color: #dbe5ef; font: .78rem/1.65 var(--mono); }
+    pre code { font-size: inherit; }
+    .numbers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 24px 0; }
+    .number { padding: 16px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+    .number b { display: block; color: var(--ink); font: 760 1.15rem var(--mono); }
+    .number span { display: block; margin-top: 4px; color: var(--muted); font-size: .75rem; line-height: 1.42; }
+    .table-wrap { margin: 24px 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+    table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: .87rem; line-height: 1.56; }
+    th, td { padding: 13px 15px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); background: var(--panel-2); font: 700 .67rem var(--mono); letter-spacing: .07em; text-transform: uppercase; }
+    td:first-child { color: var(--ink); font-weight: 720; }
+    tr:last-child td { border-bottom: 0; }
+    details { margin: 22px 0; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+    summary { cursor: pointer; padding: 17px 19px; color: var(--ink); font-weight: 720; }
+    .details-body { padding: 0 19px 19px; }
+    .sources { margin: 24px 0 0; padding: 0; list-style: none; }
+    .sources li { padding: 11px 0; border-bottom: 1px solid var(--line); }
+    .sources li:last-child { border-bottom: 0; }
+    .sources small { display: block; color: var(--muted); }
+    .end { padding: 34px 0 10px; color: var(--muted); }
+    .end strong { color: var(--ink); }
+    @media (min-width: 84rem) {
+      .shell { width: min(1000px, calc(100% - 18rem)); margin-right: 0; margin-left: max(24px, calc((100vw - 74rem) / 2)); }
+      .toc { display: none; }
+      .layout { grid-template-columns: minmax(0, 820px); }
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .toc { display: none; }
+      .hero { padding-top: 60px; }
+      .pipeline { grid-template-columns: 1fr; }
+      .arrow { min-height: 18px; transform: rotate(90deg); }
+      .layers, .three { grid-template-columns: 1fr; }
+      .numbers { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 620px) {
+      body { font-size: 16px; }
+      .shell, .topbar-inner { width: min(100% - 24px, 1160px); }
+      .topbar-inner > span:last-child { display: none; }
+      .hero { padding: 48px 0 38px; }
+      h1 { font-size: clamp(2.4rem, 13vw, 4rem); }
+      .answer, .wake-map { padding: 18px; }
+      .trace-row { grid-template-columns: 46px 1fr; }
+      .trace-row span { grid-column: 2; }
+      .numbers { grid-template-columns: repeat(2, 1fr); }
+      section { padding: 42px 0; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="/">← Silent Star</a>
+      <span class="signal">wake path traced</span>
+      <span>runtime notes · 2026.08.25</span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <header class="hero">
+      <p class="eyebrow">Agent runtime deep dive</p>
+      <h1>Monitor 发出事件以后，谁来开下一回合</h1>
+      <p class="deck">上一篇查的是三个 Coding Agent 怎样等长任务。这次我继续往下追。进程已经结束，通知也已经发出，界面亮了一下。模型究竟有没有醒，答案要再穿过两层代码。</p>
+      <p class="meta">Grok Build 1.0.5 · Claude Code 2.1.241 · Codex CLI 0.149.1 · 记录于 2026 年 8 月 25 日</p>
+
+      <div class="answer">
+        <strong>Grok 把完成事件送成一条合成 Prompt。Claude Code 把 Monitor 通知放进 next 队列，空闲时会生成新的模型回合。Codex 也监听进程退出，但这条事件先更新界面，模型仍靠 <code>write_stdin</code> 取结果。</strong>
+        <p>这三种实现都用了事件。差别落在事件的收件人。界面收到退出消息，只能说明用户看见了完成状态。模型收到一条新的输入，才算主 Agent 真正被唤醒。</p>
+      </div>
+
+      <div class="wake-map" role="img" aria-label="后台进程完成以后经过退出事件、界面、消息队列和模型回合的路径">
+        <p class="visual-title">一条完成事件要走到模型输入，才会开启后续工作</p>
+        <div class="pipeline">
+          <div class="node"><b>后台进程结束</b><small>exit code · stdout · task id</small></div>
+          <div class="arrow">event →</div>
+          <div class="node ui"><b>界面更新</b><small>TUI card · item completed</small></div>
+          <div class="arrow">queue →</div>
+          <div class="node model"><b>模型重新运行</b><small>synthetic prompt · next turn</small></div>
+        </div>
+        <p class="legend"><span><i class="dot ui"></i>Codex 的退出 watcher 明确走到界面</span><span><i class="dot model"></i>Grok 与 Claude Code 还有模型输入通道</span></p>
+      </div>
+    </header>
+
+    <div class="layout">
+      <nav class="toc" aria-label="文章目录">
+        <b>Contents</b>
+        <a href="#layers">先分三层</a>
+        <a href="#grok">Grok 合成 Prompt</a>
+        <a href="#claude">Claude Code 实际会话</a>
+        <a href="#codex">Codex 界面 push</a>
+        <a href="#records">一百次空查询</a>
+        <a href="#tradeoff">自动唤醒的代价</a>
+        <a href="#conclusion">怎么评价监控</a>
+        <a href="#sources">来源</a>
+      </nav>
+
+      <article>
+        <section id="layers">
+          <p class="kicker">01 · Three layers</p>
+          <h2>进程退出、界面更新和模型醒来是三件事</h2>
+          <p>我重新读这几套实现时，先把“唤醒”这个词拆开了。后台进程可以自己感知结束，TUI 可以立即更新命令卡片，主会话也可以再发一次模型请求。它们常常挨着发生，代码里却由不同对象负责。</p>
+
+          <div class="layers">
+            <div class="card">
+              <span class="label">Process</span>
+              <h3>进程层</h3>
+              <p>watcher 等退出信号，收尾 stdout，保存 exit code。这一步不需要模型。</p>
+            </div>
+            <div class="card">
+              <span class="label">Surface</span>
+              <h3>界面层</h3>
+              <p>终端或 App Server 收到事件，把 running 改成 completed。用户已经能看见结果。</p>
+            </div>
+            <div class="card">
+              <span class="label">Model</span>
+              <h3>会话层</h3>
+              <p>运行时构造一条模型可见输入，再调一次 API。Agent 才能继续验产物、改文件或汇报。</p>
+            </div>
+          </div>
+
+          <p>这层区分改掉了我最初一个过于粗的说法。Codex 并不缺进程退出事件。它有完整的异步 watcher，也会推送输出增量和完成状态。它缺少的是从普通后台 terminal 的完成事件直达新模型回合的默认路径。</p>
+
+          <div class="callout green">
+            <p><strong>判断监控体验时，先问事件最后交给了谁。</strong></p>
+            <p>交给 TUI，用户少按一次刷新。交给模型输入队列，Agent 才能在用户离开以后继续做下一步。</p>
+          </div>
+
+          <details>
+            <summary>本次检查的三个安装包</summary>
+            <div class="details-body">
+              <p>Grok 指向 <code>~/.grok/downloads/grok-1.0.5-macos-aarch64</code>，文件大小 134,349,648 字节，SHA-256 为 <code>3dfa7f04fbb5427a8fbead286591543aaecb478b3a0ab222c4329eca1a3b2f86</code>。签名方是 X.AI Corporation。</p>
+              <p>Claude Code 位于 <code>~/.local/share/claude/versions/2.1.241</code>，文件大小 325,055,632 字节，SHA-256 为 <code>1495eb7c42d3b4451f5f1cd38b6d498d22a4a38c802bc2be5c1cf1795e64820d</code>。签名方是 Anthropic PBC。</p>
+              <p>Codex 原生程序来自 <code>@openai/codex</code> 0.149.1 的 darwin-arm64 包，文件大小 220,552,944 字节，SHA-256 为 <code>f0d8762236594359b60cfbe17f4c7e945a3ce8d1c91e74778838c968d250fb6c</code>。签名方是 OpenAI OpCo, LLC。源码检查固定在 <code>rust-v0.149.1</code> 对应的提交 <code>ff29a44391deccde0aba0f8390337d7f3c319ea4</code>。</p>
+            </div>
+          </details>
+        </section>
+
+        <section id="grok">
+          <p class="kicker">02 · Grok Build</p>
+          <h2>Grok 把 TaskCompleted 改造成一条合成 Prompt</h2>
+          <p>Grok 的公开源码把这条路写得很直。后台 Bash 或 Monitor 自然退出后，shell adapter 产生 <code>ToolNotification::TaskCompleted</code>。<code>notification_bridge.rs</code> 先检查几件事。任务有没有被 block wait 接走，是否由模型明确停止，goal loop 是否还在运行，AutoWake 有没有开启。</p>
+
+          <p>通过这些检查以后，bridge 生成 <code>task-completed-{task_id}</code>，再向 session actor 发送 <code>SessionCommand::Prompt</code>。Prompt 的模式是 Agent，内容提醒模型 Monitor 已经结束，并告诉它从哪个任务读取完整输出。</p>
+
+          <div class="trace" aria-label="Grok 后台任务完成到模型回合的执行路径">
+            <div class="trace-row"><span class="n">01</span><code>TaskCompleted</code><span>后台任务自然退出，快照带着任务类型和退出码进入 bridge</span></div>
+            <div class="trace-row"><span class="n">02</span><code>SessionCommand::Prompt</code><span>bridge 构造一条合成 Prompt，并附上 admission 通道</span></div>
+            <div class="trace-row"><span class="n">03</span><code>admit_task_completion_wake</code><span>session actor 再检查取消后的抑制状态和通知状态</span></div>
+            <div class="trace-row"><span class="n">04</span><code>queue_input</code><span>通过 admission 的 Prompt 进入 pending inputs</span></div>
+            <div class="trace-row"><span class="n">05</span><code>handle_prompt</code><span>运行时开启合成回合，模型继续处理产物</span></div>
+          </div>
+
+          <p>admission 这一层很要紧。用户刚取消过任务时，新的完成事件可能与取消操作撞在一起。session actor 用 <code>task_wake_suppressed</code> 和 <code>notifications_suppressed</code> 把这类事件挡住。接收失败时，完成消息会退回延后通知，不会悄悄丢掉。</p>
+
+          <h3>Monitor 中途输出和自然退出走两条路</h3>
+          <p>Monitor 打出一行有意义的 stdout 时，bridge 收到 <code>MonitorEvent</code>，以 <code>NotificationPriority::Next</code> 放进通知队列。Monitor 自然退出时，<code>TaskCompleted</code> 走上面的合成 Prompt 通道。完成事件已经预留任务以后，晚到的 MonitorEvent 会被丢掉，避免同一个终态开两个回合。</p>
+
+          <p>公开测试专门覆盖了这件事。退出码为零的 Monitor 会生成含有 <code>[monitor ended: exited (code 0)]</code> 的 Prompt，随后发送 <code>DropMonitorNotifications</code>。模型主动停止 Monitor 时不会再 AutoWake，UI 或 Stop 操作终止 Monitor 时则会提醒模型不要重新启动它。</p>
+
+          <div class="codebox">
+            <span class="lang">installed binary</span>
+            <pre><code>auto-wake: requesting synthetic prompt admission
+auto-wake: session actor received synthetic prompt
+skipping model inject for monitor event: task already auto-woke</code></pre>
+          </div>
+
+          <p>本机安装的 Grok 1.0.5 二进制里能找到上面三段日志文本，对应字节偏移分别落在 <code>107441761</code>、<code>107737945</code> 和 <code>107442351</code> 附近。公开仓库目前没有可解析到这个安装包的 1.0.5 标签，二进制内的构建标识 <code>5115b46bc909</code> 也无法从公开远端直接取回。因此我用安装包字符串确认能力存在，用公开代码解释结构，没有把两者写成同一个提交。</p>
+        </section>
+
+        <section id="claude">
+          <p class="kicker">03 · Claude Code</p>
+          <h2>Claude Code 的 next 队列确实会在空闲时开新回合</h2>
+          <p>Claude Code 2.1.241 的 Monitor 实现在发布二进制的 Bun JavaScript 里。命令 stdout 先进入 <code>PBi</code>，由 <code>HSl</code> 切行、合并和限流。<code>xwe</code> 随后构造一条 <code>task-notification</code>，优先级设为 <code>next</code>，交给 <code>enqueuePendingNotification</code>。</p>
+
+          <div class="codebox">
+            <span class="lang">bundled js</span>
+            <pre><code>mode: "task-notification",
+priority: "next"</code></pre>
+          </div>
+
+          <p>主查询循环在回合开始和工具边界读取 <code>getCommandsByMaxPriority("next")</code>。当前模型请求正在跑时，next 通知不会像 now 那样立即抢断。回合空闲时，队列可以直接生成下一次请求。</p>
+
+          <p>静态代码已经说明队列怎样工作，本机 GPU 项目的会话记录又给了两种真实时序。我只抽取时间戳、任务标识、队列动作和消息来源，没有把任务输出或聊天正文带进文章。</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Monitor</th><th>运行结果</th><th>队列动作</th><th>模型侧表现</th></tr></thead>
+              <tbody>
+                <tr><td><code>bhceuqzer</code></td><td>25 分钟超时</td><td>入队后 7 毫秒出队，8 毫秒后写成 user 消息</td><td>约 51 秒后出现首条 assistant 记录</td></tr>
+                <tr><td><code>brct5dn0c</code></td><td>11 分 31 秒成功</td><td>两条通知入队，4 毫秒后出队</td><td>10 毫秒后出现合成 user 消息，约 45 秒后模型输出</td></tr>
+                <tr><td><code>btbog7o0q</code></td><td>8 分 11 秒成功</td><td>模型工作期间入队，24.8 秒后在工具边界移除</td><td>没有抢断当时正在进行的 Edit</td></tr>
+                <tr><td><code>bu6hbevli</code></td><td>40 分钟超时</td><td>事件先入队，稍后随当前工作收尾</td><td>保持 next 的非抢断语义</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>前两条最能回答最初的问题。队列入队以后，Claude Code 没有等用户再敲一句话。它把通知写成新的 user 消息，随后发起模型请求。几十秒延迟主要发生在模型响应阶段，队列本身只用了几毫秒。</p>
+
+          <p>第三条说明了另一面。Monitor 在 <code>03:53:30.677</code> 产生完成事件，当时主会话还在分析图片和改文档。通知留在队列里。<code>03:53:55.082</code>，模型发出 Edit。工具结果回来以后，两条 Monitor 通知才从队列移除。事件驱动没有破坏当前回合的工具顺序。</p>
+
+          <div class="callout amber">
+            <p><strong><code>priority: "next"</code> 表示排到下一个可用边界。</strong></p>
+            <p>空闲时，它能开启新回合。模型仍在工作时，它先排队。用“等 Monitor 结束才继续”概括 Claude Code，大体方向对了，还要补上这个非抢断条件。</p>
+          </div>
+
+          <h3>通知在会话文件里是一条合成 user 消息</h3>
+          <p>本机记录里的这几条消息都带着 <code>origin.kind = "task-notification"</code> 和 <code>promptSource = "system"</code>，消息角色仍是 user，<code>permissionMode</code> 为 <code>bypassPermissions</code>。这能证明运行时在没有新的人类输入时调用了模型，不能单独证明通知回合可以执行任何动作。</p>
+
+          <p>Anthropic 的公开 issue 里已经有人提交过相同形态的记录。一个 issue 展示了后台通知在空闲时触发自主 API 请求，另一个 issue 记录了模型把通知误当成人类回答的情况。这些来源属于用户报告，不能当作 Claude Code 实现文档，却提醒了一个真实的设计问题。自动唤醒省掉人工等待以后，通知来源、权限和待回答问题都要跟着收紧。</p>
+        </section>
+
+        <section id="codex">
+          <p class="kicker">04 · Codex</p>
+          <h2>Codex 能把完成状态推到界面，模型仍要自己来取</h2>
+          <p>Codex 0.149.1 的 <code>UnifiedExec</code> 启动后台进程时，会同时启动两个异步任务。<code>start_streaming_output</code> 持续读取 PTY，发送 <code>ExecCommandOutputDelta</code>。<code>spawn_exit_watcher</code> 等取消令牌，也就是进程退出信号，随后等输出排空，聚合 transcript，最后发送一条 <code>ExecCommandEnd</code>。</p>
+
+          <div class="trace" aria-label="Codex 后台终端结束以后界面和模型的两条路径">
+            <div class="trace-row"><span class="n">01</span><code>spawn_exit_watcher</code><span>等待进程退出，排空剩余输出</span></div>
+            <div class="trace-row"><span class="n">02</span><code>ExecCommandEnd</code><span>带着退出码、运行时长和聚合输出发送事件</span></div>
+            <div class="trace-row"><span class="n">03</span><code>ItemCompleted</code><span>App Server 把事件映射为命令卡片完成</span></div>
+            <div class="trace-row"><span class="n">04</span><code>write_stdin</code><span>模型另行发起空查询，拿到工具结果</span></div>
+          </div>
+
+          <p><code>event_mapping.rs</code> 把 <code>ExecCommandEnd</code> 映射为 <code>ServerNotification::ItemCompleted</code>。这条路径解释了 Codex 界面为什么能在后台命令结束时更新。它绑定的是原始 turn 和 command item，没有向 thread 插入新的用户输入，也没有提交新的 turn。</p>
+
+          <p>模型侧的工具合同在另一处。<code>exec_command</code> 超过初始等待时间以后返回 session ID。<code>write_stdin</code> 把空 <code>chars</code> 明确定义为 background poll。空查询至少等 5 秒，默认最多等 300 秒。进程在等待窗口内结束，这次工具调用会拿到 exit code 和剩余输出。</p>
+
+          <div class="codebox">
+            <span class="lang">rust</span>
+            <pre><code>if request.input.is_empty() {
+    time_ms.clamp(
+        MIN_EMPTY_YIELD_TIME_MS,
+        self.max_write_stdin_yield_time_ms,
+    )
+}</code></pre>
+          </div>
+
+          <p>于是 Codex 同时拥有两种相反的体验。用户能及时看到命令卡片结束，模型若已经交还当前回合，并不会仅凭这张卡片重新运行。模型仍在等待回合里时，会继续调用 <code>write_stdin</code>。用户后来再输入一句，它也可以回头读取已经结束的 session。</p>
+
+          <div class="callout pink">
+            <p><strong>Codex 0.149.1 是界面 push，模型 pull。</strong></p>
+            <p>退出事件真实存在，UI 也能实时更新。模型续接仍靠工具查询。这两个判断放在一起，才和源码完全对得上。</p>
+          </div>
+        </section>
+
+        <section id="records">
+          <p class="kicker">05 · Session records</p>
+          <h2>三条 Codex 会话留下了一百次空查询</h2>
+          <p>源码能说明能力，历史会话能说明 Agent 真会怎么用。我筛了本机三条以 GPU 项目为 cwd 的 Codex 会话，只统计实际调用 <code>tools.write_stdin</code> 且 <code>chars</code> 为空的记录。总数正好是一百次。</p>
+
+          <div class="numbers">
+            <div class="number"><b>100</b><span>空 write_stdin 查询</span></div>
+            <div class="number"><b>63</b><span>请求等待 60 秒</span></div>
+            <div class="number"><b>15</b><span>请求等待 55 秒</span></div>
+            <div class="number"><b>20</b><span>请求等待 30 秒</span></div>
+            <div class="number"><b>2</b><span>分别等待 5 秒和 10 秒</span></div>
+          </div>
+
+          <p>这组记录没有统一控制命令、并发量和任务时长，其中也包含本文取证过程。它只能证明一个操作习惯。面对长任务，Codex 会反复发起空查询，长挂起把频率压低了，查询本身仍属于模型工具回合。</p>
+
+          <p>其中几条 terminal session 很能说明节奏。一个 session 在十分钟左右被空查 11 次，另一个也查了 11 次。每次工具等待约 55 或 60 秒，返回 still running 后，模型再安排下一次。任务没有更快，Agent 只是用更长的阻塞窗口少醒几次。</p>
+
+          <p>Claude Code 的四次 Monitor 没有对应的状态查询链。普通 shell 在任务外面安静地等条件，完成后才输出。主会话记录里留下的是 queue-operation 和合成通知。两边的本地进程都可能轮询，进入模型上下文的次数差得很明显。</p>
+
+          <details>
+            <summary>这组统计怎样避免把字符串搜索算成工具调用</summary>
+            <div class="details-body">
+              <p>新版 Codex 会把工具编排保存在 <code>custom_tool_call</code> 的 JavaScript 输入里。我只解析实际出现的 <code>tools.write_stdin({...})</code> 调用对象，再读取 <code>chars</code> 和 <code>yield_time_ms</code>。文章、源码搜索和提示词里出现的 <code>write_stdin</code> 文本没有计入。</p>
+              <p>九条调用使用未加引号的 JavaScript 对象键，无法直接交给 JSON 解析器。我另外按固定字段提取并人工核对。其中八条是 60 秒空查询，剩下一条发送中断字符。最终的一百次只保留空输入。</p>
+            </div>
+          </details>
+        </section>
+
+        <section id="tradeoff">
+          <p class="kicker">06 · Tradeoff</p>
+          <h2>自动唤醒省模型回合，也增加了运行时的责任</h2>
+          <p>把等待移到本地 watcher，收益很容易看见。没有状态变化时，模型不需要收一条“还在运行”。会话更短，工具调用更少，半小时任务尤其明显。</p>
+
+          <p>运行时接着要回答几个难问题。通知到达时模型正在做什么。用户刚按过取消键怎么办。两个终态挨着到达会不会开两次回合。通知内容来自日志，能不能被当成人类授权。Grok 的 admission、suppression 和 reservation 正是在处理这些竞争。Claude Code 的 next 优先级、队列折叠和任务来源标记处理了另一部分。</p>
+
+          <p>Codex 的模型 pull 显得笨一些，却天然保留了一个边界。当前 turn 结束以后，普通 terminal 完成只更新界面，不会自行调用模型。这会浪费等待回合，也减少了后台输出在无人看守时推动 Agent 行动的机会。</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>设计问题</th><th>Grok Build</th><th>Claude Code</th><th>Codex 0.149.1</th></tr></thead>
+              <tbody>
+                <tr><td>终态怎样到模型</td><td>合成 Prompt 进入 session actor</td><td>task-notification 进入 next 队列</td><td>模型调用 write_stdin 读取</td></tr>
+                <tr><td>当前回合忙碌时</td><td>进入输入队列，并受 admission 控制</td><td>等下一个工具或回合边界</td><td>当前工具回合按原计划继续</td></tr>
+                <tr><td>重复终态</td><td>reservation 与 DropMonitorNotifications 去重</td><td>消息队列注册 in-flight 并移除已吸收项</td><td>进程条目退出后由 refresh state 移除</td></tr>
+                <tr><td>用户取消以后</td><td>suppression gate 可以拒绝合成 wake</td><td>依赖队列状态和任务生命周期处理</td><td>模型没有默认的终态 AutoWake</td></tr>
+                <tr><td>主要成本</td><td>运行时竞争控制更复杂</td><td>合成 user 回合的来源和权限要可靠</td><td>长任务会产生重复模型查询</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>因此“有没有轮询”不够用来评估一款 Agent。更有用的问题是，轮询发生在普通进程还是模型回合，状态变化由谁接收，接收以后能不能安全地开启下一回合。</p>
+        </section>
+
+        <section id="conclusion">
+          <p class="kicker">07 · Reading the result</p>
+          <h2>长任务监控这一项，Grok 和 Claude Code 走得更完整</h2>
+          <p>只看当前三个版本的普通长任务路径，我会把 Grok 放在最容易审计的位置。公开代码从 TaskCompleted 一直连到 session actor，取消、重复事件和 fallback 都有对应测试。Claude Code 的用户体验同样接近完整事件驱动，本机记录证明它在空闲时会自行开启模型回合。它的关键实现藏在发布二进制里，外部核验成本更高。</p>
+
+          <p>Codex 的源码透明度最高，进程层也已经有可靠 watcher。模型侧少了最后一段连接。把 <code>ExecCommandEnd</code> 转成一种有来源、受权限约束、可以被 thread admission 接受的输入，普通后台终端才会从“界面知道结束”走到“Agent 接着干活”。源码里曾出现的 awaiter 仍靠重复工具查询，0.149.1 默认角色又暂时移除了它，这条路还没有解决事件直达模型的问题。</p>
+
+          <p>那张 Grok 截图给人的感觉没有错。Monitor 在后台等，主 Agent 可以停。等条件成立以后，运行时再把它叫回来。好的监控还要知道什么时候保持安静，叫醒 Agent 时给它多大权限。</p>
+        </section>
+
+        <section id="sources">
+          <p class="kicker">08 · Sources</p>
+          <h2>源码、发布物与公开记录</h2>
+          <ul class="sources">
+            <li><a href="https://github.com/xai-org/grok-build/blob/c2ad97f87aea4303b6000a2c22128bc91ee76c9b/crates/codegen/xai-grok-shell/src/tools/notification_bridge.rs">Grok Build 通知 bridge</a><small>TaskCompleted、MonitorEvent、AutoWake Prompt 和重复事件预留</small></li>
+            <li><a href="https://github.com/xai-org/grok-build/blob/c2ad97f87aea4303b6000a2c22128bc91ee76c9b/crates/codegen/xai-grok-shell/src/session/acp_session_impl/run_loop.rs">Grok Build session run loop</a><small>Task wake admission 与合成 Prompt 入队</small></li>
+            <li><a href="https://github.com/xai-org/grok-build/blob/c2ad97f87aea4303b6000a2c22128bc91ee76c9b/crates/codegen/xai-grok-shell/src/tools/notification_bridge_tests.rs">Grok Build 通知 bridge 测试</a><small>Monitor 自然退出、主动停止、取消与去重分支</small></li>
+            <li><a href="https://unpkg.com/@anthropic-ai/claude-agent-sdk@0.3.241/manifest.json">Claude Agent SDK 0.3.241 发布清单</a><small>Claude Code 2.1.241 的平台二进制哈希和版本提交</small></li>
+            <li><a href="https://unpkg.com/@anthropic-ai/claude-agent-sdk@0.3.241/sdk-tools.d.ts">Claude Agent SDK Monitor 类型</a><small>公开的 Monitor 输入与事件合同</small></li>
+            <li><a href="https://github.com/anthropics/claude-code/issues/39027">Claude Code 后台通知自主回合报告</a><small>用户提交的 queue-operation、合成 user 消息和 API 请求记录</small></li>
+            <li><a href="https://github.com/anthropics/claude-code/issues/60360">Claude Code 通知回合角色混淆报告</a><small>用户提交的 Monitor task-notification 行为记录</small></li>
+            <li><a href="https://github.com/openai/codex/blob/ff29a44391deccde0aba0f8390337d7f3c319ea4/codex-rs/core/src/unified_exec/async_watcher.rs">Codex 0.149.1 异步退出 watcher</a><small>PTY 输出流、退出等待和 ExecCommandEnd</small></li>
+            <li><a href="https://github.com/openai/codex/blob/ff29a44391deccde0aba0f8390337d7f3c319ea4/codex-rs/app-server-protocol/src/protocol/event_mapping.rs">Codex App Server 事件映射</a><small>ExecCommandEnd 到 ItemCompleted 的界面路径</small></li>
+            <li><a href="https://github.com/openai/codex/blob/ff29a44391deccde0aba0f8390337d7f3c319ea4/codex-rs/core/src/unified_exec/process_manager.rs">Codex 0.149.1 进程管理器</a><small>后台 session、退出 watcher 和空查询等待范围</small></li>
+            <li><a href="https://github.com/openai/codex/blob/ff29a44391deccde0aba0f8390337d7f3c319ea4/codex-rs/core/src/tools/handlers/unified_exec/write_stdin.rs">Codex 0.149.1 write_stdin 处理器</a><small>空输入作为 background poll 的模型工具入口</small></li>
+          </ul>
+        </section>
+
+        <footer class="end">
+          <strong>Silent Star</strong><br>
+          继续沿着事件往下查，直到它真的进入模型回合。
+        </footer>
+      </article>
+    </div>
+  </div>
+</body>
+</html>
