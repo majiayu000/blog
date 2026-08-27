@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Desktop 那只内置浏览器到底是什么</title>
+  <meta name="date" content="2026-08-27">
+  <meta name="description" content="静态拆 Claude Desktop。Cowork 内置浏览器不是另装的 Chrome，而是 Electron 自带 Chromium 里的隔离标签页，模型用 CDP 去读和点。">
+  <meta name="tags" content="Claude Desktop, Cowork, Electron">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #161410;
+      --muted: #5c574c;
+      --paper: #f4f1ea;
+      --card: #fffdf8;
+      --line: #d9d2c4;
+      --blue: #2c4fd0;
+      --amber: #b56a10;
+      --red: #a33a3a;
+      --green: #1f7a4d;
+      --ink2: #ece7db;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 17px/1.65 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      width: min(1080px, calc(100% - 32px));
+      margin: auto;
+      padding: 72px 0 80px;
+    }
+    h1 {
+      font-size: clamp(2rem, 5.4vw, 3.35rem);
+      line-height: 1.08;
+      letter-spacing: -.045em;
+      margin: .18em 0 .4em;
+      max-width: 16ch;
+    }
+    h2 {
+      font-size: clamp(1.35rem, 3vw, 1.9rem);
+      line-height: 1.2;
+      letter-spacing: -.02em;
+      margin: 0 0 14px;
+    }
+    h3 { margin: .1em 0 .4em; font-size: 1.05rem; }
+    p { max-width: 68ch; }
+    .lede {
+      font-size: clamp(1.12rem, 2.2vw, 1.38rem);
+      line-height: 1.5;
+      color: var(--muted);
+      max-width: 48ch;
+    }
+    .kicker {
+      display: inline-block;
+      font-size: .78rem;
+      font-weight: 750;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--blue);
+    }
+    section { margin-top: 52px; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+      margin: 18px 0 0;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: .75rem;
+      font-weight: 750;
+    }
+    .badge::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .observed { background: #e4f4ea; color: var(--green); }
+    .corroborated { background: #e7eefc; color: var(--blue); }
+    .inferred { background: #fff0d6; color: #8a5408; }
+    .unknown { background: #fde8e8; color: var(--red); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 20px 22px;
+    }
+    .grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: 1.15fr .85fr;
+    }
+    .grid3 { display: grid; gap: 14px; grid-template-columns: 1.2fr 1fr .9fr; }
+    .diagram {
+      background: #15130f;
+      color: var(--ink2);
+      border-radius: 20px;
+      padding: 18px 16px 10px;
+      overflow: auto;
+    }
+    .diagram svg { display: block; width: 100%; height: auto; min-width: 760px; }
+    .mobile-flow { display: none; }
+    .mnode {
+      background: #221f19;
+      border: 1.5px solid #5a5346;
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: #f3eee4;
+    }
+    .mnode strong { display: block; margin-bottom: 4px; }
+    .mnode span { color: #c9c0b0; font-size: .9rem; }
+    .mnode.on { border-color: #5ecfc3; }
+    .mnode.fail { border-color: #e08a5b; }
+    .marrow { text-align: center; color: #9d9484; line-height: 1.2; padding: 2px 0; }
+    code {
+      font: 13.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: #efe9dc;
+      border-radius: 5px;
+      padding: .08em .34em;
+      overflow-wrap: anywhere;
+    }
+    #seq-card,
+    #seq-card * {
+      color: #f3eee4;
+    }
+    #seq-card code {
+      background: none;
+      color: #7ee0c8;
+      padding: 0;
+      font-weight: 650;
+    }
+    .home-link {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 20;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(244, 241, 234, .92);
+      color: var(--ink);
+      font-size: .8rem;
+      text-decoration: none;
+    }
+    .home-link:hover { border-color: var(--blue); }
+    a { color: #244fc4; text-underline-offset: 3px; }
+    a:focus-visible, button:focus-visible {
+      outline: 3px solid #e29a3a;
+      outline-offset: 2px;
+    }
+    button.chip {
+      font: inherit;
+      font-size: .92rem;
+      font-weight: 650;
+      border: 1.5px solid var(--line);
+      background: var(--card);
+      border-radius: 999px;
+      padding: 7px 14px;
+      cursor: pointer;
+      color: var(--ink);
+    }
+    button.chip[aria-pressed="true"] {
+      background: #15130f;
+      color: #f6f1e7;
+      border-color: #15130f;
+    }
+    .switcher { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 12px; }
+    details.ev {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      padding: 0 18px 4px;
+    }
+    details.ev + details.ev { margin-top: 10px; }
+    details.ev summary {
+      cursor: pointer;
+      font-weight: 700;
+      padding: 14px 4px;
+      list-style: none;
+    }
+    details.ev summary::-webkit-details-marker { display: none; }
+    details.ev summary::after {
+      content: "展开";
+      float: right;
+      font-weight: 600;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+    details.ev[open] summary::after { content: "收起"; }
+    .src { font-size: .92rem; }
+    .src ol { padding-left: 1.2rem; }
+    footer { margin-top: 56px; color: var(--muted); font-size: .9rem; max-width: 68ch; }
+    .note {
+      border-left: 4px solid var(--amber);
+      padding: 2px 0 2px 14px;
+      color: var(--muted);
+      max-width: 68ch;
+    }
+    table.cmp {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .95rem;
+    }
+    table.cmp th, table.cmp td {
+      text-align: left;
+      vertical-align: top;
+      padding: 10px 10px 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    table.cmp th { color: var(--muted); font-weight: 650; font-size: .8rem; }
+    @media (max-width: 760px) {
+      main { width: min(100% - 22px, 680px); padding-top: 28px; }
+      .grid, .grid3 { grid-template-columns: 1fr; }
+      section { margin-top: 38px; }
+      .diagram { display: none; }
+      .mobile-flow { display: grid; gap: 0; background: #15130f; border-radius: 16px; padding: 14px; }
+      h1 { max-width: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="home-link" href="/">← Silent Star</a>
+<main>
+  <section>
+    <span class="kicker">X-Ray · Claude Desktop</span>
+    <h1>内置浏览器就是 Electron 自带的那份 Chromium，又开了一排隔离标签</h1>
+    <p class="lede">我拆这只包的时候，最先对上的就是这件事。Claude.app 画画界面用的本来就是 Chromium。Cowork 侧栏里那块网页，不是再装了一个 Chrome，是同一份引擎里另开的沙箱标签。模型也不盯着窗口看。它挂的是调试协议。</p>
+    <div class="legend" role="note">
+      <span>下面几个标记怎么读</span>
+      <span class="badge observed">Observed 本机文件里直接看到</span>
+      <span class="badge corroborated">Corroborated 官方说明对得上</span>
+      <span class="badge inferred">Inferred 我根据证据推断</span>
+      <span class="badge unknown">Unknown 还没钉死</span>
+    </div>
+  </section>
+
+  <section>
+    <span class="kicker">容易搅在一起的三件事</span>
+    <h2>桌面端能碰网页，但不是一条路</h2>
+    <p>8 月 26 日 Cowork 宣传的那只内置浏览器，和 7 月 Claude Code 的 Browser pane，用的是同一套 Electron 标签页。本机后来升到 <code>1.37937.3</code>，设置里也写了 Built-in browser、Preferred browser。它仍然不是 Cowork 那台 Linux 虚拟机，也不是 Chrome 扩展。</p>
+
+    <div class="diagram" role="img" aria-labelledby="arch-title arch-desc">
+      <svg viewBox="0 0 980 430" xmlns="http://www.w3.org/2000/svg">
+        <title id="arch-title">Claude Desktop 三条网页路径</title>
+        <desc id="arch-desc">用户任务进入桌面端后，默认进入内置 Browser pane。需要本人登录才走 Chrome 扩展。计算机使用是另一条屏幕控制路径。</desc>
+        <rect x="8" y="8" width="964" height="54" rx="12" fill="#221f19"/>
+        <text x="28" y="42" fill="#f6f1e7" font="700 16px system-ui">你在 Cowork 或 Code 里丢一个要碰网站的任务</text>
+
+        <rect x="8" y="78" width="300" height="250" rx="16" fill="#221f19" stroke="#5ecfc3" stroke-width="2"/>
+        <text x="28" y="108" fill="#5ecfc3" font="700 14px system-ui">内置浏览器（默认）</text>
+        <text x="28" y="136" fill="#c9c0b0" font="13px system-ui">Electron WebContentsView</text>
+        <text x="28" y="156" fill="#c9c0b0" font="13px system-ui">一会话一 pane，一站点一 tab</text>
+        <text x="28" y="186" fill="#f6f1e7" font="13px system-ui">独立 partition</text>
+        <text x="28" y="206" fill="#f6f1e7" font="13px system-ui">不读你的书签和密码</text>
+        <text x="28" y="236" fill="#c9c0b0" font="13px system-ui">CDPTools 挂 debugger</text>
+        <text x="28" y="266" fill="#c9c0b0" font="13px system-ui">mcp__Claude_Browser__*</text>
+        <text x="28" y="296" fill="#9d9484" font="12px system-ui">本机已证实</text>
+
+        <rect x="340" y="78" width="300" height="250" rx="16" fill="#221f19" stroke="#7ea2ea" stroke-width="2"/>
+        <text x="360" y="108" fill="#7ea2ea" font="700 14px system-ui">Claude in Chrome</text>
+        <text x="360" y="136" fill="#c9c0b0" font="13px system-ui">你自己的 Chrome 标签</text>
+        <text x="360" y="156" fill="#c9c0b0" font="13px system-ui">已登录的邮箱、后台、CRM</text>
+        <text x="360" y="186" fill="#f6f1e7" font="13px system-ui">扩展 + native host</text>
+        <text x="360" y="206" fill="#f6f1e7" font="13px system-ui">Chrome Native Messaging</text>
+        <text x="360" y="236" fill="#c9c0b0" font="13px system-ui">或 websocket 桥</text>
+        <text x="360" y="266" fill="#c9c0b0" font="13px system-ui">mcp__claude-in-chrome__*</text>
+        <text x="360" y="296" fill="#9d9484" font="12px system-ui">需要你装扩展</text>
+
+        <rect x="672" y="78" width="300" height="250" rx="16" fill="#221f19" stroke="#8a8174" stroke-width="2"/>
+        <text x="692" y="108" fill="#c9c0b0" font="700 14px system-ui">不是浏览器</text>
+        <text x="692" y="136" fill="#c9c0b0" font="13px system-ui">Computer use / Cowork VM</text>
+        <text x="692" y="156" fill="#c9c0b0" font="13px system-ui">点的是屏幕或虚拟桌面</text>
+        <text x="692" y="186" fill="#f6f1e7" font="13px system-ui">本机有 10GB Linux 盘</text>
+        <text x="692" y="206" fill="#f6f1e7" font="13px system-ui">还有 gVisor 痕迹</text>
+        <text x="692" y="236" fill="#c9c0b0" font="13px system-ui">辅助功能 / 截屏驱动</text>
+        <text x="692" y="266" fill="#c9c0b0" font="13px system-ui">排在连接器和浏览器之后</text>
+        <text x="692" y="296" fill="#9d9484" font="12px system-ui">不要和内置浏览器混为一谈</text>
+
+        <rect x="8" y="344" width="964" height="70" rx="14" fill="#2a1810"/>
+        <text x="28" y="374" fill="#e08a5b" font="700 14px system-ui">怎么选</text>
+        <text x="28" y="396" fill="#f0d2c0" font="13px system-ui">默认走左边。需要你已打开、已登录的页面才走中间。要操作整块屏幕才走右边。</text>
+      </svg>
+    </div>
+
+    <div class="mobile-flow" aria-label="三条网页路径">
+      <div class="mnode on"><strong>内置浏览器（默认）</strong><span>Electron 隔离标签 + CDP。不碰你的书签和密码。</span></div>
+      <div class="marrow">需要你自己的登录时 ↓</div>
+      <div class="mnode"><strong>Claude in Chrome</strong><span>扩展进你的真 Chrome，走 native host 或 websocket 桥。</span></div>
+      <div class="marrow">网页工具不够、要操作整个桌面时 ↓</div>
+      <div class="mnode fail"><strong>Computer use / VM</strong><span>这是点屏幕，不是内置浏览器。</span></div>
+    </div>
+  </section>
+
+  <section>
+    <span class="kicker">一次点击</span>
+    <h2>你看见的是网页，模型看见的是 CDP</h2>
+    <p>侧栏里能滚动、能点，是因为 Electron 把 <code>WebContentsView</code> 嵌进了主窗口。模型拿到的是另一份东西：无障碍树、截图、控制台、网络日志。真要点按钮时，主进程对着那个 tab 的 <code>webContents.debugger</code> 发 <code>Input.dispatchMouseEvent</code>。窗口没露出来的时候，截图会直接失败，提示要把 tab 放到前面。后台“想象一个浏览器”这条路走不通。</p>
+
+    <div class="switcher" role="tablist" aria-label="选择要看的路径">
+      <button class="chip" id="btn-inapp" aria-pressed="true">内置浏览器</button>
+      <button class="chip" id="btn-chrome" aria-pressed="false">Claude in Chrome</button>
+    </div>
+
+    <article class="card" id="seq-card" style="background:#15130f;color:#f3eee4;border-color:#2c281f;">
+      <h3 id="seq-title" style="color:#5ecfc3;">内置 Browser pane</h3>
+      <ol id="seq-list" style="padding-left:1.2rem;max-width:70ch;">
+        <li>任务需要一个网址。提示词要求默认用内置浏览器，别用 Bash 起服务器，也别去开真 Chrome。</li>
+        <li><code>preview_start {url}</code> 或 <code>tabs_create</code> 在当前会话的 pane 里造一个 tab。</li>
+        <li>主进程用 <code>session.fromPartition("persist:launch-preview-…")</code> 拿出隔离 cookie 罐，再 <code>new WebContentsView</code>。</li>
+        <li>页面 load 之后 <code>CDPTools.attach(webContents)</code>，打开 Network / DOM / Accessibility。</li>
+        <li>外站还要过域名名单、源权限卡、带账号密码的 URL 拦截。组织策略可以把范围锁成只准 localhost。</li>
+        <li><code>read_page</code> 走 <code>Accessibility.getFullAXTree</code>。点击走 CDP 鼠标事件。截图优先 <code>Page.captureScreenshot</code>。</li>
+      </ol>
+    </article>
+  </section>
+
+  <section>
+    <span class="kicker">它怎么跟你的 Chrome 隔开</span>
+    <h2>cookie 罐是自己的，外站也不是想开就开</h2>
+    <div class="grid3">
+      <article class="card">
+        <span class="badge observed">Observed</span>
+        <h3>配置目录跟你的 Chrome 不是同一份</h3>
+        <p>标签开在 <code>persist:launch-preview-static</code>、<code>persist:launch-preview-session-</code> 这种 Electron session 上。用户数据里已经有 <code>Partitions/launch-preview-static</code>。系统提示写的是 separate from your real Chrome。书签、密码库它读不到。</p>
+      </article>
+      <article class="card">
+        <span class="badge observed">Observed</span>
+        <h3>外站会先问服务器这页能不能碰</h3>
+        <p>主进程打 <code>/api/web/domain_info/browser_extension</code>，还有 URL hash 检查。category1/2 或组织 block 就拦下来。金融站和高风险站会弹出源权限卡。链接里带着 <code>user:password@</code> 的，直接拒绝。</p>
+      </article>
+      <article class="card">
+        <span class="badge observed">Observed</span>
+        <h3>每个 tab 自己也被沙箱住</h3>
+        <p><code>sandbox: true</code>，没有 Node，开了 contextIsolation。普通页连对话框都关掉。急的时候还能给 Chromium 加上 <code>--js-flags=--jitless</code>。同一个 pane 超过 8 个 tab，弹窗会被拒。</p>
+      </article>
+    </div>
+    <p class="note" style="margin-top:16px;">官方把这套防护和 Claude in Chrome 归成同一类 prompt injection 缓解。分类器看的是动作还符不符合你最初那句话。它减风险，消灭不了。</p>
+  </section>
+
+  <section>
+    <span class="kicker">我拆到了什么</span>
+    <h2>本机后来升过一版，内核还是那套标签页</h2>
+    <p>第一次拆的是 <code>/Applications/Claude.app</code> <code>1.26832.0</code>，签名 2026-08-06，Electron 42.7.0，内嵌 Chrome/148.0.7778.280。引擎当时已经在。后来这台机器升到 <code>1.37937.3</code>（8 月 26 日），Cowork 开关才写进设置文案：<code>coworkBrowserToolsEnabled</code>、<code>coworkPreferredBrowser</code>（<code>built_in</code> 或 <code>chrome</code>，默认前者）。关掉 Built-in browser，只从 Cowork 拿掉 pane 和那套浏览器工具。Claude in Chrome 还在。Code 里的浏览器也还在。</p>
+
+    <details class="ev" open>
+      <summary>每个 tab 挂着一个 CDPTools</summary>
+      <p>主进程 chunk 是 <code>.vite/build/index.chunk-DIBPwUV0.js</code>。tab 一侧是 <code>WebContentsView</code>，一侧是 <code>CDPTools</code>。挂上会打 <code>[CDPTools] Attached to webContents</code>。</p>
+      <p>协议命令包括 <code>Accessibility.getFullAXTree</code>、<code>Input.dispatchMouseEvent</code>、<code>Input.dispatchKeyEvent</code>、<code>Input.insertText</code>、<code>Page.captureScreenshot</code>、<code>Runtime.evaluate</code>、<code>Network.getResponseBody</code>、<code>Emulation.setDeviceMetricsOverride</code>。方法名是 <code>clickAt</code>、<code>fill</code>、<code>takeSnapshot</code>、<code>typeText</code>、<code>pressKey</code>。</p>
+    </details>
+
+    <details class="ev">
+      <summary>模型手上的工具名</summary>
+      <p>清单在 <code>index.chunk-CEp6GoCO.js</code>。<code>preview_start</code>、<code>read_page</code>、<code>computer</code>、<code>javascript_tool</code>、<code>form_input</code>、<code>tabs_context</code>。旧别名 <code>preview_click</code>、<code>preview_snapshot</code> 还留着。</p>
+      <p>MCP 前缀是拼出来的。代码里 <code>T = "Claude Browser"</code>，空格换成下划线，就是 <code>mcp__Claude_Browser__*</code>。系统提示块 <code>&lt;browser_surfaces&gt;</code> 把这条标成默认，把 <code>mcp__claude-in-chrome__*</code> 写成只有需要你已有登录时才用。</p>
+    </details>
+
+    <details class="ev">
+      <summary>真要进你的 Chrome，走的是另一座桥</summary>
+      <p>扩展生产 ID：<code>fcoeoabgfenejglbffodgkkbkcdhcgfn</code>。还有两个备用。桌面会把 native messaging 清单写进 Chrome / Edge 的 <code>NativeMessagingHosts</code>。host 名 <code>com.anthropic.claude_browser_extension</code>，二进制在 <code>Contents/Helpers/chrome-native-host</code>，stdio。</p>
+      <p>这个 Rust 程序还会在本机开 Unix socket，前缀 <code>claude-mcp-browser-bridge-</code>。过不了本机通道时，还有 <code>wss://bridge.claudeusercontent.com</code>。帮助文档把整条路叫 Claude in Chrome。</p>
+    </details>
+
+    <details class="ev">
+      <summary>那台 10GB 虚拟机别算进来</summary>
+      <p>用户目录里有 <code>vm_bundles/claudevm.bundle</code>：ARM64 Linux 内核、10GB rootfs、gVisor MAC、<code>.cowork-adopted</code>。那是 Cowork 给 computer use 用的沙箱桌面。内置浏览器的 tab 活在 Electron 的 partition 里，路径不一样。</p>
+      <p>包里能看到 <code>playwright-core</code>，但它只出现在下载域名白名单，<code>cdn.playwright.dev</code>。没有 <code>chromium.launch</code>。别理解成本地又用 Playwright 拉起一份 Chrome。</p>
+    </details>
+  </section>
+
+  <section>
+    <span class="kicker">什么时候走哪条</span>
+    <h2>用哪条路，官方分得很开</h2>
+    <p>不需要你个人登录的活，走内置的。你已经打开、已经登录的 CRM 或邮箱，走 Chrome 扩展。两边都够不着，才轮到点屏幕。</p>
+    <div class="card" style="overflow:auto;margin-top:14px;">
+      <table class="cmp">
+        <thead>
+          <tr>
+            <th></th>
+            <th>内置浏览器</th>
+            <th>Claude in Chrome</th>
+            <th>Computer use</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>页面在哪</td>
+            <td>桌面应用自己的 Chromium 标签</td>
+            <td>你的 Google Chrome</td>
+            <td>你的屏幕，或 Cowork Linux VM</td>
+          </tr>
+          <tr>
+            <td>登录从哪来</td>
+            <td>自己的 partition。官方说可按站点导入。1.37937.3 有导入提示状态 <code>launchChromeImportPrompt</code>，导入器我没往下拆完</td>
+            <td>你现成的 Cookie 和已打开的页</td>
+            <td>屏幕上碰巧是什么就是什么</td>
+          </tr>
+          <tr>
+            <td>模型怎么动手</td>
+            <td>CDP 快照、点击、填表、执行 JS</td>
+            <td>扩展工具，经 native host 或 websocket</td>
+            <td>截屏加辅助功能点击</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <span class="kicker">我没做的事</span>
+    <h2>登录导入还差一口气</h2>
+    <div class="grid">
+      <article class="card">
+        <span class="badge inferred">Inferred</span>
+        <h3>Cowork 侧栏就是这套 pane 接出去的壳</h3>
+        <p>7 月 Code 已经能读、点、填。8 月 26 日的 Cowork 文案还是这些能力，多了侧栏默认打开、和 Chrome 并列可选。主进程里 pane、tab、CDP、外站策略都在通用的 <code>PreviewContext</code> 上。更像接到 Cowork，不像另写一个浏览器内核。1.37937.3 里也能对上 <code>isCoworkBrowserEnabled</code> 和 <code>coworkPreferredBrowser === "chrome"</code> 才切扩展那条路。</p>
+      </article>
+      <article class="card">
+        <span class="badge unknown">Unknown</span>
+        <h3>从 Chrome 带登录过来，我没看流量</h3>
+        <p>官方说可以从 Chrome、Edge、Firefox 按站点导入，银行和 SSO 默认排除。新包有 <code>launchChromeImportPrompt</code>（pending / dismissed / done），设置文案也有 “Sites you’ve brought over”。具体怎么读对面浏览器的 cookie，这次没挂钩，也没解密 HTTPS。要钉死得再拆导入器，或者看一次授权过的导入。</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="src">
+    <span class="kicker">从哪核对</span>
+    <h2>链接和路径</h2>
+    <ol>
+      <li><a href="https://claude.com/blog/cowork-built-in-browser">Claude Cowork gets a built-in browser</a>。2026-08-26，侧栏、和真浏览器隔离、Preferred browser。</li>
+      <li><a href="https://support.claude.com/en/articles/16607400-use-the-built-in-browser-in-claude-cowork">Use the built-in browser in Claude Cowork</a>。桌面在线时，web / mobile 也能驱这只浏览器。</li>
+      <li><a href="https://code.claude.com/docs/en/whats-new/2026-w28.md">Claude Code Week 28</a>。2026-07，桌面 in-app browser 第一次写进 changelog。</li>
+      <li>本机先拆 <code>1.26832.0</code>，<code>app.asar</code> SHA-256 <code>964e709746e9d40cd68b2ade85bdd8dca12b8da034dc8153fc14838285148b79</code>，签名 Anthropic PBC (Q6L2SF6YDW)。后来升到 <code>1.37937.3</code>。</li>
+      <li>主进程 <code>.vite/build/index.chunk-DIBPwUV0.js</code>（CDPTools / WebContentsView / partition）、<code>index.chunk-CEp6GoCO.js</code>（工具和 browser_surfaces）、<code>index2.chunk-DaCwJ8Hk.js</code>（域名名单和源权限）、<code>index.js</code>（native host 安装）、<code>Contents/Helpers/chrome-native-host</code>。</li>
+    </ol>
+  </section>
+
+  <footer>
+    只做了静态拆包。没运行来历不明的二进制，没挂钩，没解密流量。登录导入如果要写成“已证实”，还差一次对着新包的导入器，或一次授权过的动态观察。
+  </footer>
+</main>
+<script>
+  (function () {
+    var inapp = [
+      "任务需要一个网址。提示词要求默认用内置浏览器，别用 Bash 起服务器，也别去开真 Chrome。",
+      "preview_start {url} 或 tabs_create 在当前会话的 pane 里造一个 tab。",
+      "主进程用 session.fromPartition(\"persist:launch-preview-…\") 拿出隔离 cookie 罐，再 new WebContentsView。",
+      "页面 load 之后 CDPTools.attach(webContents)，打开 Network / DOM / Accessibility。",
+      "外站还要过域名名单、源权限卡、带账号密码的 URL 拦截。组织策略可以把范围锁成只准 localhost。",
+      "read_page 走 Accessibility.getFullAXTree。点击走 CDP 鼠标事件。截图优先 Page.captureScreenshot。"
+    ];
+    var chrome = [
+      "任务需要你已经登录的站点，或者设置里把首选浏览器改成 Chrome。",
+      "桌面确认扩展 ID fcoeoabgfenejglbffodgkkbkcdhcgfn，并保证 native host 清单在 Chrome 的 NativeMessagingHosts 里。",
+      "chrome-native-host 用 stdio 跟扩展说话，同时在本机挂 claude-mcp-browser-bridge- socket 给 MCP 客户端。",
+      "过不了本机通道时，还可以走 wss://bridge.claudeusercontent.com。",
+      "工具前缀变成 mcp__claude-in-chrome__*。点、填、读都发生在你的真标签上。",
+      "内置 pane 看不到这些 Cookie。两条路从这里分开。"
+    ];
+    var title = document.getElementById("seq-title");
+    var list = document.getElementById("seq-list");
+    var b1 = document.getElementById("btn-inapp");
+    var b2 = document.getElementById("btn-chrome");
+    function paint(which) {
+      var items = which === "chrome" ? chrome : inapp;
+      title.textContent = which === "chrome" ? "Claude in Chrome" : "内置 Browser pane";
+      title.style.color = which === "chrome" ? "#7ea2ea" : "#5ecfc3";
+      list.replaceChildren();
+      items.forEach(function (text) {
+        var li = document.createElement("li");
+        li.textContent = text;
+        list.appendChild(li);
+      });
+      b1.setAttribute("aria-pressed", which === "inapp" ? "true" : "false");
+      b2.setAttribute("aria-pressed", which === "chrome" ? "true" : "false");
+    }
+    b1.addEventListener("click", function () { paint("inapp"); });
+    b2.addEventListener("click", function () { paint("chrome"); });
+  })();
+</script>
+</body>
+</html>
