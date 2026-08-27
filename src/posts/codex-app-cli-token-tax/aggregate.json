@@ -1,0 +1,98 @@
+{
+  "measuredAt": "2026-08-27",
+  "tokenizer": "tiktoken o200k_base",
+  "codexApprox": "ceil(bytes / 4)",
+  "model": "gpt-5.6-sol",
+  "solCreditsPerMillion": {
+    "input": 100,
+    "cachedInput": 10,
+    "output": 500,
+    "source": "https://developers.openai.com/codex/pricing.md",
+    "note": "Promotional Sol rates at least through 2026-11-21"
+  },
+  "artifacts": {
+    "chatgptAppVersion": "26.818.61809",
+    "chatgptBundleId": "com.openai.codex",
+    "cliVersion": "0.149.1",
+    "desktopBundledCodex": "0.149.0-alpha.4.3",
+    "modelsCacheFetchedAt": "2026-08-26T16:17:49.740082Z",
+    "modelsCacheClientVersion": "0.149.1"
+  },
+  "baseInstructions": {
+    "chars": 17730,
+    "bytes": 17766,
+    "approxCeilBytesDiv4": 4442,
+    "o200k": 3552,
+    "sha256Prefix": "cbefa6b0bede",
+    "identicalAcrossCliAndDesktop": true,
+    "cliFirstTurnInputTokens": 25832,
+    "shareOfCliFirstTurnPercent": 13.750387
+  },
+  "defaultAppContext": {
+    "measuredO200k": 949,
+    "sectionSumO200k": 948,
+    "sections": [
+      { "id": "desktop-context", "heading": "# Codex desktop context", "o200k": 31 },
+      { "id": "images", "heading": "### Images/Visuals/Files", "o200k": 228 },
+      { "id": "automations", "heading": "### Automations", "o200k": 93 },
+      { "id": "thread-coordination", "heading": "### Thread Coordination", "o200k": 428 },
+      { "id": "inline-comments", "heading": "### Inline Code Comments", "o200k": 168 }
+    ]
+  },
+  "optionalAppContext": [
+    { "id": "workspace-dependencies", "heading": "### Workspace Dependencies", "o200k": 27 },
+    { "id": "git", "heading": "### Git", "o200k": 244 },
+    { "id": "sidebar", "heading": "### Sidebar Organization", "o200k": 91 },
+    { "id": "non-technical-ui", "heading": "### Non-technical UI", "o200k": 130 },
+    { "id": "projectless", "heading": "### Projectless Chat", "o200k": 140 },
+    { "id": "automation-remark", "heading": "automation remark-directive / Responding", "o200k": 709 }
+  ],
+  "sessions": {
+    "cli": {
+      "originator": "codex-tui",
+      "firstInputTokens": 25832,
+      "firstCachedInputTokens": 5888,
+      "firstUncachedInputTokens": 19944,
+      "firstDeveloperO200k": 9510,
+      "impliedToolResidual": 8847
+    },
+    "desktopAutomation": {
+      "originator": "Codex Desktop",
+      "firstInputTokens": 27946,
+      "firstCachedInputTokens": 6912,
+      "firstUncachedInputTokens": 21034,
+      "firstDeveloperO200k": 11137,
+      "appContextO200k": 949,
+      "impliedToolResidual": 9268
+    },
+    "desktopUser": {
+      "originator": "Codex Desktop",
+      "firstInputTokens": 27969,
+      "firstCachedInputTokens": 6912,
+      "firstUncachedInputTokens": 21057,
+      "firstDeveloperO200k": 11828,
+      "appContextO200k": 1203,
+      "impliedToolResidual": 9186
+    }
+  },
+  "cacheSeriesCli": [
+    { "input": 25832, "cached": 5888 },
+    { "input": 35665, "cached": 25344 },
+    { "input": 38015, "cached": 34560 },
+    { "input": 40114, "cached": 37632 },
+    { "input": 53208, "cached": 39680 },
+    { "input": 56288, "cached": 52992 },
+    { "input": 56421, "cached": 56064 },
+    { "input": 56872, "cached": 56064 },
+    { "input": 65431, "cached": 56064 },
+    { "input": 77081, "cached": 65280 }
+  ],
+  "extraCreditsByCalls": {
+    "tokens": 949,
+    "n": [1, 20, 50, 100, 200]
+  },
+  "longContext": {
+    "conversationTokens": 200000,
+    "extraShareOf200kPercent": 0.4745
+  }
+}

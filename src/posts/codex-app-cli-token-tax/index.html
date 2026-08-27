@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Codex App 并不比 CLI 更省 token：它每轮多带 949 token</title>
+<meta name="date" content="2026-08-27">
+<meta name="description" content="从本机 ChatGPT.app 和 Codex CLI 拆开同一条请求：Base Instruction 两边相同；Desktop 从第一轮就多带约 949 token。长到 200K 时，这截税大约不到 1 credit。">
+<meta name="tags" content="Codex, Token, ChatGPT Desktop, CLI, Agent">
+<style>
+  :root{
+    --bg:#10110f;--panel:#171814;--card:#1d1f19;--soft:#25271f;--line:#34372c;
+    --ink:#f3f1e7;--ink2:#d4d0c2;--muted:#9b9686;--faint:#6f6b5c;
+    --paper:#e7c56a;--leaf:#7dca9a;--sky:#8eb4ff;--rose:#ef8b8b;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  @media (prefers-color-scheme:light){
+    :root{
+      --bg:#f6f4ee;--panel:#fffdf8;--card:#fff;--soft:#efebe1;--line:#ddd6c6;
+      --ink:#1b1914;--ink2:#3a372f;--muted:#5f5a4e;--faint:#8a8476;
+      --paper:#9a6b10;--leaf:#0f7a4d;--sky:#2554c9;--rose:#b42345;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--muted);font:16px/1.75 var(--sans);-webkit-font-smoothing:antialiased}
+  a{color:var(--sky);text-decoration:none}
+  a:hover{text-decoration:underline}
+  a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--paper);outline-offset:3px}
+  .top{position:sticky;top:0;z-index:20;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--panel) 92%,transparent);backdrop-filter:blur(14px)}
+  .top-inner{max-width:1160px;margin:auto;padding:11px 22px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .back,.pill{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font:11px/1.5 var(--mono);color:var(--muted)}
+  .back{color:var(--sky)}
+  .top-title{margin-right:auto;color:var(--ink);font-weight:680}
+  .layout{width:min(1160px,calc(100% - 40px));margin:auto;display:grid;grid-template-columns:200px minmax(0,820px);gap:44px;justify-content:center}
+  nav{position:sticky;top:58px;align-self:start;max-height:calc(100vh - 58px);overflow:auto;padding:34px 0}
+  nav b{display:block;margin:18px 0 7px;color:var(--faint);font:10px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+  nav b:first-child{margin-top:0}
+  nav a{display:block;border-left:2px solid var(--line);padding:5px 0 5px 11px;color:var(--muted);font-size:13px;line-height:1.4}
+  nav a:hover{border-color:var(--paper);color:var(--ink);text-decoration:none}
+  main{min-width:0;padding:42px 0 92px}
+  h1{margin:0;color:var(--ink);font-size:clamp(30px,5vw,48px);line-height:1.14;letter-spacing:-.04em}
+  h1 em{color:var(--paper);font-style:normal}
+  .dek{max-width:42em;margin:18px 0 12px;color:var(--ink2);font-size:18px}
+  .meta{color:var(--faint);font:12px/1.6 var(--mono)}
+  h2{margin:54px 0 12px;padding-top:12px;border-top:1px solid var(--line);color:var(--ink);font-size:24px;line-height:1.35;scroll-margin-top:72px}
+  h2.first{border:0;margin-top:28px;padding-top:0}
+  h3{margin:28px 0 8px;color:var(--ink);font-size:18px}
+  p{margin:12px 0}
+  strong{color:var(--ink);font-weight:690}
+  code{padding:.08em .38em;border:1px solid var(--line);border-radius:5px;background:var(--soft);color:var(--ink2);font-family:var(--mono);font-size:.86em;overflow-wrap:anywhere}
+  ul,ol{padding-left:22px}
+  li{margin:7px 0}
+  li::marker{color:var(--paper)}
+  blockquote{margin:18px 0;padding:13px 17px;border-left:3px solid var(--paper);border-radius:0 10px 10px 0;background:var(--soft);color:var(--ink2)}
+  .hero{margin:28px 0;padding:22px;border:1px solid var(--line);border-radius:20px;background:radial-gradient(circle at 8% 0%,color-mix(in srgb,var(--paper) 18%,transparent),transparent 42%),radial-gradient(circle at 92% 100%,color-mix(in srgb,var(--leaf) 14%,transparent),transparent 40%),var(--panel)}
+  .hero-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .hero-card{padding:18px;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--card) 92%,transparent)}
+  .hero-card small{display:block;color:var(--faint);font:11px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+  .hero-card b{display:block;margin:8px 0 4px;color:var(--ink);font:720 clamp(26px,4vw,40px)/1 var(--mono)}
+  .hero-card span{font-size:13px}
+  .flow{margin:22px 0;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:auto}
+  .flow svg{display:block;width:100%;height:auto;min-width:640px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}
+  .stat{padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  .stat b{display:block;color:var(--ink);font:680 18px/1.25 var(--mono)}
+  .stat span{color:var(--faint);font-size:11px}
+  .tw{margin:16px 0;overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+  table{width:100%;min-width:640px;border-collapse:collapse;background:var(--card);font-size:13px}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+  th{color:var(--faint);background:var(--soft);font:600 10px/1.4 var(--mono);letter-spacing:.05em;text-transform:uppercase}
+  th:first-child,td:first-child{text-align:left;color:var(--ink)}
+  tr:last-child td{border-bottom:0}
+  .formula{margin:18px 0;padding:18px;border:1px solid color-mix(in srgb,var(--paper) 45%,var(--line));border-radius:13px;background:color-mix(in srgb,var(--paper) 8%,var(--card))}
+  .formula .label{margin-bottom:8px;color:var(--paper);font:11px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+  .formula .math{color:var(--ink);font:650 15px/1.7 var(--mono);overflow-wrap:anywhere}
+  .caveat{padding:16px 18px;border:1px solid var(--line);border-radius:12px;background:var(--soft);font-size:14px}
+  .calc{margin:18px 0;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+  .calc label{display:block;margin-bottom:8px;color:var(--ink);font-size:14px}
+  .calc input[type=range]{width:100%}
+  .calc-out{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .calc-out div{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--soft)}
+  .calc-out b{display:block;color:var(--ink);font:680 22px/1.2 var(--mono)}
+  footer{margin-top:58px;padding-top:20px;border-top:1px solid var(--line);color:var(--faint);font-size:13px}
+  @media (max-width:900px){.layout{grid-template-columns:1fr}nav{display:none}}
+  @media (max-width:680px){
+    .layout{width:min(100% - 28px,820px)}
+    main{padding-top:28px}
+    .hero-grid,.stats,.calc-out{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<header class="top"><div class="top-inner">
+  <a class="back" href="/">← 博客首页</a>
+  <span class="top-title">Codex App 的 token 税</span>
+  <span class="pill">CLI 0.149.1</span>
+  <span class="pill">ChatGPT.app 26.818</span>
+</div></header>
+
+<div class="layout">
+<nav aria-label="文章目录">
+  <b>答案</b>
+  <a href="#answer">CLI 没有更便宜的计费器</a>
+  <a href="#not-chat">别和普通 Chat 搞混</a>
+  <b>请求怎么走</b>
+  <a href="#engine">同一台引擎</a>
+  <a href="#base">Base Instruction</a>
+  <a href="#extra">多出来的 949</a>
+  <b>怎么计费</b>
+  <a href="#every-turn">每轮都带，不等于每轮全价</a>
+  <a href="#cache">Cache 把前缀变便宜</a>
+  <a href="#long">200K 长对话贵多少</a>
+  <b>其余</b>
+  <a href="#plugins">工具和插件</a>
+  <a href="#limits">证据边界</a>
+</nav>
+
+<main>
+  <h1>Codex App 并不比 CLI 更省 token：<em>它每轮多带 949 token</em></h1>
+  <p class="dek">网上常说 Codex CLI 比 ChatGPT Desktop 更省额度。我把本机的 CLI 和 ChatGPT.app 拆开看了：本地写代码时，它们走同一条 <code>/backend-api/codex</code>。系统提示两边相同。Desktop 从第一轮就多塞一段桌面说明书，大约 949 token。对话长到 200K 时，这截税大概不到 1 credit。</p>
+  <p class="meta">核对日期 2026-08-27 · tokenizer <code>tiktoken o200k_base</code> · 模型 gpt-5.6-sol · 数据见同目录 <code>aggregate.json</code></p>
+
+  <section class="hero" aria-label="三个关键数字">
+    <div class="hero-grid">
+      <div class="hero-card">
+        <small>Base Instruction</small>
+        <b>3,552</b>
+        <span>CLI 和 Desktop 同一份，SHA 前缀 <code>cbefa6b0bede</code></span>
+      </div>
+      <div class="hero-card">
+        <small>App 默认多出来</small>
+        <b>949</b>
+        <span><code>&lt;app-context&gt;</code>，12 条 Desktop 会话都在这个量级</span>
+      </div>
+      <div class="hero-card">
+        <small>200K 长对话额外税</small>
+        <b>&lt; 1 cr</b>
+        <span>大约 0.3–1 credit，相对整段对话费用不到 1%</span>
+      </div>
+    </div>
+  </section>
+
+  <h2 class="first" id="answer">先说答案</h2>
+  <p>本地 Codex 任务里，CLI 没有另一套更省 token 的计费器。ChatGPT Desktop 现在的 Codex 模式，就是同一个 Rust <code>app-server</code> 外面加了 Electron 驾驶舱。计费发生在请求离开本机之后，公式按模型的 input / cached / output credit，不按窗口是终端还是 GUI。</p>
+  <blockquote>真正多出来的，是 Desktop 写进 history 的那段 <code>&lt;app-context&gt;</code>。默认 949 token。第一轮就在，后面每轮还带着，但不会 949、1898 那样叠加。</blockquote>
+  <p>普通 ChatGPT 聊天气泡不走这条链路。Help Center 写明 Regular Chat 不进 Desktop 的 Codex 用量看板。本文只比较 <strong>Codex CLI</strong> 和 <strong>ChatGPT.app 里的 Codex 模式</strong>。</p>
+
+  <h2 id="not-chat">本机 ChatGPT.app 已经是 Codex 壳</h2>
+  <p>我看的安装包是 ChatGPT.app 26.818.61809，bundle id <code>com.openai.codex</code>，从 <code>codex/codex-apps/electron</code> 打出来。旁边还有 ChatGPT Classic.app（<code>com.openai.chat</code>），那是旧聊天客户端。现在这个 ChatGPT.app 里同时有 Codex 线程和 ChatGPT 会话，别把两者的额度混着谈。</p>
+  <p>捆绑的 <code>codex</code> 二进制版本是 <code>0.149.0-alpha.4.3</code>。本机 npm 安装的 CLI 是 <code>0.149.1</code>。两个 Mach-O 都大约 210MB，都带 <code>https://chatgpt.com/backend-api/codex</code> 这条基址。</p>
+
+  <h2 id="engine">同一台引擎，两套驾驶舱</h2>
+  <p>CLI 的 TUI 在进程里启动 app-server，<code>client_name</code> 是 <code>codex-tui</code>。Desktop 用 stdio 拉起捆绑二进制，<code>originator</code> 写成 <code>Codex Desktop</code>，并且固定加上 <code>-c features.code_mode_host=true</code>。</p>
+  <div class="flow" aria-hidden="false">
+    <svg viewBox="0 0 920 220" role="img" aria-labelledby="flow-title">
+      <title id="flow-title">CLI 和 Desktop 汇入同一条 Codex 请求</title>
+      <rect x="12" y="28" rx="12" width="170" height="70" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="28" y="58" fill="currentColor" font-size="14" font-family="ui-sans-serif,system-ui">CLI TUI</text>
+      <text x="28" y="78" fill="currentColor" font-size="11" font-family="ui-monospace,monospace">codex-tui</text>
+      <rect x="12" y="118" rx="12" width="170" height="70" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="28" y="148" fill="currentColor" font-size="14" font-family="ui-sans-serif,system-ui">Codex App</text>
+      <text x="28" y="168" fill="currentColor" font-size="11" font-family="ui-monospace,monospace">Codex Desktop</text>
+      <path d="M182 63 H250 V153 H318" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M182 153 H318" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <rect x="320" y="68" rx="12" width="250" height="80" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      <text x="338" y="100" fill="currentColor" font-size="14" font-family="ui-sans-serif,system-ui">app-server + core</text>
+      <text x="338" y="122" fill="currentColor" font-size="11" font-family="ui-monospace,monospace">build_responses_request</text>
+      <path d="M570 108 H638" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <rect x="640" y="68" rx="12" width="260" height="80" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <text x="658" y="100" fill="currentColor" font-size="14" font-family="ui-sans-serif,system-ui">/backend-api/codex</text>
+      <text x="658" y="122" fill="currentColor" font-size="11" font-family="ui-monospace,monospace">input / cached / output</text>
+    </svg>
+  </div>
+  <p>请求体在 <code>ModelClient::build_responses_request</code> 里拼出来：<code>instructions</code>、<code>input</code>、<code>tools</code>、推理设置，并用 <code>thread_id</code> 当 <code>prompt_cache_key</code>。开源仓库里，ChatGPT 登录的基址是 <code>https://chatgpt.com/backend-api/codex</code>。公开文档也写明富客户端连的是同一套 app-server。</p>
+
+  <h2 id="base">Base Instruction 两边就是同一份</h2>
+  <p>生产目录不再用仓库里那份写着 “running in the Codex CLI” 的 <code>prompt.md</code> 兜底。本机 <code>~/.codex/models_cache.json</code> 在 2026-08-26 拉到的 gpt-5.6-sol 模板是 17,730 字符。CLI 会话和 Desktop 会话落盘的 <code>base_instructions.text</code> 与这份模板逐字节相同。</p>
+  <div class="stats">
+    <div class="stat"><b>17,730</b><span>字符</span></div>
+    <div class="stat"><b>17,766</b><span>字节</span></div>
+    <div class="stat"><b>3,552</b><span>o200k token</span></div>
+    <div class="stat"><b>13.8%</b><span>占 CLI 实测首包 25,832</span></div>
+  </div>
+  <p>它每轮都在 <code>instructions</code> 字段里。这不是 App 税。换模型才会变：gpt-5.4-mini 大约 2,303，gpt-5.5 大约 4,090。</p>
+
+  <h2 id="extra">Desktop 多出来的是 app-context，不是另一套系统提示</h2>
+  <p>Electron 把一段 <code>&lt;app-context&gt;</code> 塞进第一段 developer 消息。CLI 的 TUI 启动线程时不传这段。最近 12 条 Desktop 会话（0.148 到 0.149）默认都是下面这组小节：</p>
+  <div class="tw"><table>
+    <thead><tr><th>小节</th><th>o200k</th><th>作用</th></tr></thead>
+    <tbody>
+      <tr><td># Codex desktop context</td><td>31</td><td>声明你在桌面 App 里</td></tr>
+      <tr><td>### Images/Visuals/Files</td><td>228</td><td>图片要用绝对路径 Markdown</td></tr>
+      <tr><td>### Automations</td><td>93</td><td>自动化走专用工具</td></tr>
+      <tr><td>### Thread Coordination</td><td>428</td><td><code>create_thread</code> 等线程工具</td></tr>
+      <tr><td>### Inline Code Comments</td><td>168</td><td><code>::code-comment</code></td></tr>
+      <tr><td>小节合计</td><td>948</td><td>实测整段 949，差 1 token 来自拼接</td></tr>
+    </tbody>
+  </table></div>
+  <p>视线程类型还会再加：工作区依赖 27、Git 设置 244、无项目目录 140。自动化线程另有 remark-directive <strong>709</strong>，手聊没有。用户会话（带 Git）整段 app-context 实测 <strong>1,203</strong>。</p>
+  <p>所以「第一次 prompt 一样、后面才变」是误读。系统提示从头到尾一样。Desktop 从第一轮就多了这段说明书。</p>
+
+  <h2 id="every-turn">每轮都带，不等于每轮按全价再收一次</h2>
+  <p>每一轮发出去的请求更像一叠纸：</p>
+  <ol>
+    <li>信头：Base Instruction + tool 定义，几乎固定。</li>
+    <li>已经写过的正文：对话、工具结果、Memory、AGENTS.md，以及 Desktop 的 app-context。</li>
+    <li>这轮新写的几行。</li>
+  </ol>
+  <p>信头和 app-context 每轮都会附上，所以看起来「每次都在用这些 token」。同一条 thread 带同一个 <code>prompt_cache_key</code>。服务端认的是前缀：第一轮把前缀写入 cache，后面只对<strong>新长出来的那截</strong>按全价收，前面按 cached input 收。</p>
+  <p>官方 Sol 卡：cached 是 input 的十分之一。949 token 未命中大约 <strong>0.095 credit</strong>，命中后大约 <strong>0.0095 credit</strong>。</p>
+
+  <h2 id="cache">Cache 不是把 prompt 改了</h2>
+  <p>本机一条 CLI 会话的 <code>token_count</code> 是这样涨的。input 变大是因为历史在长，不是 Base Instruction 从 3,552 变成了别的数：</p>
+  <div class="tw"><table>
+    <thead><tr><th>第几次</th><th>input</th><th>cached</th><th>命中率</th><th>uncached</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>25,832</td><td>5,888</td><td>22.8%</td><td>19,944</td></tr>
+      <tr><td>2</td><td>35,665</td><td>25,344</td><td>71.1%</td><td>10,321</td></tr>
+      <tr><td>3</td><td>38,015</td><td>34,560</td><td>90.9%</td><td>3,455</td></tr>
+      <tr><td>7</td><td>56,421</td><td>56,064</td><td>99.4%</td><td>357</td></tr>
+    </tbody>
+  </table></div>
+  <p>Desktop 首包同样已经有 cache：27,946 input 里 cached 6,912。新开 thread 等于换信纸，前缀要再付一次全价。</p>
+
+  <h2 id="long">对话 200K 时，会贵多少</h2>
+  <p>200K 文本不会让 949 变成 200K 的某个百分比加成。多出来的仍是每轮 949。贵不贵取决于模型被调用了多少次 <code>N</code>（用户一句话往往不止一次，工具循环也算）。</p>
+  <div class="formula">
+    <div class="label">额外 credit</div>
+    <div class="math">949 / 1,000,000 × [100 + 10 × (N − 1)]</div>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>调用次数 N</th><th>额外 credit</th><th>怎么理解</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>0.095</td><td>整段一次性塞进去；相对 200K 未缓存 input（20 credit）约 0.5%</td></tr>
+      <tr><td>20</td><td>0.28</td><td>短一点的 agent 会话</td></tr>
+      <tr><td>50</td><td>0.56</td><td>更常见的长会话</td></tr>
+      <tr><td>100</td><td>1.03</td><td>工具很碎、轮次很多</td></tr>
+    </tbody>
+  </table></div>
+  <p>窗口已经到 200K 的单次请求里，若大部分前缀命中 cache，App 多出来的 949 大约 <strong>0.0095 credit</strong>，占这一笔往往不到 0.3%。整条会话从短聊长到 200K，正文才是几十 credit 的量级；桌面税大约 <strong>0.3–1 credit</strong>。</p>
+  <p>套餐内额度没用完时，这不是额外钞票，只是额度多耗一点点。买 credit 续用时，第三方用 API 价反推大约 1 credit ≈ $0.04，OpenAI 价目表没有把这个美元换算写成官方标价。按那个量级，0.3–1 credit 大约 1–4 美分。</p>
+
+  <div class="calc">
+    <label for="call-count">模型调用次数 N = <span id="n-label">50</span></label>
+    <input id="call-count" type="range" min="1" max="200" value="50">
+    <div class="calc-out">
+      <div><b id="cr-out">0.56</b><span>额外 credit（Sol 官方卡）</span></div>
+      <div><b id="usd-out">~$0.02</b><span>非正式换算，按 1 credit ≈ $0.04</span></div>
+    </div>
+  </div>
+
+  <h2 id="plugins">工具和插件：核心一样，外壳不同</h2>
+  <p>核心 tool 规划器是同一份 <code>spec_plan.rs</code>。这台机器的 <code>~/.codex/config.toml</code> 两边共用，启用了 12 个插件。ChatGPT.app 还捆绑了 config 里没有的 5 个：<code>messages</code>、<code>latex</code>、<code>deep-research</code>、<code>computer-history</code>、<code>record-and-replay</code>。</p>
+  <p>本机 CLI 和 Desktop 会话的 skills 清单都是 55 条、同名。Apps 连接器工具缓存 159 个；因为 ≥100，会走 <code>tool_search</code> 延迟加载，不会把大约 198k token 的 schema 整包塞进每一轮。</p>
+  <p>TUI 会丢掉可发现的 Plugin 工具；<code>codex-tui</code> 里装插件类 <code>request_plugin_install</code> 会直接拒绝。Desktop 还可能露出线程协调工具。Computer Use 截图不在 949 里，用到时另加，而且图像远比这段说明书贵。</p>
+  <p>首包 API <code>input_tokens</code> 减去 instructions 和已落盘 messages 之后，CLI 大约剩 8,847，Desktop 大约 9,186–9,268。这是 tool schema 加上未写入 rollout 的字段，不是受控 A/B，只能当量级：Desktop 大约再多 400–500。</p>
+
+  <h2 id="limits">证据边界</h2>
+  <ul>
+    <li>没有抓 TLS。tool JSON 的精确字节只能从残差反推。</li>
+    <li>首包 CLI 25,832 vs Desktop 27,946 不能当成干净对照，仓库和用户话不同。</li>
+    <li>服务端会不会按 <code>originator</code> 再打折，开源仓库里没有。</li>
+    <li>Compact 之后 app-context 会不会被摘要掉，这次抽样没有观察到 compact。</li>
+    <li>Sol credit 卡是 2026-08-27 核对的促销价。数字会变。</li>
+  </ul>
+  <div class="caveat">同目录 <code>aggregate.json</code> 和 <code>verify.mjs</code> 会把小节合计、credit 公式和 cache 序列再算一遍。构建时走 <code>bun run verify:articles</code>。</div>
+  <p>主要材料：<a href="https://github.com/openai/codex/blob/8a94430bb2/codex-rs/core/src/client.rs">build_responses_request</a>、<a href="https://github.com/openai/codex/blob/8a94430bb2/codex-rs/model-provider-info/src/lib.rs">Codex 基址</a>、<a href="https://learn.chatgpt.com/docs/app-server">App Server 文档</a>、<a href="https://help.openai.com/en/articles/11369540">Using Codex with your ChatGPT plan</a>、<a href="https://developers.openai.com/codex/pricing.md">Codex pricing</a>。</p>
+
+</main>
+</div>
+<script>
+  (function () {
+    var input = document.getElementById("call-count");
+    var nLabel = document.getElementById("n-label");
+    var crOut = document.getElementById("cr-out");
+    var usdOut = document.getElementById("usd-out");
+    if (!input || !nLabel || !crOut || !usdOut) return;
+    function extraCredits(n) {
+      return (949 / 1000000) * (100 + 10 * (n - 1));
+    }
+    function render() {
+      var n = Number(input.value);
+      var cr = extraCredits(n);
+      nLabel.textContent = String(n);
+      crOut.textContent = cr.toFixed(2);
+      usdOut.textContent = "~$" + (cr * 0.04).toFixed(2);
+    }
+    input.addEventListener("input", render);
+    render();
+  })();
+</script>
+</body>
+</html>
