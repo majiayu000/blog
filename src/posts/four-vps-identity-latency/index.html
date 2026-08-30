@@ -32,11 +32,7 @@
   .top-inner{max-width:1100px;margin:auto;padding:11px 24px;display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:12px;color:var(--faint)}
   .back{color:var(--accent);text-decoration:none}
   .dot{width:4px;height:4px;border-radius:50%;background:var(--line)}
-  .layout{max-width:1100px;margin:auto;padding:0 24px;display:grid;grid-template-columns:170px minmax(0,760px);gap:48px}
-  nav{position:sticky;top:58px;align-self:start;padding:34px 0;font-size:13px}
-  nav span{display:block;margin:18px 0 6px;color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.08em}
-  nav a{display:block;padding:5px 0;color:var(--muted);text-decoration:none}
-  nav a:hover{color:var(--ink)}
+  .layout{max-width:760px;margin:auto;padding:0 24px}
   main{min-width:0;padding:54px 0 96px}
   h1{margin:0;color:var(--ink);font-size:clamp(32px,4.8vw,52px);line-height:1.15;letter-spacing:-.04em;font-weight:760;text-wrap:balance}
   .deck{max-width:700px;margin:22px 0 14px;color:var(--body);font-size:20px;line-height:1.65}
@@ -68,7 +64,7 @@
   .note{font-size:14px;color:var(--muted)}
   .sources{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--faint);font-size:12px;line-height:1.8}
   @media(max-width:850px){
-    .layout{grid-template-columns:1fr}.layout nav{display:none}main{padding-top:38px}.numbers{grid-template-columns:1fr}
+    main{padding-top:38px}.numbers{grid-template-columns:1fr}
     td:first-child{white-space:normal}
   }
 </style>
@@ -85,21 +81,6 @@
 </header>
 
 <div class="layout">
-<nav aria-label="文章目录">
-  <span>结论</span>
-  <a href="#answer">怎么用</a>
-  <a href="#nodes">四台是什么</a>
-  <span>身份</span>
-  <a href="#paper">纸面记分卡</a>
-  <a href="#ptr">PTR 是什么</a>
-  <span>网络</span>
-  <a href="#path">到节点</a>
-  <a href="#delay">端到端延迟</a>
-  <a href="#speed">下载</a>
-  <span>方法</span>
-  <a href="#method">怎么测、怎么脱敏</a>
-</nav>
-
 <main>
 <h1>四台 VPS：纸面身份和延迟不是一回事</h1>
 <p class="deck">同一条联通家宽，对四台自建机器测了登记库、地理库、风控标签、到节点 RTT、端到端延迟和 10MB 下载。延迟冠军是大阪机房；看起来最像美国家宽的是加州 Frontier 段。没有综合第一名。</p>
