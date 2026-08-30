@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>四台 VPS：纸面身份和延迟不是一回事</title>
+<meta name="date" content="2026-08-30">
+<meta name="description" content="同一条家宽出口，对四台自建 VPS 测纸面身份、到节点 RTT、端到端延迟和下载。没有综合第一名。文中不出现真实 IP。">
+<meta name="tags" content="测评, 运行时, 网络">
+<style>
+  :root {
+    --bg:#f4f1ea;--paper:#fffdf8;--soft:#ebe4d8;--line:#d7cec0;
+    --ink:#1f1a16;--body:#453d36;--muted:#74695f;--faint:#968b80;
+    --accent:#8a3d14;--good:#2c6b4a;--bad:#9a3b32;--caution:#9a5a13;
+    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  }
+  @media (prefers-color-scheme:dark) {
+    :root {
+      --bg:#13110e;--paper:#1d1915;--soft:#2a241e;--line:#3c342c;
+      --ink:#f3ebe3;--body:#d4cac0;--muted:#a99d91;--faint:#81756a;
+      --accent:#e07a3a;--good:#70bb8e;--bad:#e07a72;--caution:#dfa155;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--body);font-family:var(--sans);font-size:17px;line-height:1.8;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px}
+  code{font-family:var(--mono);font-size:.84em;background:var(--soft);border:1px solid var(--line);border-radius:5px;padding:.08em .38em;color:var(--ink)}
+  .top{position:sticky;top:0;z-index:10;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(12px)}
+  .top-inner{max-width:1100px;margin:auto;padding:11px 24px;display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .back{color:var(--accent);text-decoration:none}
+  .dot{width:4px;height:4px;border-radius:50%;background:var(--line)}
+  .layout{max-width:1100px;margin:auto;padding:0 24px;display:grid;grid-template-columns:170px minmax(0,760px);gap:48px}
+  nav{position:sticky;top:58px;align-self:start;padding:34px 0;font-size:13px}
+  nav span{display:block;margin:18px 0 6px;color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.08em}
+  nav a{display:block;padding:5px 0;color:var(--muted);text-decoration:none}
+  nav a:hover{color:var(--ink)}
+  main{min-width:0;padding:54px 0 96px}
+  h1{margin:0;color:var(--ink);font-size:clamp(32px,4.8vw,52px);line-height:1.15;letter-spacing:-.04em;font-weight:760;text-wrap:balance}
+  .deck{max-width:700px;margin:22px 0 14px;color:var(--body);font-size:20px;line-height:1.65}
+  .meta{margin:0 0 32px;color:var(--faint);font-family:var(--mono);font-size:12px;line-height:1.75}
+  .answer{margin:0 0 36px;padding:18px 20px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;background:var(--paper)}
+  .answer p{margin:8px 0}
+  h2{margin:54px 0 14px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink);font-size:24px;line-height:1.35;letter-spacing:-.02em;scroll-margin-top:64px}
+  h3{margin:28px 0 8px;color:var(--ink);font-size:18px}
+  p{margin:14px 0}
+  strong{color:var(--ink);font-weight:680}
+  ul{margin:10px 0 16px;padding-left:1.2em}
+  li{margin:6px 0}
+  .numbers{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:22px 0 8px}
+  .number{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+  .number small{display:block;color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.06em}
+  .number strong{display:block;margin-top:6px;font-size:16px;line-height:1.4}
+  .table-wrap{overflow-x:auto;margin:18px 0 22px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+  table{width:100%;min-width:640px;border-collapse:collapse;font-size:14px;line-height:1.55}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:var(--soft);color:var(--muted);font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;font-weight:600}
+  td:first-child{color:var(--ink);white-space:nowrap}
+  tr:last-child td{border-bottom:0}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .good{color:var(--good);font-weight:700}
+  .bad{color:var(--bad);font-weight:700}
+  .caution{color:var(--caution)}
+  .method{margin:18px 0;padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--paper);font-size:15px}
+  .method p{margin:6px 0}
+  .note{font-size:14px;color:var(--muted)}
+  .sources{margin-top:58px;padding-top:18px;border-top:1px solid var(--line);color:var(--faint);font-size:12px;line-height:1.8}
+  @media(max-width:850px){
+    .layout{grid-template-columns:1fr}.layout nav{display:none}main{padding-top:38px}.numbers{grid-template-columns:1fr}
+    td:first-child{white-space:normal}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <a class="back" href="/">← Silent Star</a>
+    <i class="dot" aria-hidden="true"></i>
+    <span>VPS 实测</span>
+    <i class="dot" aria-hidden="true"></i>
+    <span>身份 / 延迟</span>
+  </div>
+</header>
+
+<div class="layout">
+<nav aria-label="文章目录">
+  <span>结论</span>
+  <a href="#answer">怎么用</a>
+  <a href="#nodes">四台是什么</a>
+  <span>身份</span>
+  <a href="#paper">纸面记分卡</a>
+  <a href="#ptr">PTR 是什么</a>
+  <span>网络</span>
+  <a href="#path">到节点</a>
+  <a href="#delay">端到端延迟</a>
+  <a href="#speed">下载</a>
+  <span>方法</span>
+  <a href="#method">怎么测、怎么脱敏</a>
+</nav>
+
+<main>
+<h1>四台 VPS：纸面身份和延迟不是一回事</h1>
+<p class="deck">同一条联通家宽，对四台自建机器测了登记库、地理库、风控标签、到节点 RTT、端到端延迟和 10MB 下载。延迟冠军是大阪机房；看起来最像美国家宽的是加州 Frontier 段。没有综合第一名。</p>
+<p class="meta"><time datetime="2026-08-30">2026 年 8 月 30 日</time><br>macOS / 北京联通家宽<br>文中不出现真实 IP、完整反向解析名、主机名和节点凭证</p>
+
+<div class="answer" id="answer">
+  <p><strong>按用途选，不要找全能第一。</strong></p>
+  <p>要过严格 IP 风控，用公网地址直接挂在网卡上的 AT&amp;T 段。要日常延迟，用大阪机房。要当美国管道下东西，洛杉矶机房和 Frontier 段带宽接近。只看纸面像不像住宅，Frontier 段最好看。</p>
+  <p>纸面合格不等于目标站会把它当住宅。地理库过了，只说明 MaxMind 这类库暂时没把它判到别的国家。</p>
+</div>
+
+<section id="nodes">
+<h2>四台机器，只保留类型</h2>
+<p>公开比较只保留线路类型，不写地址。四台都是自己控制的 VPS，协议相同，都走 Reality 这类 TLS 伪装，从同一台 Mac 测。</p>
+<div class="numbers" aria-label="四台机器">
+  <div class="number"><small>A · FRONTIER 段</small><strong>加州 ISP 号段，NAT 小机</strong><span>2C / 2G。虚机网卡是内网，公网在网关后面。PTR 落在 Frontier 反向区。</span></div>
+  <div class="number"><small>B · AT&amp;T 段</small><strong>公网地址在网卡上</strong><span>4C / 8G。管理口走中继，出口是 AT&amp;T 段。地理库城市会对不上。</span></div>
+  <div class="number"><small>C · 洛杉矶机房</small><strong>DMIT 这类云</strong><span>反向解析直接写着机房品牌。风控库标 VPN / datacenter。</span></div>
+  <div class="number"><small>D · 大阪机房</small><strong>搬瓦工这类</strong><span>2C / 1G。RIPE 登记在日本，IT7 宣告。到节点最短。</span></div>
+</div>
+</section>
+
+<section id="paper">
+<h2>纸面身份</h2>
+<p>先问登记处和地理库，再问风控库。脚本输出一档判定：pass / caution / reject。这一档只描述「像不像美国住宅」，不描述「快不快」。</p>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th></th><th>Frontier 段</th><th>AT&amp;T 段</th><th>洛杉矶机房</th><th>大阪机房</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>判定</td><td class="good">pass</td><td class="good">pass</td><td class="bad">reject</td><td class="bad">reject</td></tr>
+    <tr><td>登记库</td><td>ARIN</td><td>ARIN</td><td>ARIN</td><td>RIPE，国家 JP</td></tr>
+    <tr><td>三库国家</td><td>都是 US</td><td>都是 US，城市在打</td><td>都是 US</td><td>都是 JP</td></tr>
+    <tr><td>是不是 ISP</td><td>是，Verizon / Frontier</td><td>是，AT&amp;T</td><td>不是</td><td>不是</td></tr>
+    <tr><td>风控</td><td>Residential，risk 0</td><td>Business，risk 0</td><td>vpn，risk 66，机房</td><td>vpn，risk 66，机房</td></tr>
+    <tr><td>PTR</td><td>运营商反向区</td><td>没有</td><td>机房品牌名</td><td>机器自己的主机名</td></tr>
+    <tr><td>DNSBL</td><td>未列入</td><td>未列入</td><td>未列入</td><td>未列入</td></tr>
+  </tbody>
+</table>
+</div>
+<p>ARIN 的 <code>country</code> 经常是空的。空不等于「不是美国」。三家地理库都判 US，就算过。RIPE 写着 JP 的大阪机，不能靠延迟「看起来在东亚」去改纸面国籍——风控信纸面。</p>
+<p>AT&amp;T 段的 RDAP 组织名是 <code>Private Customer</code>。这是北美登记处常见的隐私占位，不是租赁商。如果把「组织和 ASN 对不上」直接打成租赁，会误伤真宽带段。</p>
+<p>洛杉矶机房曾经被标成「lease」。回头看 RDAP 原文，命中的是备注里的英文 <code>Please</code>。正则如果用子串 <code>lease</code>，会把礼貌用语当成 IP 经纪。改成整词以后，这条假阳性消失；它仍然因为机房 / VPN 标签被 reject，只是死因变准了。</p>
+</section>
+
+<section id="ptr">
+<h2>PTR 是反过来查名字</h2>
+<p>平常 DNS 是「名字到地址」。PTR 是「地址到名字」。别人拿到一个 IP，问系统这是谁的号，如果运营方配了反向记录，就会回一个主机名。</p>
+<p>家宽常见的是运营商自己的反向区，比如 Frontier、Verizon、AT&amp;T 那一套。机房常见的是公司名，或者机器自己的主机名。没有 PTR 也很常见，不能单独否决。</p>
+<p>只认 <code>hsd1</code> / <code>dsl</code> / <code>cable</code> 会漏掉 Frontier 这种静态反向区。看是不是运营商后缀，比看接入层主机名更稳。</p>
+</section>
+
+<section id="path">
+<h2>到节点有多远</h2>
+<p>Ping 和 TCP 打的是入口，不是网站。AT&amp;T 段的管理入口是中继，所以它会比出口再慢一截。</p>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th></th><th>Frontier 段</th><th>洛杉矶机房</th><th>AT&amp;T 中继</th><th>大阪机房</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Ping 平均</td><td class="num">177 ms</td><td class="num">177 ms</td><td class="num">236 ms</td><td class="num good">120 ms</td></tr>
+    <tr><td>丢包</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num caution">本轮 8 次丢 1</td></tr>
+    <tr><td>TCP 握手</td><td class="num">197 ms</td><td class="num">178 ms</td><td class="num">210 ms</td><td class="num good">140 ms</td></tr>
+  </tbody>
+</table>
+</div>
+<p>大阪机从联通出来以后很快进日本段，到节点大约 115 ms。Frontier 段走的是联通 163 再接 Cogent，不是 CN2。洛杉矶机房国内段出现过常见的 CN2 特征地址，ICMP 不一定能打到主机，TCP 仍然通。</p>
+</section>
+
+<section id="delay">
+<h2>端到端延迟</h2>
+<p>这不是 ICMP。数字是本地内核经该节点做完握手，再访问目标站的时间。每个站两次，取平均。</p>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>目标</th><th>Frontier 段</th><th>洛杉矶机房</th><th>AT&amp;T 段</th><th>大阪机房</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>gstatic 204</td><td class="num">178</td><td class="num">170</td><td class="num">238</td><td class="num good">116</td></tr>
+    <tr><td>google.com</td><td class="num">168</td><td class="num">186</td><td class="num">224</td><td class="num">158</td></tr>
+    <tr><td>youtube.com</td><td class="num">472</td><td class="num">447</td><td class="num">478</td><td class="num good">266</td></tr>
+    <tr><td>github.com</td><td class="num">223</td><td class="num">178</td><td class="num">287</td><td class="num good">131</td></tr>
+    <tr><td>chatgpt.com</td><td class="num">786</td><td class="num">794</td><td class="num">897</td><td class="num good">576</td></tr>
+    <tr><td>anthropic 连通</td><td class="num">243</td><td class="num">232</td><td class="num">286</td><td class="num">268</td></tr>
+  </tbody>
+</table>
+</div>
+<p>大阪机访问大量全球 CDN 更近，所以延迟表几乎全赢。这只说明它当日常出口很合适，不说明它能当美国身份。ChatGPT 首页 TTFB 大家都慢，那是站点自己，不是某台挂了。</p>
+<p>能连上 anthropic 的 API 入口只说明端口通。四台都能通。过不过账号风控，要另测，这篇没有用真实登录去打。</p>
+</section>
+
+<section id="speed">
+<h2>下载</h2>
+<p>把出口切到该节点，拉 10MB。速度按 curl 的下载速率换算。</p>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th></th><th>Frontier 段</th><th>洛杉矶机房</th><th>AT&amp;T 段</th><th>大阪机房</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Cachefly 10MB</td><td class="num">31.4 Mbps</td><td class="num good">32.5 Mbps</td><td class="num">25.4 Mbps</td><td class="num caution">空响应</td></tr>
+    <tr><td>Cloudflare 10MB</td><td class="num">29.1 Mbps</td><td class="num">28.8 Mbps</td><td class="num">22.2 Mbps</td><td class="num">14.9 Mbps</td></tr>
+  </tbody>
+</table>
+</div>
+<p>两条美国管道下载几乎打平。大阪机被 Cachefly 用 HTTP 200 送了 0 字节，换 Cloudflare 还能跑，只是更慢。AT&amp;T 段不是最快，但作为能用的美国出口足够稳。</p>
+</section>
+
+<section id="method">
+<h2>怎么测，以及公开时删了什么</h2>
+<div class="method">
+  <p>身份层：RDAP、ipinfo、ip-api、ipwho、proxycheck、ipapi.is、PTR、RIPEstat BGP。系统 DNS 在 TUN fake-ip 下不能做 DNSBL，改走国内 DoH。</p>
+  <p>网络层：入口 ping / TCP；内核延迟接口访问固定站点；再切出口拉 10MB。测完把默认出口改回去。</p>
+  <p>公开稿删除：所有 IP、含地址的反向解析、主机名、节点名、小商家面板名、端口、UUID 和登录方式。保留的是类型、ASN 归属类别、和这一轮测到的毫秒 / Mbps。</p>
+</div>
+<p class="note">数字会随本地线路和时段变。排序比绝对值更有用。换电信出口，大阪那台的线路标签可能完全是另一回事。</p>
+</section>
+
+<footer class="sources">
+  北京联通家宽实测，2026-08-30<br>
+  Silent Star<br>
+  地理与风控数据来自 ipinfo、ip-api、ipwho.is、proxycheck.io、ipapi.is、ARIN / RIPE RDAP<br>
+  延迟不是 ICMP，是经节点访问目标站的端到端时间
+</footer>
+</main>
+</div>
+</body>
+</html>
