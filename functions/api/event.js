@@ -13,6 +13,10 @@ const ALLOWED_EVENTS = new Set([
 
 const MAX_BODY_BYTES = 4096;
 const MAX_STRING = 256;
+/** Site pathname shape only — not an allowlist of published URLs. */
+const PATH_RE = /^\/[a-z0-9/_-]*$/;
+/** Optional post slug; empty string means unset. */
+const SLUG_RE = /^[a-z0-9_-]*$/;
 
 function jsonResponse(status, message) {
   return new Response(message, {
@@ -21,6 +25,10 @@ function jsonResponse(status, message) {
   });
 }
 
+/**
+ * Same-origin Origin/Referer check. This only reduces naive browser CSRF;
+ * it is not authentication — any client can forge those headers.
+ */
 function isSameOrigin(request) {
   const url = new URL(request.url);
   const origin = request.headers.get("Origin");
@@ -37,6 +45,15 @@ function isSameOrigin(request) {
 function clip(value, max = MAX_STRING) {
   if (value == null) return "";
   return String(value).slice(0, max);
+}
+
+function assertPathAndSlug(path, slug) {
+  if (!PATH_RE.test(path)) {
+    throw new Error("path 不合法");
+  }
+  if (!SLUG_RE.test(slug)) {
+    throw new Error("slug 不合法");
+  }
 }
 
 export function parseAnalyticsEvent(raw) {
@@ -57,13 +74,17 @@ export function parseAnalyticsEvent(raw) {
     throw new Error("result_count 不合法");
   }
 
+  const path = clip(raw.path, 128);
+  const slug = clip(raw.slug, 128);
+  assertPathAndSlug(path, slug);
+
   return {
     name: raw.name,
-    path: clip(raw.path, 128),
+    path,
     title: clip(raw.title),
     pageType: clip(raw.pageType, 32),
     query: clip(raw.query, 200),
-    slug: clip(raw.slug, 128),
+    slug,
     direction: clip(raw.direction, 16),
     href: clip(raw.href),
     depth,

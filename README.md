@@ -116,6 +116,14 @@ Two layers, both optional to disable, neither is allowed in post source HTML:
    Analytics Engine dataset named `blog_events` to `ANALYTICS` if you want SQL.
    Set `ANALYTICS_ENABLED=false` to stop injecting the tracker.
 
+   Treat `/api/event` as **public-write**. The `Origin` / `Referer` check only
+   mitigates naive browser CSRF; forged clients can spoof those headers. The
+   function still validates event names, payload size, and `path`/`slug` shape.
+   In the Cloudflare dashboard, add **rate limiting** and/or a **WAF** rule on
+   `POST /api/event` (per-IP quota is enough for a personal blog). In-code
+   Turnstile or signed beacons are optional and not required for the default
+   setup.
+
 The tracker honors `DNT`. It does not set cookies or assign a visitor id.
 
 The build generates a 1200×630 PNG social card for the site and every post under

@@ -22,3 +22,23 @@ into the published site.
 
 Out of scope: findings that require access to the maintainer's Cloudflare or
 GitHub account, and reports about the content of blog posts themselves.
+
+## `/api/event` threat model
+
+`functions/api/event.js` is a **public-write** analytics beacon. The
+`Origin` / `Referer` same-origin check only reduces naive browser CSRF. Those
+headers are attacker-controlled on non-browser clients and are **not**
+authentication.
+
+The handler validates event names, body size, and a strict `path` / `slug`
+shape (`/[a-z0-9/_-]*` and `[a-z0-9_-]*`). It does not prove the caller is a
+real browser or that `path` exists on the site.
+
+Deploy-time controls (recommended in the Cloudflare dashboard, not assertable
+in unit tests):
+
+- Rate limiting on `POST /api/event` (e.g. per IP)
+- WAF / bot score rules for the same path
+
+Stronger authenticity (Turnstile, signed beacons) is out of scope unless the
+maintainer asks for it.

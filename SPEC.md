@@ -139,6 +139,12 @@ App，并提供固定 category。配置由 `src/_data/site.js` 读取；非敏�
 第一方埋点由仓库根目录 `functions/` 提供。Cloudflare Pages 把它映射到 `/api/event`，
 不进入 `_site/`。列表页和文章页的分析脚本分别由外壳和增强器注入。
 
+`/api/event` 按 **public-write** 对待：`Origin` / `Referer` 同源检查只减轻浏览器侧
+朴素 CSRF，不能当作写鉴权（非浏览器客户端可伪造）。函数内校验事件名、载荷大小，
+以及 `path`（`/[a-z0-9/_-]*`）与可选 `slug`（`[a-z0-9_-]*`）形状。部署侧应在
+Cloudflare 控制台为 `POST /api/event` 配置速率限制和/或 WAF；Turnstile / 签名
+beacon 不在最小切片内，除非维护者另行要求。
+
 ## 验证
 
 - `bun test` —— 元数据解析 + fail-closed 行为
