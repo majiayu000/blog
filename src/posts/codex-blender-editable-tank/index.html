@@ -1,0 +1,114 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>用 Codex 和 Blender 做一辆能拆开再还原的坦克</title><meta name="date" content="2026-09-14"><meta name="tags" content="Codex, Agent 工具链, Blender"><meta name="description" content="用 Codex 编写 Blender 脚本，制作可编辑坦克、修改尺寸与配色，再把 380 个零件拆开并复原。附两段视频、工程和 skill 下载。"><style>body{max-width:850px;margin:0 auto;padding:32px 24px 80px;font:17px/1.85 system-ui,sans-serif;color:#26342d;background:#fafbf8}h1{font-size:clamp(28px,5vw,40px);line-height:1.3}h2{margin-top:2.2em}a{color:#28634c}img{max-width:100%;height:auto;border-radius:12px}pre{overflow:auto;background:#edf0e9;padding:18px;border-radius:8px;font-size:14px}blockquote{margin:20px 0;padding:8px 20px;border-left:3px solid #7d977d;background:#f0f3ec}table{border-collapse:collapse;width:100%;font-size:15px}th,td{text-align:left;border-bottom:1px solid #ccd6ca;padding:10px}code{overflow-wrap:anywhere}video{display:block;width:100%;height:auto;margin:24px 0;border-radius:12px;background:#202821}nav{margin-bottom:30px}h2{scroll-margin-top:20px}@media(max-width:500px){body{padding:20px 16px;font-size:16px}th,td{padding:7px;font-size:13px}}</style></head><body><nav><a href="/">返回博客</a></nav><main><h1>用 Codex 和 Blender 做一辆能拆开再还原的坦克</h1>
+<p>我看到一篇把探测车设计图做成 Blender 模型的案例，就让 Codex 换一个对象试试，做一辆风格化坦克。</p>
+<p>需求里的重点是模型能够继续改。车体、履带、轮组和炮塔要能分别选中，保存以后还能重新打开，改尺寸、换颜色，再导出给其他工具使用。这次实际生成了基础版和修改版两套 <code>.blend</code>、GLB，以及多角度渲染图。</p>
+<p><img src="base_hero.png" alt="基础版坦克"></p>
+<p>模型做完后，我又让它把全部零件拆开，做成动画，最后补了一段 Blender 工程界面的实际录屏。本文把这几步串起来，工程和 skill 都可以下载。skill 本身仍然只负责可编辑建模，动画与录屏按后续要求单独制作。</p>
+<h2>先告诉 AI 哪些部分必须能改</h2>
+<p>原案例使用了带尺寸的三视图。这次坦克的输入是文字概念，具体比例和外观由 Codex 设计，三视图是随后整理的说明图。因此，这次能验证脚本建模、独立部件和后续修改，不能拿它证明对用户原图的精确还原。</p>
+<p>如果你有自己的设计图，就把图片和尺寸一起提供。图片未画出的背面、底部或连接方式，需要明确允许补充设计，或者继续提供参考。</p>
+<p>可以这样提出需求。</p>
+<blockquote>
+<p>根据附图和标注尺寸，在 Blender 里制作一个风格化的可编辑模型。把需要独立修改的主要部件分别命名，使用米作为单位。先保存基础工程，导出 GLB，并渲染正面、侧面、顶部和主视角。随后重新打开基础工程，完成我指定的尺寸与配色修改，记录前后实测值。</p>
+</blockquote>
+<p>把“主要部件”换成你在意的东西。收纳盒可以是盒体、抽屉与把手；机器人可以是躯干、四肢和传感器。部件清单来自对象的结构，无需照搬坦克的零件数量。</p>
+<h2>AI 写脚本，Blender 生成工程</h2>
+<p>这次使用本机 Blender 5.1.2。Codex 编写 Python 脚本，Blender 执行后生成网格、材质、原生工程和 GLB。没有调用额外的三维生成服务。</p>
+<p>基础模型共有 380 个独立网格，其中包含重复的履带片和螺栓。数量多是这个模型的结构结果。换成一个只有盖子和盒体的物品，几个对象就可能够用。</p>
+<p>脚本建模时，先把主要体积和比例做出来，再加倒角与细节。独立对象之间用层级组织，方便整体移动。用户之后仍然可以打开工程，选中某个零件继续编辑。</p>
+<p>如果要自己运行案例脚本，可以在解压后的目录执行下面的命令，把 Blender 路径换成实际安装位置。</p>
+<pre><code class="language-sh">BLENDER=&quot;/Applications/Blender.app/Contents/MacOS/Blender&quot;
+&quot;$BLENDER&quot; --background --python-exit-code 1 --python build.py
+&quot;$BLENDER&quot; --background --python-exit-code 1 --python verify.py
+</code></pre>
+<p>脚本会生成并覆盖该目录中的同名案例输出。自己的原工程应放在另一个目录，修改版另存文件。临时目录里能运行 Blender，也不代表系统已经安装好应用；这次最初就在启动器里搜不到程序，后来才把它安装到「应用程序」。</p>
+<h2>保存之后，再做一次真正的修改</h2>
+<p>第二版做了三项变化，炮管加长 0.5 米、炮塔加宽 18%，主装甲从苔绿色换成沙黄色。</p>
+<p><img src="edited_hero.png" alt="修改后的坦克"></p>
+<table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>基础版</th>
+<th>修改版</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>炮管长度</td>
+<td>1.46 米</td>
+<td>1.96 米</td>
+</tr>
+<tr>
+<td>炮管横向尺寸</td>
+<td>约 0.23 米</td>
+<td>约 0.23 米</td>
+</tr>
+<tr>
+<td>炮塔实测宽度</td>
+<td>约 1.6827 米</td>
+<td>约 1.9856 米</td>
+</tr>
+<tr>
+<td>独立网格数量</td>
+<td>380</td>
+<td>380</td>
+</tr>
+</tbody>
+</table>
+<p>炮塔的设计宽度是 1.72 米，倒角后实测包围盒略有变化，所以表格采用实际测量值。</p>
+<p>这里遇到过一个很具体的错误。炮管被旋转后，第一次尺寸修改同时把外形拉粗了。只检查长度增加多少，会漏掉这个问题。修正变换处理后，又检查了两个横向尺寸和炮口位置，确认固定端保留在原处，炮口随加长一起前移。</p>
+<p>这种检查同样适用于其他模型。让桌腿变长，要说明哪一端固定；让盒体变宽，要考虑盖子是否跟着调整。把这层关系写进需求，AI 才能知道哪些物体应当一起变化。</p>
+<p>修改版通过重新打开基础 <code>.blend</code> 制作，并记录了基础文件的 SHA-256。这个摘要用于确认版本来源。模型外形好不好、附件有没有穿插，仍然要看工程和渲染。</p>
+<h2>导出后还要读回来</h2>
+<p>两版 GLB 都被导入到空白 Blender 场景中，检查了网格名称和数量。原生工程也重新打开，核对了关键尺寸和配色。这样才能发现导出丢部件、合并对象或修改没有保存的问题。</p>
+<p>检查通过的范围应当说清。这次完成的是风格化外观模型，没有制作完整 UV 贴图集、角色绑定或制造公差验证，也没有验证打印。GLB 在 Blender 中能正常读回，并不等于每个游戏引擎都会显示完全相同的材质。</p>
+<h2>全部拆开，还能不能还原</h2>
+<p>可以。这里的拆解动画改变各个对象的位置，原来的网格和装配位置都保留下来。完整模型里有 380 个独立网格，动画给它们分别设置了位置关键帧。</p>
+<p><video controls playsinline preload="metadata" poster="exploded-preview.png" width="1280" height="720"><source src="tank-exploded.mp4" type="video/mp4">浏览器不支持视频时，请下载下方的 MP4。</video></p>
+<p>渲染视频长 12 秒，1280 × 720，24 帧每秒。时间线先展示完整模型，然后展开，停留环绕，最后合拢。</p>
+<table>
+<thead>
+<tr>
+<th>时间线位置</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>第 1 帧</td>
+<td>完整坦克</td>
+</tr>
+<tr>
+<td>第 108 至 192 帧</td>
+<td>零件全部展开，镜头环绕</td>
+</tr>
+<tr>
+<td>第 144 帧</td>
+<td>适合暂停查看的拆解状态</td>
+</tr>
+<tr>
+<td>第 288 帧</td>
+<td>回到完整模型</td>
+</tr>
+</tbody>
+</table>
+<p>在 Blender 里把当前帧改为 1，就能立即看到完整坦克。按空格会播放动画，各个零件仍然可以单独选择。这里没有制作内部发动机，拆开的是原模型已有的外观零件。</p>
+<p>执行时按零件所属结构安排移动方向。车体上下分层，左右轮组向两边拉开，炮管和炮口沿各自方向分离。若给所有物体套同一个位移公式，容易出现遮挡和穿插。动画首先要让人看懂零件之间的关系。</p>
+<p>脚本检查了所有目标在展开帧的局部位置发生变化，结尾回到初始位置。本例的父级保持静止，这个检查足以核对所做的位置动画；它没有证明任意复杂装配都不存在碰撞。还检查了所有帧的包围盒取景范围，并抽查实际画面，避免外侧螺栓和天线跑到画外。</p>
+<h2>在 Blender 窗口里直接看过程</h2>
+<p>渲染视频交出来后，我又补了一个要求，希望过程直接显示在 Blender 工程里。于是另存了一份展示工程，保留时间线和编辑界面，在视窗里播放同一套拆解动画，并录制目标窗口。</p>
+<p><video controls playsinline preload="metadata" poster="blender-interface.png" width="1512" height="902"><source src="blender-interface.mp4" type="video/mp4">浏览器不支持视频时，请下载下方的 MP4。</video></p>
+<p>这一步遇到的麻烦很普通。多个 Blender 实例同时运行，窗口工具一直选中旧工程；新实例的首次启动欢迎页又挡住了画面。后来换成独立配置，让 Blender 原生脚本控制播放，再按核实过的窗口编号录制。原来那个带未保存修改的工程保留着，没有被替换。</p>
+<p>录屏开始前要实际看一眼窗口。启动命令成功返回，不能说明画面里已经是正确的模型。录完以后也需要抽查中段，确认零件真的在动、时间线确实推进。这里只读视频时长或检查文件存在，会漏掉欢迎页挡住整段画面的错误。</p>
+<p>界面录屏约 17 秒。两个 MP4 都做了完整解码检查，画面内容另行抽帧检查。</p>
+<p><a href="tank-exploded.mp4">下载渲染视频</a> · <a href="blender-interface.mp4">下载 Blender 工程录屏</a> · <a href="moss-t1-animation-projects.zip">下载拆解动画与展示工程</a></p>
+<h2>把建模流程装成 skill</h2>
+<p>这次整理的 skill 叫 <code>blender-editable-3d</code>。它负责从参考图或文字概念开始，完成可编辑建模、自然语言修改和工程交付。它不内置某辆车，也不固定零件数量。</p>
+<p><a href="blender-editable-3d.zip">下载 skill</a>，把解压后的 <code>blender-editable-3d</code> 文件夹放到 Codex 的个人 skills 目录，然后在新任务中调用。</p>
+<pre><code class="language-text">使用 $blender-editable-3d，根据这张设计图制作可编辑的 Blender 模型。
+保持主要零件独立，先保存基础版，再演示一次尺寸和配色修改。
+交付 .blend、GLB 和多角度渲染图。
+</code></pre>
+<p><a href="moss-t1-model-case.zip">下载坦克建模案例</a>，可以直接打开里面的基础版和修改版工程，对照对象名称与尺寸看变化。</p>
+<p>最初参考的是 <a href="https://kingy.ai/blog/drawing-to-editable-3d-model-astra-blender/">Kingy AI 的可编辑三维案例</a>。本文的坦克结果来自这次实际生成的工程、脚本和检查记录。</p>
+</main></body></html>
