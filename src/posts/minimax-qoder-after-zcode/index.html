@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ZCode 之后我又拆了 MiniMax 和 Qoder，GLM 对话没有读回那份 Git 包</title>
   <meta name="date" content="2026-09-18">
-  <meta name="description" content="同一天拆 MiniMax Code 3.0.68 与 Qoder CN 0.3.3。桌面版 ZIP 索引默认关且这台机器零记录。CN 远程索引写在产品表里关掉，只做了本地 Merkle。GLM 请求里没有 snapshot_id。">
+  <meta name="updated" content="2026-09-19">
+  <meta name="description" content="同一天拆 MiniMax Code 3.0.68 与 Qoder CN 0.3.3。桌面版 ZIP 索引默认关且这台机器零记录。CN 云端搜代码走不通，因为产品表关掉远程索引，安装包没写原因。GLM 请求里没有 snapshot_id。">
   <meta name="tags" content="Agent, Agent 工具链, MiniMax, Qoder, ZCode">
   <style>
     :root {
@@ -201,6 +202,8 @@ forced  = runtimeOwnerKind !== 'tui'
     </table>
   </div>
   <p>两张表写在同一份插件里。host 里 <code>dk()</code> 直接返回 <code>qoder-cn</code>。进程环境 <code>QODER_PRODUCT_ID</code> 也是 <code>qoder-cn</code>。daemon 启动时不创建远程 client。<code>tryRemoteSync</code> 第一行看到 <code>remoteCodeIndexing</code> 为 false 就返回。国内网关地址 <code>https://gateway.qoder.com.cn</code> 和国际地址 <code>https://repo2.qoder.sh</code> 并排写在同一张 endpoint 表里。</p>
+  <p>所以这台 Qoder CN 云端搜代码走不通。登录、扫盘、发 prompt 都发生过。远端没有 <code>codebaseId</code>，语义搜索没有东西可查。设置页也没有索引开关，<code>indexSettings</code> 一并关掉了。</p>
+  <p>安装包里找不到为什么关。没有合规、PIPL、数据出境这类注释。日志原文是 <code>disabled by product profile</code>，按产品形态禁用。上传实现和国内网关地址都还在包里，客户端没接线。</p>
 
   <figure>
     <img src="02-qoder-gate.svg" alt="发提示词后先做本地 Merkle，CN 产品表把远程上传关掉" width="900" height="420">
