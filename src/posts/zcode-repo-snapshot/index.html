@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZCode 会在发提示词时打包 Git 历史，我在本机对上了</title>
+  <meta name="date" content="2026-09-18">
+  <meta name="description" content="拆本机 ZCode 3.10.1。checkpoints 里有仓库快照和加密包，.git/objects/pack 整包进清单。设置页开关改 UI，host 采集路径不读这两个字段。">
+  <meta name="tags" content="Agent, Agent 工具链, ZCode">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #161410;
+      --muted: #5c574c;
+      --paper: #f4f1ea;
+      --card: #fffdf8;
+      --line: #d9d2c4;
+      --blue: #2c4fd0;
+      --amber: #b56a10;
+      --red: #a33a3a;
+      --green: #1f7a4d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 17px/1.7 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+    }
+    main {
+      width: min(760px, calc(100% - 32px));
+      margin: auto;
+      padding: 72px 0 80px;
+    }
+    h1 {
+      font-size: clamp(1.85rem, 4.6vw, 2.6rem);
+      line-height: 1.18;
+      letter-spacing: -.03em;
+      margin: .18em 0 .45em;
+    }
+    h2 {
+      font-size: clamp(1.25rem, 2.6vw, 1.55rem);
+      line-height: 1.25;
+      margin: 52px 0 12px;
+      scroll-margin-top: 72px;
+    }
+    p { margin: 12px 0; }
+    .lede {
+      font-size: clamp(1.05rem, 2vw, 1.22rem);
+      line-height: 1.55;
+      color: var(--muted);
+    }
+    .kicker {
+      display: inline-block;
+      font-size: .78rem;
+      font-weight: 750;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--blue);
+    }
+    .home-link {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 20;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(244, 241, 234, .92);
+      color: var(--ink);
+      font-size: .8rem;
+      text-decoration: none;
+    }
+    .home-link:hover { border-color: var(--blue); }
+    a { color: #244fc4; text-underline-offset: 3px; }
+    a:focus-visible { outline: 3px solid #e29a3a; outline-offset: 2px; }
+    code {
+      font: 13.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: #efe9dc;
+      border-radius: 5px;
+      padding: .08em .34em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      margin: 16px 0;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      overflow: auto;
+      font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    figure {
+      margin: 22px 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      background: #fff;
+    }
+    figcaption {
+      margin: 10px 6px 4px;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .92rem;
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 10px 8px 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    th { color: var(--muted); font-weight: 650; font-size: .78rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px;
+    }
+    .note {
+      border-left: 4px solid var(--amber);
+      padding: 2px 0 2px 14px;
+      color: var(--muted);
+    }
+    footer { margin-top: 56px; color: var(--muted); font-size: .9rem; }
+    @media (max-width: 760px) {
+      main { padding-top: 56px; }
+      .home-link { top: 12px; left: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <a class="home-link" href="/">← Silent Star</a>
+<main>
+  <p class="kicker">X-Ray · ZCode</p>
+  <h1>ZCode 会在发提示词时打包 Git 历史，我在本机对上了</h1>
+  <p class="lede">网上传它会静默上传全量 Git 历史。我本机装着 3.10.1，把 <code>~/.zcode</code> 翻开以后，清单、加密包和上传状态都还在。</p>
+
+  <h2>本机先对上的东西</h2>
+  <p>应用在 <code>/Applications/ZCode.app</code>。版本字符串是 3.10.1.6272。数据目录在 <code>~/.zcode/v2/checkpoints/</code>。六个工作区各有一份 <code>repo_snapshot_manifest/v2</code> 清单。文件时间都落在 2026 年 8 月 16 日晚上 20 点 08 分到 23 点 41 分。</p>
+  <p>状态文件里写着 <code>captureStage</code> 等于 <code>prompt</code>。你每发一句，它就试图打一次仓库快照。</p>
+  <p>清单里的主体是 <code>.git/</code>。harness 那次总共 965 MB，其中 961 MB 是 Git 目录。最大的 pack 文件有 915 MB。page-lingo、vibeguard、remem 也是同样的结构。工作区源码反而被 1 MB 单文件上限拦住了不少，Git 的 pack 没有这道闸。</p>
+
+  <h2>传出去了几个</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>工作区</th>
+          <th>GitHub</th>
+          <th>快照</th>
+          <th>体积</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>remem</td>
+          <td>公开</td>
+          <td>服务端已接收</td>
+          <td>增量 103 KB，说明此前已有 baseline</td>
+        </tr>
+        <tr>
+          <td>voice-input</td>
+          <td>公开</td>
+          <td>服务端已接收</td>
+          <td>185 KB</td>
+        </tr>
+        <tr>
+          <td>ultrastudio-dev-videos</td>
+          <td>没有 git</td>
+          <td>服务端已接收</td>
+          <td>空包</td>
+        </tr>
+        <tr>
+          <td>harness</td>
+          <td>公开</td>
+          <td>卡在 pending</td>
+          <td>加密包 945 MB</td>
+        </tr>
+        <tr>
+          <td>vibeguard</td>
+          <td>公开</td>
+          <td>卡在 pending</td>
+          <td>加密包 162 MB</td>
+        </tr>
+        <tr>
+          <td>page-lingo</td>
+          <td>私有</td>
+          <td>卡在 pending</td>
+          <td>加密包 287 MB</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>三个小包对上了 <code>lastAcceptedManifestHash</code>，pending 目录也空了。代码里这两件事和清掉 <code>activeUpload</code> 是同一次写入。大包还躺在本地，attemptCount 都是 1。对象上传超时写死 60 秒，几百 MB 在这个时限里传不完。</p>
+  <p>私有仓库 page-lingo 没传成功。已经传走的三个，内容本来就在公开 GitHub 上。我把五个仓库的全部历史 blob 扫过一遍，没有真实的密钥、私钥或带口令的远程地址。这是这几个仓库的运气，不是采集器替你挡掉了 Git 历史。</p>
+
+  <h2>一次发送之后怎么走</h2>
+  <p>host 进程里 sidecar 是直接 <code>new</code> 出来的。本地会话在 <code>sessionSend</code> 之前调用 <code>scheduleRepoSnapshotSidecar</code>。远程工作区如果带了 <code>workspaceIdentity</code>，这一步会跳过。</p>
+  <figure>
+    <img src="02-send-pipeline.png" alt="发送提示词之后的采集、加密和上传流程" width="900" height="2400">
+    <figcaption>从按下发送到对象存储。没 token 或拿不到上传凭证，打包不会开始。</figcaption>
+  </figure>
+  <p>有登录 token 才会继续。下一步是 <code>GET /api/v1/snapshot/upload-credential</code>，查询参数是工作区绝对路径的 sha256 前 12 位。这个短哈希就是 checkpoints 目录名。</p>
+  <p>服务端返回 snapshot_id、RSA 公钥和可选的体积上限。客户端把文件打成 tar.gz，用 AES-256-CTR 加密，IV 明文写在密文前面，再用这把公钥把内容密钥包起来。私钥在服务端。这是防传输途中被截，厂商自己能解开。</p>
+  <p>包里还有 <code>meta/prompt.json</code>。字段 <code>content</code> 就是那一轮提示词原文。仓库状态和你刚说的话被放进同一个 snapshot_id。</p>
+
+  <h2>为什么 Git 历史进得去</h2>
+  <p>工作区文件走 <code>git ls-files --cached --others --exclude-standard</code>，尊重 gitignore。Git 目录是另一条腿，<code>walkGitMetadataFiles</code> 把整个 <code>.git</code> 递归进去，两份列表再合并。</p>
+  <p>过滤函数里，路径只要含有 <code>.git</code> 这一段，立刻放行。后面的密钥文件名、1 MB 上限、前 8 KB 空字节检测，对 pack 文件都用不上。</p>
+  <figure>
+    <img src="03-scan-filter.png" alt="扫描过滤流程，.git 路径无条件收录" width="900" height="2200">
+    <figcaption>.git 排在过滤第二位并直接收录。密钥 denylist 拦得了工作区里的 .env，拦不住 objects/pack。</figcaption>
+  </figure>
+  <p>密钥 denylist 本身写得很勤快。<code>.env</code>、<code>.npmrc</code>、<code>id_rsa</code>、<code>*.pem</code>、<code>*.key</code>，文件名带 token 或 secret 的也会丢掉。harness 跟踪着的 <code>.env.example</code> 当时就在树上，8 月那次清单里没有它。工作区这一半确实在滤。问题是 pack 文件名看起来像普通二进制，历史里提交过一次又删掉的密钥，照样整包进 tar。</p>
+
+  <h2>设置页那个开关</h2>
+  <p>路径在设置，索引库，代码库。第一个开关叫「索引新文件夹」，文案只写自动索引少于五万文件的新目录。紧挨着的「即时搜索」开关明确写了数据存在本地。</p>
+  <figure>
+    <img src="01-settings-toggle.png" alt="设置页开关只写入 UI 状态" width="720" height="1600">
+    <figcaption>拨动开关会写入 enabled 和 userConfigured。3.10.1 的 host 采集函数不读这两个字段。</figcaption>
+  </figure>
+  <p>我查证时 <code>setting.json</code> 里 <code>repoSnapshotIndexingEnabled</code> 是 false，<code>repoSnapshotIndexingUserConfigured</code> 这个字段根本不存在。设置页会显示关闭。renderer 用这两个标志决定勾选状态。host 里 <code>repoSnapshotIndexingEnabled</code> 只出现在 <code>normalizeSettingsPatch</code>，采集调度看不到它。</p>
+  <p>8 月那些快照已经落盘。当时 dual gate 即使存在，也没挡住这次采集。现在看到的 3.10.1 把 sidecar 无条件建起来，发送时继续调度。</p>
+
+  <h2>想停下来可以做什么</h2>
+  <figure>
+    <img src="04-how-to-stop.png" alt="退出登录、拦截凭证接口、删除本地 checkpoints" width="720" height="1400">
+    <figcaption>设置页开关建议保持关闭。3.10.1 立刻能拦住的是 token、凭证接口、远程工作区和体积超时。</figcaption>
+  </figure>
+  <p>退出登录。采集函数第一关就是 <code>tokenProvider()</code>，拿不到 zcodeJwtToken 或 accessToken 就返回。</p>
+  <p>网络层拦 <code>/api/v1/snapshot/upload-credential</code>。凭证失败则后面的扫描和加密都不会开始。</p>
+  <p>删掉 <code>~/.zcode/v2/checkpoints/</code>。我查的时候 pending 里大约还有 1.4 GB，包括 page-lingo 那份私有历史。3.10.1 启动时不会扫描 pending 续传，<code>flushWorkspace</code> 只有采集成功后那一处调用。留着仍然没有好处，信封里的内容密钥就是给服务端解的。</p>
+  <p>设置页那个开关继续关着。以后版本一旦 host 开始读它，这就是用户侧仅有的开关。</p>
+
+  <p class="note">这次只拆了本机这一份 3.10.1，以及 8 月 16 日留下的 checkpoints。其他版本、其他账号、服务端怎样存这些包，我没有证据。</p>
+
+  <footer>
+    <p>图是从 <code>out/host/index.js</code> 里的函数名还原后导出的。源码在 <code>/Applications/ZCode.app/Contents/Resources/app.asar</code>。</p>
+    <p><a href="/">回到首页</a></p>
+  </footer>
+</main>
+</body>
+</html>
