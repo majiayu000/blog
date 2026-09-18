@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cline 桌面版默认开着遥测，登录后公共字段带上邮箱</title>
+  <meta name="date" content="2026-09-19">
+  <meta name="description" content="另一台 Mac 上的 Cline Desktop 0.0.32 默认 telemetryOptOut 为 false。OTLP 打到 otel.cline.bot，功能开关走 data.cline.bot。登录后遥测公共字段带账号和邮箱。二进制里没有整仓 Git 打包。选 Cline 当供应商时，对话走 api.cline.bot。">
+  <meta name="tags" content="Agent, Agent 工具链, Cline">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #161410;
+      --muted: #5c574c;
+      --paper: #f4f1ea;
+      --card: #fffdf8;
+      --line: #d9d2c4;
+      --blue: #2c4fd0;
+      --amber: #b56a10;
+      --red: #a33a3a;
+      --green: #1f7a4d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 17px/1.7 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+    }
+    main {
+      width: min(760px, calc(100% - 32px));
+      margin: auto;
+      padding: 72px 0 80px;
+    }
+    h1 {
+      font-size: clamp(1.85rem, 4.6vw, 2.6rem);
+      line-height: 1.18;
+      letter-spacing: -.03em;
+      margin: .18em 0 .45em;
+    }
+    h2 {
+      font-size: clamp(1.25rem, 2.6vw, 1.55rem);
+      line-height: 1.25;
+      margin: 52px 0 12px;
+      scroll-margin-top: 72px;
+    }
+    p { margin: 12px 0; }
+    .lede {
+      font-size: clamp(1.05rem, 2vw, 1.22rem);
+      line-height: 1.55;
+      color: var(--muted);
+    }
+    .kicker {
+      display: inline-block;
+      font-size: .78rem;
+      font-weight: 750;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--blue);
+    }
+    .home-link {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 20;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(244, 241, 234, .92);
+      color: var(--ink);
+      font-size: .8rem;
+      text-decoration: none;
+    }
+    .home-link:hover { border-color: var(--blue); }
+    a { color: #244fc4; text-underline-offset: 3px; }
+    a:focus-visible { outline: 3px solid #e29a3a; outline-offset: 2px; }
+    code {
+      font: 13.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: #efe9dc;
+      border-radius: 5px;
+      padding: .08em .34em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      margin: 16px 0;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      overflow: auto;
+      font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    figure {
+      margin: 22px 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+    }
+    figure img, figure svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      background: #fff;
+    }
+    figcaption {
+      margin: 10px 6px 4px;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .92rem;
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 10px 8px 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    th { color: var(--muted); font-weight: 650; font-size: .78rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px;
+    }
+    .note {
+      border-left: 4px solid var(--amber);
+      padding: 2px 0 2px 14px;
+      color: var(--muted);
+    }
+    footer { margin-top: 56px; color: var(--muted); font-size: .9rem; }
+    @media (max-width: 760px) {
+      main { padding-top: 56px; }
+      .home-link { top: 12px; left: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <a class="home-link" href="/">← Silent Star</a>
+<main>
+  <p class="kicker">X-Ray · Agent 工具链</p>
+  <h1>Cline 桌面版默认开着遥测，登录后公共字段带上邮箱</h1>
+  <p class="lede">网上传编程 Agent 会静默上传仓库。<a href="/posts/zcode-repo-snapshot/">ZCode</a> 和 <a href="/posts/minimax-qoder-after-zcode/">MiniMax、Qoder</a> 已经对过。同一台机器后半夜装了 Cline 桌面版。我先把 Cline 公开文档和 2025 年那篇匿名遥测博客对了一遍，再拆这台机器上的 0.0.32 sidecar，并核对 <code>~/.cline</code> 里已经写下的日志。</p>
+
+  <p>Cline 会把使用事件送出机器。它没有把整个 <code>.git</code> 打成快照。</p>
+
+  <figure>
+    <img src="01-three-pipes.svg" alt="Cline 桌面版三条出站路径，遥测、功能开关和对话 API" width="900" height="320">
+    <figcaption>关遥测能停前两根。选 Cline 当供应商时，第三根是对话本身。</figcaption>
+  </figure>
+
+  <h2>这台机器上已经发出去的</h2>
+  <p>应用在 <code>/Applications/Cline.app</code>，短版本 0.0.32，标识 <code>bot.cline.app</code>。数据目录 <code>~/.cline</code>。2026 年 9 月 19 日凌晨 1 点 17 分第一次启动。<code>global-settings.json</code> 里 <code>telemetryOptOut</code> 写成 false。sidecar 里 Zod schema 的默认值也是 false。设置文件不存在时，判断退出遥测的函数碰到 ENOENT 返回 false，等于默认开着。</p>
+  <pre>telemetryOptOut: z.boolean().default(false).catch(false)</pre>
+  <p>sidecar 日志在启动当秒写下 OpenTelemetry 已启用。logs 和 metrics 走 OTLP <code>http/json</code>。二进制把终点写成 <code>https://otel.cline.bot</code>，鉴权头也写死在包里。功能开关走 PostHog，host 是 <code>https://data.cline.bot</code>。</p>
+  <p>已经落在 <code>code.log</code> 里的事件有这些。</p>
+  <p>启动打了 <code>user.extension_activated</code>。功能开关打了 <code>$feature_flag_called</code>，其中 <code>ext-cline-pass</code> 为 true。登录后两次会话各打一条 <code>session.started</code>。</p>
+  <p>1 点 17 分那些事件只带设备哈希。1 点 19 分登录以后，公共字段多了账号 ID、邮箱、组织信息和供应商名。函数名叫 <code>identifyAccount</code>。官方文档写遥测匿名、不含个人信息。这份桌面版启动后的公共字段对不上那句话。</p>
+  <p>2025 年 2 月 26 日 Cline 博客说遥测完全可选，安装扩展时会问 Allow 或 Deny。这台桌面版 0.0.32 第一次启动就写出 <code>telemetryOptOut</code> 为 false。日志里看不到一次拒绝提示。我不能证明界面弹过窗。我能证明磁盘上的默认是开。</p>
+
+  <figure>
+    <img src="02-first-hour.svg" alt="凌晨 1 点 17 分启动，1 点 19 分登录后带上邮箱，1 点 23 分两次会话" width="900" height="420">
+    <figcaption>本机后来涨到约 69 MB，主要是 hub 记下的会话流，不能直接当成已经上传的遥测。</figcaption>
+  </figure>
+
+  <h2>对话走另一根管子</h2>
+  <p>凌晨 1 点 23 分和 1 点 24 分，这台机器开了两次会话。供应商都是 <code>cline</code>，模型是免费档。工作区根目录写成 <code>/</code>。本地 <code>sessions.db</code> 有 2 行。消息文件在本机，一份大约 542 KB，另一份大约 204 KB。</p>
+  <p>选 Cline 当模型供应商时，聊天内容会打到 <code>https://api.cline.bot</code>。这是对话 API。用户把提示词交给这家的模型，服务器必然看见提示词和工具结果。ZCode 那种静默 Git 包是另一条采集路径。我没有抓网包，这条判断来自供应商字段、官方 API 文档，以及二进制里的 <code>api.cline.bot</code>。</p>
+  <p>本地还有一份很大的 <code>hub-events</code> 库，里面是 <code>assistant.delta</code>、<code>tool.started</code> 这类运行时事件。那是本机 hub 在记会话流。不能把它直接当成已经上传的遥测。</p>
+  <p><code>code.log</code> 里的 <code>session.started</code> 带 sessionId、source、providerId、modelId、enableTools，以及登录后的账号字段。这两条里没有提示词正文。</p>
+
+  <h2>仓库快照这条路没找到</h2>
+  <p>sidecar 里搜不到 <code>pack-objects</code>、<code>workspace.zip</code>、<code>initCodebase</code>、<code>snapshot/upload</code>。工作区初始化遥测只带根目录数量、是不是 git、是不是远程工作区，不带源码正文，也不带路径字符串。</p>
+  <p>官方遥测文档写，Cline Telemetry 不含代码、文件内容、文件路径、命令参数、对话内容和个人信息。路径和对话内容这两项，在工作区初始化事件上对得上。账号邮箱写进公共字段，和个人信息那条对不上。提示词会不会进 <code>task.conversation_turn</code>，这台机器的 <code>code.log</code> 还没打出这类事件，我下不了结论。函数把传入的 properties 原样 emit 出去，字段集合要看调用方。</p>
+
+  <h2>怎么关</h2>
+  <p>把 <code>~/.cline/data/settings/global-settings.json</code> 里的 <code>telemetryOptOut</code> 改成 true。sidecar 也认桌面命令 <code>set_telemetry_opt_out</code>。从 false 改成 true 时，客户端会先打一条 <code>user.opt_out</code> 再停。关遥测不会切断 <code>api.cline.bot</code> 上的对话。不想把对话交给 Cline 账号，换本地或自备密钥的供应商。</p>
+
+  <h2>对照</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>ZCode 3.10.1</th>
+          <th>MiniMax 3.0.68</th>
+          <th>Qoder CN 0.3.3</th>
+          <th>Cline 0.0.32</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>上传物</td>
+          <td>工作区文件加整个 <code>.git/</code></td>
+          <td><code>workspace.zip</code></td>
+          <td>源文件 ZIP 批次</td>
+          <td>使用事件，登录后带账号字段</td>
+        </tr>
+        <tr>
+          <td>目的</td>
+          <td>仓库快照</td>
+          <td>远程 embedding</td>
+          <td>远程 embedding</td>
+          <td>产品遥测和功能开关</td>
+        </tr>
+        <tr>
+          <td>默认</td>
+          <td>host 不读设置页开关</td>
+          <td>关，除非偏好写成 true</td>
+          <td>国内产品表关掉远程</td>
+          <td><code>telemetryOptOut</code> 默认 false</td>
+        </tr>
+        <tr>
+          <td>这台机器</td>
+          <td>公开小仓已传成功</td>
+          <td>索引表 0 行</td>
+          <td>本地扫了 10 万文件，未上传</td>
+          <td>启动、登录、两次会话已打事件</td>
+        </tr>
+        <tr>
+          <td>对话怎么读代码</td>
+          <td>Read / Bash 读磁盘</td>
+          <td>未在这台机器上观察到 ZIP 回读</td>
+          <td>CN 未建立 codebaseId</td>
+          <td>选 Cline 供应商则走对话 API</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="note">这次只覆盖另一台 Mac 上的 Cline Desktop 0.0.32。VS Code 扩展可能另有同意提示。我没有抓这台机器的 TLS 包，OTLP 有没有送到对端，只能看二进制配置和本地 telemetry sink。服务端怎样存这些事件，客户端证明不了。</p>
+
+  <footer>
+    <p>公开口径见 <a href="https://docs.cline.bot/enterprise-solutions/monitoring/telemetry">Cline Telemetry 文档</a> 和 2025 年 2 月 26 日那篇 <a href="https://cline.bot/blog/introducing-anonymous-telemetry-in-cline">匿名遥测博客</a>。前两篇是 <a href="/posts/zcode-repo-snapshot/">ZCode 仓库快照</a> 与 <a href="/posts/minimax-qoder-after-zcode/">MiniMax、Qoder、GLM</a>。</p>
+    <p><a href="/">回到首页</a></p>
+  </footer>
+</main>
+</body>
+</html>
