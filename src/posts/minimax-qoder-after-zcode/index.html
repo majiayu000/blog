@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZCode 之后我又拆了 MiniMax 和 Qoder，GLM 对话没有读回那份 Git 包</title>
+  <meta name="date" content="2026-09-18">
+  <meta name="description" content="同一天拆 MiniMax Code 3.0.68 与 Qoder CN 0.3.3。桌面版 ZIP 索引默认关且这台机器零记录。CN 远程索引写在产品表里关掉，只做了本地 Merkle。GLM 请求里没有 snapshot_id。">
+  <meta name="tags" content="Agent, Agent 工具链, MiniMax, Qoder, ZCode">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #161410;
+      --muted: #5c574c;
+      --paper: #f4f1ea;
+      --card: #fffdf8;
+      --line: #d9d2c4;
+      --blue: #2c4fd0;
+      --amber: #b56a10;
+      --red: #a33a3a;
+      --green: #1f7a4d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 17px/1.7 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+    }
+    main {
+      width: min(760px, calc(100% - 32px));
+      margin: auto;
+      padding: 72px 0 80px;
+    }
+    h1 {
+      font-size: clamp(1.85rem, 4.6vw, 2.6rem);
+      line-height: 1.18;
+      letter-spacing: -.03em;
+      margin: .18em 0 .45em;
+    }
+    h2 {
+      font-size: clamp(1.25rem, 2.6vw, 1.55rem);
+      line-height: 1.25;
+      margin: 52px 0 12px;
+      scroll-margin-top: 72px;
+    }
+    p { margin: 12px 0; }
+    .lede {
+      font-size: clamp(1.05rem, 2vw, 1.22rem);
+      line-height: 1.55;
+      color: var(--muted);
+    }
+    .kicker {
+      display: inline-block;
+      font-size: .78rem;
+      font-weight: 750;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--blue);
+    }
+    .home-link {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 20;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(244, 241, 234, .92);
+      color: var(--ink);
+      font-size: .8rem;
+      text-decoration: none;
+    }
+    .home-link:hover { border-color: var(--blue); }
+    a { color: #244fc4; text-underline-offset: 3px; }
+    a:focus-visible { outline: 3px solid #e29a3a; outline-offset: 2px; }
+    code {
+      font: 13.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: #efe9dc;
+      border-radius: 5px;
+      padding: .08em .34em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      margin: 16px 0;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      overflow: auto;
+      font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    figure {
+      margin: 22px 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+    }
+    figure img, figure svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      background: #fff;
+    }
+    figcaption {
+      margin: 10px 6px 4px;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .92rem;
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 10px 8px 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    th { color: var(--muted); font-weight: 650; font-size: .78rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px;
+    }
+    .note {
+      border-left: 4px solid var(--amber);
+      padding: 2px 0 2px 14px;
+      color: var(--muted);
+    }
+    footer { margin-top: 56px; color: var(--muted); font-size: .9rem; }
+    @media (max-width: 760px) {
+      main { padding-top: 56px; }
+      .home-link { top: 12px; left: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <a class="home-link" href="/">← Silent Star</a>
+<main>
+  <p class="kicker">X-Ray · Agent 工具链</p>
+  <h1>ZCode 之后我又拆了 MiniMax 和 Qoder，GLM 对话没有读回那份 Git 包</h1>
+  <p class="lede">网上传编程 Agent 会静默上传仓库。<a href="/posts/zcode-repo-snapshot/">上一篇</a>把本机 ZCode 3.10.1 对上了。同一天我在另一台 Mac 上拆 MiniMax Code 3.0.68 和 Qoder CN 0.3.3，再回到本机看 GLM 运行时会不会把已经传走的快照用进对话。</p>
+
+  <p>三家客户端都带着云端代码相关实现。打出来的包不一样，开关也不一样。</p>
+
+  <figure>
+    <img src="01-three-payloads.svg" alt="ZCode 传含 Git 的快照，MiniMax 和 Qoder 远程索引传源文件 ZIP" width="900" height="320">
+    <figcaption>ZCode 的包能还原 Git 历史。后两家若打开远程索引，传的是当前源文件，给 embedding 用。</figcaption>
+  </figure>
+
+  <h2>MiniMax 桌面版还留着 ZIP 索引，这台机器没跑过</h2>
+  <p>应用在 <code>/Applications/MiniMax Code.app</code>，短版本 3.0.68。asar 大约 461 MB。公开仓库 <code>MiniMax-AI/minimax-code</code> 的 TUI 0.4.12 已经拆掉工作区索引。桌面版还留着完整子系统，名字叫 workspace indexing。代码会把用户选中的项目打成 <code>workspace.zip</code>，旁边再写一份 <code>manifest.json</code>，交给远程 worker。</p>
+  <p>本地 SQLite 表 <code>local_runtime_workspace_indexing_revisions</code> 的字段里有 <code>archive_oss_key</code>、<code>embedding_model</code>、<code>dimensions</code>。这条路是给语义搜索用的。asar 里搜不到 <code>pack-objects</code>。</p>
+  <p>开关在 <code>resolveWorkspaceIndexingPreference</code>。</p>
+  <pre>enabled = forced || persisted === true
+forced  = runtimeOwnerKind !== 'tui'
+          && (internalBuild || buildEnv === 'test')</pre>
+  <p>正式桌面版默认关着，要把偏好写成 true 才会开。另外 <code>isWorkspaceIndexingSessionEligible</code> 要求 <code>isDefaultWorkspace === false</code>，避免把应用自己的回退目录传上去。注释写得很直白，旧记录如果缺这个字段，把 <code>undefined</code> 当成合格，会扫到应用自己的 fallback 文件夹。</p>
+  <p>这台机器的 <code>~/.minimax/v2/sqlite/runtime-state.sqlite</code> 里，<code>local_runtime_workspace_indexing_sessions</code> 和 <code>local_runtime_workspace_indexing_revisions</code> 都是 0 行。<code>local_runtime_file_api_uploads</code> 也是 0。代码在，上传记录没有。</p>
+  <p><code>eval_snapshot</code> 我只看到过一次超时失败。后来聊天成功，没有对应的快照行。桌面版有没有在对话里另走一条静默快照，这台机器给不出成功样本。</p>
+
+  <h2>Qoder CN 把远程索引写进产品表里关了</h2>
+  <p>另一台 Mac 装着 Qoder CN 0.3.3。插件 <code>qoder-context</code> 版本 <code>1.0.51.fa026ec3</code>。<code>qoder-search.bundle.mjs</code> 里有完整远程索引。本地 <code>mtree</code> 扫工作区，算 Merkle。远端比对之后，未同步文件读 <code>fileContent</code>，deflate 打成 <code>batch_N.zip</code>，<code>PUT</code> 到 <code>/algo/api/v2/service/codebase/file/upload</code>。模型写死 <code>text-embedding-v4</code>，512 维。</p>
+  <p>跳过 <code>node_modules</code>、<code>.git</code>、<code>dist</code>、<code>out</code>、<code>build</code>、<code>coverage</code>，再叠加 gitignore。Git watch 只用 <code>status</code>、<code>diff</code>、<code>rev-parse</code>、<code>hash-object</code> 做指纹，不打包 objects。</p>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>能力</th>
+          <th>产品 ID <code>qoder</code></th>
+          <th>产品 ID <code>qoder-cn</code></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>远程代码索引</td>
+          <td>开</td>
+          <td>关</td>
+        </tr>
+        <tr>
+          <td>云端搜工作区</td>
+          <td>开</td>
+          <td>关</td>
+        </tr>
+        <tr>
+          <td>索引设置界面</td>
+          <td>开</td>
+          <td>关</td>
+        </tr>
+        <tr>
+          <td>知识库远程配置</td>
+          <td>开</td>
+          <td>关</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>两张表写在同一份插件里。host 里 <code>dk()</code> 直接返回 <code>qoder-cn</code>。进程环境 <code>QODER_PRODUCT_ID</code> 也是 <code>qoder-cn</code>。daemon 启动时不创建远程 client。<code>tryRemoteSync</code> 第一行看到 <code>remoteCodeIndexing</code> 为 false 就返回。国内网关地址 <code>https://gateway.qoder.com.cn</code> 和国际地址 <code>https://repo2.qoder.sh</code> 并排写在同一张 endpoint 表里。</p>
+
+  <figure>
+    <img src="02-qoder-gate.svg" alt="发提示词后先做本地 Merkle，CN 产品表把远程上传关掉" width="900" height="420">
+    <figcaption>22 点 55 分打开整个 code 目录，本地扫了约一分钟。codebaseId 从头到尾是 null。</figcaption>
+  </figure>
+
+  <p>2026 年 9 月 18 日晚上 22 点 53 分，日志写 <code>knowledge remote config disabled by product profile</code>。22 点 55 分打开 <code>/Users/lifcc/Desktop/code</code>，<code>UserPromptSubmit</code> 触发 <code>mtree sync begin</code>，<code>codebaseId</code> 仍是 null。CLI 打出 <code>registerWorkspace skipped: non-target org</code>。22 点 57 分 <code>mtree sync end</code>，<code>fileCount</code> 等于 100000，<code>codebaseId</code> 还是 null。</p>
+  <p>本地 <code>index-settings.v1.json</code> 里 <code>autoIndex</code> 为 true，树里大约 25 万文件、10.9 万目录，索引文件数顶在 10 万。这是本机扫盘。没有 <code>qoder-search-indexing.log</code>。那份日志只在真正跑 <code>workspace_sync</code> 时写。</p>
+  <p>自动上传还有文件数门槛。自动触发在文件数大于等于 10000 时跳过。硬顶大于 100000 会失败。这台机器即使打开远程，自动路径也会被 10 万文件挡住。</p>
+  <p>国际版默认开，是从 CN 包里那张 <code>qoder</code> 表读出来的。我没有另装国际版客户端，也没有国际版运行日志。同一份上传实现，换产品 ID 就会走开着的配置。国际安装包如果换了插件或改写 flag，实际行为可能不一样。</p>
+
+  <h2>GLM 对话没有把快照读回来</h2>
+  <p>回到本机 ZCode。发提示词时 host 调用 <code>scheduleRepoSnapshotSidecar</code>，错误被 <code>catch</code> 掉。紧接着 <code>await session/send</code>。这一轮 GLM 等不到索引建完。</p>
+
+  <figure>
+    <img src="03-glm-sidecar.svg" alt="快照 sidecar 与 GLM session/send 并行，对话读本地磁盘" width="900" height="300">
+    <figcaption>采集函数和对话请求是两条腿。模型这一轮用不上一秒钟前才开始打的包。</figcaption>
+  </figure>
+
+  <p><code>zcode.cjs</code> 里搜不到 <code>snapshot_id</code>，也搜不到 <code>/api/v1/snapshot</code>。asar 里和仓库快照有关的 HTTP 只剩 <code>GET /api/v1/snapshot/upload-credential</code>。没有 search、status、query、retrieve。</p>
+  <p>本机 3 份 <code>model-io</code> 打给 <code>GLM-5.3</code>。请求字段是 <code>messages</code>、<code>tools</code>、<code>system</code> 这类。没有 snapshot 字段。挂给模型的工具是 Agent、Read、Bash、Edit、Write、WebSearch 等。22 份 transcript 里实际出现的工具名是 Bash、Read、TodoWrite。agent 在读磁盘。</p>
+  <p>设置里的即时搜索是 <code>instantGrepIndexingEnabled</code>，本地 grep。和仓库快照上传分开。</p>
+  <p>服务端拿得到 AES 密钥。包能解开。拿去训练或以后做索引，客户端证明不了。3.10.1 的对话路径没有把快照读回来。</p>
+
+  <h2>对照</h2>
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>ZCode 3.10.1</th>
+          <th>MiniMax 3.0.68</th>
+          <th>Qoder CN 0.3.3</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>上传物</td>
+          <td>工作区文件加整个 <code>.git/</code></td>
+          <td><code>workspace.zip</code></td>
+          <td>源文件 ZIP 批次</td>
+        </tr>
+        <tr>
+          <td>目的</td>
+          <td>仓库快照，接口名 snapshot</td>
+          <td>远程 embedding / 语义搜</td>
+          <td>远程 embedding / 语义搜</td>
+        </tr>
+        <tr>
+          <td>默认</td>
+          <td>host 不读设置页开关</td>
+          <td>关，除非偏好写成 true</td>
+          <td>国内产品表关掉远程</td>
+        </tr>
+        <tr>
+          <td>这台机器</td>
+          <td>公开小仓已传成功</td>
+          <td>索引表 0 行</td>
+          <td>本地扫了 10 万文件，未上传</td>
+        </tr>
+        <tr>
+          <td>对话怎么读代码</td>
+          <td>Read / Bash 读磁盘</td>
+          <td>未在这台机器上观察到 ZIP 回读</td>
+          <td>CN 未建立 codebaseId</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="note">这次只覆盖本机 ZCode 3.10.1、另一台 Mac 上的 MiniMax Code 3.0.68 与 Qoder CN 0.3.3。MiniMax 公开 TUI 仓库和桌面版不是同一份二进制。Qoder 国际版只看到 CN 包里的产品表。服务端怎样保存和解开这些包，我没有证据。</p>
+
+  <footer>
+    <p>ZCode 采集细节见 <a href="/posts/zcode-repo-snapshot/">上一篇</a>。MiniMax 源码在桌面 asar 的 workspace-indexing。Qoder 源码在 <code>~/.qoder-cn/plugins/cache/.../qoder-search.bundle.mjs</code>。</p>
+    <p><a href="/">回到首页</a></p>
+  </footer>
+</main>
+</body>
+</html>
