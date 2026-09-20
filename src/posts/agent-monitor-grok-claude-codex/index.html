@@ -8,7 +8,7 @@
   <meta name="date" content="2026-08-25">
   <meta name="description" content="从 Grok Build 公开源码、Claude Code 2.1.241 发布二进制和 Codex 0.149.1 Rust 源码，拆开三种长任务监控方式。">
   <meta name="tags" content="Agent, Claude Code, Codex, Grok Build, 逆向分析">
-  <style>
+<style>
     :root {
       color-scheme: dark;
       --bg: #080b10;
@@ -254,12 +254,12 @@
     <header class="hero">
       <p class="eyebrow">Agent monitor source notes</p>
       <h1>三个 Coding Agent 怎么等长任务</h1>
-      <p class="deck">我从一行 <code>1 monitor still running</code> 往下查，读了 Grok Build 和 Codex 的公开源码，又把 Claude Code 2.1.241 的实际发布二进制拆开。三家的差别落在一件很具体的事上。任务没动静时，谁在等。</p>
+      <p class="deck">一张 Grok 截图里，主会话已经停下，输入框上方却还显示 <code>1 monitor still running</code>。我想知道后台任务怎样让 Agent 继续工作，于是对照 Grok Build、Codex 的公开源码和 Claude Code 2.1.241 的发布二进制，沿着进程输出、通知队列和模型调用往下查。</p>
       <p class="meta">Grok Build 1.0.5 · Claude Code 2.1.241 · Codex CLI 0.149.1 · 记录于 2026 年 8 月 25 日</p>
 
       <div class="answer">
         <strong>Grok 和 Claude Code 可以让普通进程等状态，再由事件推进主会话。Codex 0.149.1 的普通后台终端仍由模型调用 <code>write_stdin</code> 查询。</strong>
-        <p>三者都可能出现轮询。Grok 和 Claude Code 可以把轮询留在本地脚本里，不让模型陪着醒。Codex 能把一次查询挂起很久，回合数会少一些，下一次读取仍要由模型发起。</p>
+        <p>三者都能运行后台进程，区别在于等待是否需要模型继续发起查询。Grok 和 Claude Code 的 Monitor 可以先由本地脚本等条件，再通知会话；这里检查的 Codex 普通后台终端路径，仍由模型调用工具读取结果。</p>
       </div>
 
       <div class="hero-visual" role="img" aria-label="Grok、Claude Code 和 Codex 等待长任务的三条路径">
@@ -305,8 +305,8 @@
           <p class="kicker">01 · The question</p>
           <h2>轮询本身没有错，模型陪着轮询才贵</h2>
           <p>这次问题来自一张 Grok 终端截图。Agent 已经工作了九分多钟，输入框上方还挂着 <code>1 monitor still running</code>。主会话看起来停了，后台的监控却没有消失。它像是在等 monitor 自己结束，随后再继续做事。</p>
-          <p>把一条耗时两分钟的测试放到后台，几次查询没有多大影响。换成模型训练、视频生成或大型构建，任务一跑就是半小时。Agent 每隔十几秒读一次日志，每次都要发起工具调用，输出随后进入会话，模型再判断一次。GPU 没快一秒，聊天记录已经长了一截。</p>
-          <p>这里要分清三个动作。</p>
+          <p>两分钟的测试查几次状态，影响可能不大。训练、视频生成或大型构建运行半小时以后，查询方式就值得单独看：shell 定时查进程只消耗本地资源，模型反复调用工具则还会增加请求、上下文和推理开销。轮询频率相同，参与等待的组件可能不同。</p>
+          <p>为避免混淆，下面把本地检查、模型查询和事件触发分别列出。</p>
 
           <div class="three">
             <div class="card">
@@ -326,13 +326,13 @@
             </div>
           </div>
 
-          <p>前两种都叫轮询，成本差得很远。一个安静的 shell 循环每 45 秒查一次远端 worker，只花本机进程和一次 SSH。模型每 45 秒醒一次，会多出工具调用、上下文和推理。本文比较的就是这个位置。</p>
+          <p>例如，每 45 秒通过 SSH 查询 worker，可以一直由脚本完成。只有脚本报告状态变化时才调用模型，与每次检查后都让模型判断是否继续等待，消耗的模型回合数不同。</p>
         </section>
 
         <section id="grok">
           <p class="kicker">02 · Grok Build</p>
           <h2>Grok 把等待交给 monitor，主会话等输出</h2>
-          <p>Grok Build 的公开代码给得最完整。配置注册表里有 <code>Feature::AutoWake</code>，对应 <code>features.auto_wake</code>，默认开启。后台命令完成、subagent 返回、monitor 产生事件时，空闲的主会话都可以再开一个回合。</p>
+          <p>Grok Build 的公开代码中，配置注册表把 <code>Feature::AutoWake</code> 映射到 <code>features.auto_wake</code>，默认开启。后台命令完成、subagent 返回或 monitor 产生事件后，空闲会话可以继续执行。</p>
           <p>Monitor 工具的说明写得很直接。脚本的每一行标准输出都会成为一次主 Agent 唤醒。说明同时要求脚本控制输出量，只打印完成、失败或取消这类值得处理的状态。原始日志不能整段灌进去，带管道的过滤还要用行缓冲，免得事件在用户态缓冲几分钟。</p>
 
           <div class="trace" aria-label="Grok Monitor 执行路径">
@@ -346,7 +346,7 @@
 
           <div class="codebox">
             <span class="lang">bash</span>
-            <pre><code>while true; do
+<pre><code>while true; do
   check_workers
 
   if all_finished; then
@@ -363,11 +363,11 @@
 done</code></pre>
           </div>
 
-          <p>这段脚本仍然在轮询。模型没有跟着它每 45 秒醒来。状态没变，shell 继续睡。最后一行出现以后，Grok 才回来检查产物。用户这时也可以继续输入别的问题，后台 monitor 不会占着当前对话回合。</p>
+          <p>截图中的脚本仍在每 45 秒轮询，只是没有在每次检查后输出。全部完成或进程异常时，它才打印状态，让 Grok 检查后续产物；等待期间，用户仍可继续输入其他问题。</p>
 
           <div class="callout good">
-            <p><strong><code>1 monitor still running</code> 是一条活任务提示。</strong></p>
-            <p>它表示后台还有能够唤醒 Agent 的工作。脚本还在跑，主 Agent 已经可以停下来。monitor 完成或产生事件时，会话再接着走。</p>
+            <p>界面上的 <code>1 monitor still running</code> 表示后台还有监控任务。</p>
+            <p>它不要求主模型一直执行。接下来是否开启回合，还要看脚本输出或退出事件怎样进入会话；这条运行时路径在后续文章中继续检查。</p>
           </div>
         </section>
 
@@ -380,7 +380,7 @@ done</code></pre>
 
           <div class="codebox">
             <span class="lang">sha256</span>
-            <pre><code>1495eb7c42d3b4451f5f1cd38b6d498d22a4a38c802bc2be5c1cf1795e64820d</code></pre>
+<pre><code>1495eb7c42d3b4451f5f1cd38b6d498d22a4a38c802bc2be5c1cf1795e64820d</code></pre>
           </div>
 
           <p>这个哈希与 Anthropic 随 Agent SDK 0.3.241 发布的 darwin-arm64 清单一致。清单对应 Claude Code 2.1.241，Git 提交为 <code>c87e2742fc9ad269ec8920460d00a091b1e410f0</code>。文件签名的标识是 <code>com.anthropic.claude-code</code>，签发方为 Anthropic PBC。</p>
@@ -403,7 +403,7 @@ done</code></pre>
 
           <div class="codebox">
             <span class="lang">minified js</span>
-            <pre><code>onStdout: p.onData
+<pre><code>onStdout: p.onData
 // ...
 kind: "monitor"</code></pre>
           </div>
@@ -416,7 +416,7 @@ kind: "monitor"</code></pre>
             <div class="trace-row"><span class="n">05</span><code>getCommandsByMaxPriority("next")</code><span>主查询循环接走通知，开始或继续模型回合</span></div>
           </div>
 
-          <h3>一行输出不会粗暴地变成一次立即中断</h3>
+          <h3>stdout 怎样合并成通知</h3>
           <p>SDK 的注释说每一行 stdout 都是事件。实际实现多了本地整理。<code>HSl</code> 按换行切开内容，非空行成为事件候选。短时间内连着到达的几行可以合成一条通知，原始缓冲区也有硬上限。</p>
 
           <div class="numbers">
@@ -427,14 +427,14 @@ kind: "monitor"</code></pre>
             <div class="number"><b>30 s</b><span>持续超限停止</span></div>
           </div>
 
-          <p><code>PBi</code> 还维护一个速率桶。Monitor 可以短时间连发 10 次，之后每两秒恢复一个名额。输出过快时，多余事件会被压住。超限状态持续 30 秒，Claude Code 会停掉 Monitor，并送出内部提示。训练脚本即使疯狂刷日志，也不会无限制造模型回合。</p>
+          <p><code>PBi</code> 还维护速率桶：允许短时间连发 10 次，之后每两秒恢复一个名额。超限持续 30 秒时，客户端停止 Monitor 并生成内部提示。这些限制控制进入通知队列的事件量，因此监控脚本不宜直接转发全部训练日志。</p>
 
           <h3><code>next</code> 决定事件什么时候进入模型</h3>
-          <p><code>xwe</code> 生成 Monitor event，随后调用 <code>enqueuePendingNotification</code>。实际代码里的队列字段只有两行，却把唤醒方式交代得很清楚。</p>
+          <p><code>xwe</code> 生成 Monitor event，再调用 <code>enqueuePendingNotification</code>。下面的两个队列字段说明它采用哪种通知优先级。</p>
 
           <div class="codebox">
             <span class="lang">queue item</span>
-            <pre><code>mode: "task-notification",
+<pre><code>mode: "task-notification",
 priority: "next"</code></pre>
           </div>
 
@@ -460,7 +460,7 @@ priority: "next"</code></pre>
 
           <div class="codebox">
             <span class="lang">rust</span>
-            <pre><code>if request.input.is_empty() {
+<pre><code>if request.input.is_empty() {
     time_ms.clamp(
         MIN_EMPTY_YIELD_TIME_MS,
         self.max_write_stdin_yield_time_ms,
@@ -490,7 +490,7 @@ priority: "next"</code></pre>
             </div>
           </div>
 
-          <p>这套实现已经比每十秒刷一次状态安静很多。它仍由查询推动。当前回合若已经交还用户，普通后台终端完成通常不会仅凭这个状态自行开一个新回合。</p>
+          <p>长 poll 减少了短间隔查询，但续接仍由工具调用推动。若当前回合已经交还用户，这里检查的普通后台终端完成路径通常只更新状态，不会单靠退出事件创建新模型回合。</p>
 
           <p>源码里还能看到一个 <code>awaiter.toml</code>。它把后台终端上限提高到一小时，并要求 awaiter 重复调用工具，逐步增加等待时间。<code>agent/role.rs</code> 上方写着 <code>Awaiter is temp removed</code>，整段角色注册已经注释。0.149.1 默认角色表没有启用它，普通后台终端继续走 <code>write_stdin</code>。</p>
 
@@ -518,8 +518,8 @@ priority: "next"</code></pre>
             </table>
           </div>
 
-          <p>如果只看截图里的监控体验，我更偏向 Grok 和 Claude Code。普通进程负责盯明确条件，模型只处理有意义的变化。Codex 的长 poll 已经把查询频率压得很低，长任务跑得越久，事件通知省下的回合越明显。</p>
-          <p>这个判断只覆盖后台长任务监控，不代表三款工具的整体能力排名。Codex 的公开源码最容易核验，Grok 的事件语义最直观，Claude Code 在发布二进制里做了最细的输出整理。三家处理的是同一类麻烦，取舍各有侧重。</p>
+          <p>对截图这类长任务，我更倾向让普通进程先等明确条件，再由 Grok 或 Claude Code 的 Monitor 通知模型。Codex 的长 poll 也能减少查询频率，但两种方式实际省下多少请求，需要结合任务时长和等待参数测量。</p>
+          <p>这个偏好限于文中检查的版本和监控场景。Grok 的公开代码展示了事件语义，Claude Code 的二进制包含输出整理与入队逻辑，Codex 的 Rust 源码则能直接追踪 poll；本文没有据此比较三款工具的整体能力。</p>
         </section>
 
         <section id="practice">
@@ -541,7 +541,7 @@ priority: "next"</code></pre>
 
           <div class="codebox">
             <span class="lang">bash</span>
-            <pre><code>while true; do
+<pre><code>while true; do
   if test -f output/final.json; then
     echo DONE
     exit 0
@@ -556,7 +556,7 @@ priority: "next"</code></pre>
 done</code></pre>
           </div>
 
-          <p>远端接口可以把间隔放到 30 秒以上，本地文件和进程可以更短。管道要留意缓冲，stderr 也要按工具语义处理。最要紧的一条很朴素。没有需要 Agent 处理的事，就别打印。</p>
+          <p>远端接口可按响应时效设置检查间隔，本地文件和进程另行处理；使用管道时还要留意行缓冲与 stderr。脚本应只报告会改变下一步动作的状态，否则事件通知也会变成高频查询。</p>
         </section>
 
         <section id="boundary">
@@ -564,7 +564,7 @@ done</code></pre>
           <h2>Monitor 适合一段会话，长期作业仍要调度系统</h2>
           <p>Grok 和 Claude Code 的 Monitor 都受会话生命周期约束。关闭终端以后，后台任务不会随着恢复会话自动重建。Codex 的后台 terminal session 也不适合承担跨设备、跨重启的长期可靠运行。</p>
           <p>半小时训练、一次 CI、一个 PR 状态或当前会话里的日志观察，很适合交给 Monitor。几天后的定时任务、机器重启后还要继续的训练、需要审计和重试的生产作业，应该交给 CI、守护进程或调度系统。Agent 接收终态，再做解释和后续动作。</p>
-          <p>那行 <code>1 monitor still running</code> 的意思到这里已经很清楚。任务还在运行，主 Agent 已经可以停下来。等值得处理的事件出现，它再回来。</p>
+          <p>这次先定位了等待和通知发生的位置。还需要继续追问：进程结束以后，事件只更新了界面，还是进入模型输入并开启了下一回合？后续检查会沿这条路径展开。</p>
         </section>
 
         <section id="sources">

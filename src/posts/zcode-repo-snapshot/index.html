@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ZCode 会在发提示词时打包 Git 历史，我在本机对上了</title>
+  <title>我在 ZCode 的本地快照里找到了 Git 历史</title>
   <meta name="date" content="2026-09-18">
-  <meta name="description" content="拆本机 ZCode 3.10.1。checkpoints 里有仓库快照和加密包，.git/objects/pack 整包进清单。设置页开关改 UI，host 采集路径不读这两个字段。">
+  <meta name="description" content="检查本机 ZCode 3.10.1 与 8 月 16 日留下的仓库快照：Git 目录绕过部分文件过滤，本地状态显示部分小包已接收，设置页开关未进入已检查的 host 调度路径。">
   <meta name="tags" content="Agent, Agent 工具链, ZCode">
   <style>
     :root {
@@ -143,22 +143,22 @@
   <a class="home-link" href="/">← Silent Star</a>
 <main>
   <p class="kicker">X-Ray · ZCode</p>
-  <h1>ZCode 会在发提示词时打包 Git 历史，我在本机对上了</h1>
-  <p class="lede">网上传它会静默上传全量 Git 历史。我本机装着 3.10.1，把 <code>~/.zcode</code> 翻开以后，清单、加密包和上传状态都还在。</p>
+  <h1>我在 ZCode 的本地快照里找到了 Git 历史</h1>
+  <p class="lede">本机 ZCode 的 checkpoints 目录里，留着六个工作区的仓库快照。harness 那份清单总计 965 MB，其中 961 MB 来自 Git 目录。网上关于上传 Git 历史的讨论，在这里有了可以继续核对的材料：文件清单、加密包，还有客户端记录的上传状态。</p>
 
-  <h2>本机先对上的东西</h2>
-  <p>应用在 <code>/Applications/ZCode.app</code>。版本字符串是 3.10.1.6272。数据目录在 <code>~/.zcode/v2/checkpoints/</code>。六个工作区各有一份 <code>repo_snapshot_manifest/v2</code> 清单。文件时间都落在 2026 年 8 月 16 日晚上 20 点 08 分到 23 点 41 分。</p>
-  <p>状态文件里写着 <code>captureStage</code> 等于 <code>prompt</code>。你每发一句，它就试图打一次仓库快照。</p>
-  <p>清单里的主体是 <code>.git/</code>。harness 那次总共 965 MB，其中 961 MB 是 Git 目录。最大的 pack 文件有 915 MB。page-lingo、vibeguard、remem 也是同样的结构。工作区源码反而被 1 MB 单文件上限拦住了不少，Git 的 pack 没有这道闸。</p>
+  <h2>快照里留下了什么</h2>
+  <p>我检查的应用位于 <code>/Applications/ZCode.app</code>，版本字符串是 3.10.1.6272。快照在 <code>~/.zcode/v2/checkpoints/</code>，六个工作区各有一份 <code>repo_snapshot_manifest/v2</code> 清单，文件时间落在 2026 年 8 月 16 日晚上 20 点 08 分到 23 点 41 分。这些是当时留下的记录，需要与现在检查的客户端代码分开看。</p>
+  <p>harness 清单里最大的 pack 文件有 915 MB。page-lingo、vibeguard、remem 也有类似结构：Git 目录占了大量空间，工作区里的部分源码文件却被 1 MB 的单文件上限拦住了。两类文件经过的过滤不同，下文再展开。</p>
+  <p>状态文件的 <code>captureStage</code> 是 <code>prompt</code>。结合客户端的调度代码，可以看到发送提示词会触发仓库快照流程。不过，触发采集、生成包和上传成功是几件事，不能只看见快照目录就认定整个仓库已经传走。</p>
 
-  <h2>传出去了几个</h2>
+  <h2>小包显示已接收，大包还在 pending</h2>
   <div class="card">
     <table>
       <thead>
         <tr>
           <th>工作区</th>
           <th>GitHub</th>
-          <th>快照</th>
+          <th>本地记录的状态</th>
           <th>体积</th>
         </tr>
       </thead>
@@ -166,87 +166,86 @@
         <tr>
           <td>remem</td>
           <td>公开</td>
-          <td>服务端已接收</td>
+          <td>已接收</td>
           <td>增量 103 KB，说明此前已有 baseline</td>
         </tr>
         <tr>
           <td>voice-input</td>
           <td>公开</td>
-          <td>服务端已接收</td>
+          <td>已接收</td>
           <td>185 KB</td>
         </tr>
         <tr>
           <td>ultrastudio-dev-videos</td>
           <td>没有 git</td>
-          <td>服务端已接收</td>
+          <td>已接收</td>
           <td>空包</td>
         </tr>
         <tr>
           <td>harness</td>
           <td>公开</td>
-          <td>卡在 pending</td>
+          <td>pending</td>
           <td>加密包 945 MB</td>
         </tr>
         <tr>
           <td>vibeguard</td>
           <td>公开</td>
-          <td>卡在 pending</td>
+          <td>pending</td>
           <td>加密包 162 MB</td>
         </tr>
         <tr>
           <td>page-lingo</td>
           <td>私有</td>
-          <td>卡在 pending</td>
+          <td>pending</td>
           <td>加密包 287 MB</td>
         </tr>
       </tbody>
     </table>
   </div>
-  <p>三个小包对上了 <code>lastAcceptedManifestHash</code>，pending 目录也空了。代码里这两件事和清掉 <code>activeUpload</code> 是同一次写入。大包还躺在本地，attemptCount 都是 1。对象上传超时写死 60 秒，几百 MB 在这个时限里传不完。</p>
-  <p>私有仓库 page-lingo 没传成功。已经传走的三个，内容本来就在公开 GitHub 上。我把五个仓库的全部历史 blob 扫过一遍，没有真实的密钥、私钥或带口令的远程地址。这是这几个仓库的运气，不是采集器替你挡掉了 Git 历史。</p>
+  <p>表格里的“已接收”有对应的客户端状态：三个小包都有 <code>lastAcceptedManifestHash</code>，pending 目录也已清空。代码会在同一次状态写入中更新这个哈希、清掉 <code>activeUpload</code>，因此这些记录支持客户端已完成上传的判断。它们不说明服务端后来保留了多久、怎样使用内容。</p>
+  <p>三个大包仍在本地，<code>attemptCount</code> 都是 1。实现给对象上传设了 60 秒超时，但仅凭包体积和这个时限，不能断定每个 pending 都由超时导致。能确认的是，私有仓库 page-lingo 这份记录没有显示上传成功。</p>
+  <p>remem 和 voice-input 的仓库本来就是公开的，另一个已接收记录对应空包。我还扫描了五个 Git 仓库的全部历史 blob，没有发现真实密钥、私钥或带口令的远程地址。这个结果只适用于这几份仓库，不能说明采集器会替其他用户过滤 Git 历史里的凭据。</p>
 
-  <h2>一次发送之后怎么走</h2>
-  <p>host 进程里 sidecar 是直接 <code>new</code> 出来的。本地会话在 <code>sessionSend</code> 之前调用 <code>scheduleRepoSnapshotSidecar</code>。远程工作区如果带了 <code>workspaceIdentity</code>，这一步会跳过。</p>
+  <h2>发送提示词后，客户端做了哪些事</h2>
+  <p>在检查的 3.10.1 代码里，host 进程直接创建了仓库快照 sidecar。本地会话会在 <code>sessionSend</code> 之前调用 <code>scheduleRepoSnapshotSidecar</code>；远程工作区带有 <code>workspaceIdentity</code> 时则跳过。流程还需要登录 token，拿不到 token 或上传凭证，就不会继续打包。</p>
   <figure>
     <img src="02-send-pipeline.png" alt="发送提示词之后的采集、加密和上传流程" width="900" height="2400">
-    <figcaption>从按下发送到对象存储。没 token 或拿不到上传凭证，打包不会开始。</figcaption>
+    <figcaption>根据客户端代码还原的流程。缺少 token 或拿不到上传凭证时，后续打包不会开始。</figcaption>
   </figure>
-  <p>有登录 token 才会继续。下一步是 <code>GET /api/v1/snapshot/upload-credential</code>，查询参数是工作区绝对路径的 sha256 前 12 位。这个短哈希就是 checkpoints 目录名。</p>
-  <p>服务端返回 snapshot_id、RSA 公钥和可选的体积上限。客户端把文件打成 tar.gz，用 AES-256-CTR 加密，IV 明文写在密文前面，再用这把公钥把内容密钥包起来。私钥在服务端。这是防传输途中被截，厂商自己能解开。</p>
-  <p>包里还有 <code>meta/prompt.json</code>。字段 <code>content</code> 就是那一轮提示词原文。仓库状态和你刚说的话被放进同一个 snapshot_id。</p>
+  <p>获取凭证用的是 <code>GET /api/v1/snapshot/upload-credential</code>。查询参数取工作区绝对路径 sha256 的前 12 位，checkpoints 目录也用这个短哈希命名。返回值包括 snapshot_id、RSA 公钥，以及可选的体积上限。</p>
+  <p>文件随后被打成 tar.gz，再用 AES-256-CTR 加密。IV 放在密文前面，内容密钥由服务端给出的 RSA 公钥封装。按这个设计，持有对应私钥的服务端可以解开内容密钥；看到“加密包”不能理解成厂商也读不到。包里还包含 <code>meta/prompt.json</code>，其中 <code>content</code> 保存了那一轮提示词，和仓库状态归在同一个 snapshot_id 下。</p>
 
-  <h2>为什么 Git 历史进得去</h2>
-  <p>工作区文件走 <code>git ls-files --cached --others --exclude-standard</code>，尊重 gitignore。Git 目录是另一条腿，<code>walkGitMetadataFiles</code> 把整个 <code>.git</code> 递归进去，两份列表再合并。</p>
-  <p>过滤函数里，路径只要含有 <code>.git</code> 这一段，立刻放行。后面的密钥文件名、1 MB 上限、前 8 KB 空字节检测，对 pack 文件都用不上。</p>
+  <h2>为什么文件过滤没有拦住 Git 历史</h2>
+  <p>客户端分开收集工作区文件和 Git 元数据。前者使用 <code>git ls-files --cached --others --exclude-standard</code>，会应用 gitignore；后者由 <code>walkGitMetadataFiles</code> 递归扫描整个 <code>.git</code>，最后合并两份列表。</p>
+  <p>区别出在过滤顺序：路径只要包含 <code>.git</code> 这一段，就会直接收录。后面的敏感文件名检查、1 MB 上限和前 8 KB 空字节检测都不再执行，因此 pack 文件可以绕过这些检查。</p>
   <figure>
     <img src="03-scan-filter.png" alt="扫描过滤流程，.git 路径无条件收录" width="900" height="2200">
-    <figcaption>.git 排在过滤第二位并直接收录。密钥 denylist 拦得了工作区里的 .env，拦不住 objects/pack。</figcaption>
+    <figcaption>图中的过滤顺序来自已检查的实现。工作区里的 .env 可以被排除，Git pack 中的历史内容没有经过同一套检查。</figcaption>
   </figure>
-  <p>密钥 denylist 本身写得很勤快。<code>.env</code>、<code>.npmrc</code>、<code>id_rsa</code>、<code>*.pem</code>、<code>*.key</code>，文件名带 token 或 secret 的也会丢掉。harness 跟踪着的 <code>.env.example</code> 当时就在树上，8 月那次清单里没有它。工作区这一半确实在滤。问题是 pack 文件名看起来像普通二进制，历史里提交过一次又删掉的密钥，照样整包进 tar。</p>
+  <p>工作区文件的排除名单包括 <code>.env</code>、<code>.npmrc</code>、<code>id_rsa</code>、<code>*.pem</code>、<code>*.key</code>，以及文件名含 token 或 secret 的项目。harness 当时跟踪着 <code>.env.example</code>，8 月那份清单里没有它，这与工作区过滤相符。但曾经提交、后来删掉的内容仍可能留在 Git 历史中；只检查当前文件名，处理不了已经被打进 pack 的内容。</p>
 
-  <h2>设置页那个开关</h2>
-  <p>路径在设置，索引库，代码库。第一个开关叫「索引新文件夹」，文案只写自动索引少于五万文件的新目录。紧挨着的「即时搜索」开关明确写了数据存在本地。</p>
+  <h2>设置页关着，host 有没有读到</h2>
+  <p>设置里的“索引库—代码库”有“索引新文件夹”开关，说明是自动索引少于五万文件的新目录。旁边的“即时搜索”则写明数据存在本地。这两项文案本身，不能用来判断仓库快照调度是否停止。</p>
   <figure>
-    <img src="01-settings-toggle.png" alt="设置页开关只写入 UI 状态" width="720" height="1600">
-    <figcaption>拨动开关会写入 enabled 和 userConfigured。3.10.1 的 host 采集函数不读这两个字段。</figcaption>
+    <img src="01-settings-toggle.png" alt="设置页开关写入的状态与 host 调度读取情况" width="720" height="1600">
+    <figcaption>renderer 会写入开关状态；检查的 3.10.1 host 采集路径没有读取对应的两个设置字段。</figcaption>
   </figure>
-  <p>我查证时 <code>setting.json</code> 里 <code>repoSnapshotIndexingEnabled</code> 是 false，<code>repoSnapshotIndexingUserConfigured</code> 这个字段根本不存在。设置页会显示关闭。renderer 用这两个标志决定勾选状态。host 里 <code>repoSnapshotIndexingEnabled</code> 只出现在 <code>normalizeSettingsPatch</code>，采集调度看不到它。</p>
-  <p>8 月那些快照已经落盘。当时 dual gate 即使存在，也没挡住这次采集。现在看到的 3.10.1 把 sidecar 无条件建起来，发送时继续调度。</p>
+  <p>查证时，<code>setting.json</code> 中 <code>repoSnapshotIndexingEnabled</code> 是 false，<code>repoSnapshotIndexingUserConfigured</code> 不存在。renderer 根据这两个字段显示关闭状态。host 里前一个字段只出现在 <code>normalizeSettingsPatch</code>，没有进入已检查的采集调度条件。</p>
+  <p>这能说明当前检查的 3.10.1 代码没有把这两个设置接入快照调度，不能反推出 8 月 16 日的设置也是同样状态。8 月记录说明快照曾经生成；现在的代码检查说明发送时仍会调度 sidecar。这两部分证据各自回答的问题不同。</p>
 
-  <h2>想停下来可以做什么</h2>
+  <h2>要停掉这条流程，能检查哪些位置</h2>
   <figure>
     <img src="04-how-to-stop.png" alt="退出登录、拦截凭证接口、删除本地 checkpoints" width="720" height="1400">
-    <figcaption>设置页开关建议保持关闭。3.10.1 立刻能拦住的是 token、凭证接口、远程工作区和体积超时。</figcaption>
+    <figcaption>退出登录和阻断凭证请求对应已检查的前置条件。清理本地文件是另一件事，不会删除服务端可能已经收到的副本。</figcaption>
   </figure>
-  <p>退出登录。采集函数第一关就是 <code>tokenProvider()</code>，拿不到 zcodeJwtToken 或 accessToken 就返回。</p>
-  <p>网络层拦 <code>/api/v1/snapshot/upload-credential</code>。凭证失败则后面的扫描和加密都不会开始。</p>
-  <p>删掉 <code>~/.zcode/v2/checkpoints/</code>。我查的时候 pending 里大约还有 1.4 GB，包括 page-lingo 那份私有历史。3.10.1 启动时不会扫描 pending 续传，<code>flushWorkspace</code> 只有采集成功后那一处调用。留着仍然没有好处，信封里的内容密钥就是给服务端解的。</p>
-  <p>设置页那个开关继续关着。以后版本一旦 host 开始读它，这就是用户侧仅有的开关。</p>
+  <p>对检查的这份实现，退出登录会让 <code>tokenProvider()</code> 拿不到 zcodeJwtToken 或 accessToken，采集函数随即返回。另一处可阻断的位置是凭证请求 <code>/api/v1/snapshot/upload-credential</code>：获取失败后，后续扫描和加密不会开始。是否在自己的环境中生效，还需要检查对应版本和网络控制方式。</p>
+  <p>本地文件也值得单独处理。我检查时，<code>~/.zcode/v2/checkpoints/</code> 的 pending 中还有约 1.4 GB，包含 page-lingo 的私有仓库快照。决定删除前，先退出应用，并保留自己需要的调查记录。清理这个目录只处理本机副本，不能撤回已经传出的内容。</p>
+  <p>在检查的 3.10.1 启动路径中，没有发现扫描 pending 并续传的逻辑；<code>flushWorkspace</code> 只在采集成功后有一处调用。设置页开关仍可保持关闭，但是否真正停止这条采集路径，要看相应版本的 host 是否读取它，不能只看界面上的勾选状态。</p>
 
-  <p class="note">这次只拆了本机这一份 3.10.1，以及 8 月 16 日留下的 checkpoints。其他版本、其他账号、服务端怎样存这些包，我没有证据。</p>
+  <p class="note">本文依据本机检查的 ZCode 3.10.1，以及 2026 年 8 月 16 日留下的 checkpoints。没有检查其他版本和账号，也没有验证服务端的留存或训练用途。</p>
 
   <footer>
-    <p>图是从 <code>out/host/index.js</code> 里的函数名还原后导出的。源码在 <code>/Applications/ZCode.app/Contents/Resources/app.asar</code>。</p>
+    <p>流程图根据 <code>out/host/index.js</code> 中的函数还原。检查的客户端代码位于 <code>/Applications/ZCode.app/Contents/Resources/app.asar</code>。</p>
     <p><a href="/">回到首页</a></p>
   </footer>
 </main>

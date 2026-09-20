@@ -7,7 +7,7 @@
   <meta name="date" content="2026-08-24">
   <meta name="description" content="静态拆解 Grok Bot。0.16.0 源码映射用于还原架构，0.24.0 已签名安装包用于复核模型选择、Grok 4.6 支持和每周额度显示。">
   <meta name="tags" content="Grok Bot, Agent, Electron, macOS, 安全">
-  <style>
+<style>
     :root {
       color-scheme: dark;
       --bg: #080a0d;
@@ -386,7 +386,7 @@
       <div>
         <p class="eyebrow">X-Ray · Grok Bot 0.24.0</p>
         <h1>聊天从桌面发出，Agent 在云端动手</h1>
-        <p class="lede">Grok Bot 把一个长期存在的 AI 队友放进每位用户的云端电脑。Mac App 负责身份、界面、连接与人工接管，云端 Host 负责 Agent loop、工具、会话和后台任务。本文现已补到本机 0.24.0 版本。</p>
+        <p class="lede">我检查了 Grok Bot 的桌面包，沿一条用户消息追踪界面、连接服务和云端 Host 的分工。Mac App 处理身份、界面与本机接管，Host 包含 Agent loop、工具和后台任务。本文把 0.16.0 的 source map 分析与本机 0.24.0 的字符串复核分别记录，避免把两个版本当成同一份源码。</p>
         <div class="plain-answer">
           一条消息会穿过 Electron 的受限桥接层，再经 coordinator 连到用户专属 Sand Box。Host 按会话、设置、环境变量与实验配置解析模型，最后才落到内置兜底 <code>grok-4.5</code>。包里已有 Grok 4.6 支持，后端返回的 <code>responseInfo.model</code> 才能说明某一轮实际解析成了哪个模型。
         </div>
@@ -401,8 +401,8 @@
 
     <section class="shell" aria-labelledby="flow-title">
       <p class="section-kicker">一条消息怎么走</p>
-      <h2 id="flow-title">六个环节，把聊天变成持续执行</h2>
-      <p class="section-intro">这张图把本机 App、云端电脑和模型服务放在同一条因果线上。它也解释了为何 Bot 能离线工作，以及本机权限为何另算一层。</p>
+      <h2 id="flow-title">从桌面消息到云端执行</h2>
+      <p class="section-intro">图中按请求经过的组件排列。执行能否在笔记本关闭后继续，需要看云端任务与桌面连接的关系；本机命令的权限则是另一个入口。</p>
 
       <div class="flow" role="img" aria-label="Grok Bot 从消息输入到结果回传的六步流程">
         <article class="node">
@@ -428,11 +428,11 @@
         <article class="node model">
           <span class="num">05</span>
           <h3>Host 驱动 Agent loop</h3>
-          <p>Host 组装上下文、工具和模型请求，默认选择 Grok 4.5。</p>
+          <p>Host 组装上下文、工具和模型请求；未被其他设置覆盖时，检查的配置使用 Grok 4.5 作为兜底。</p>
         </article>
         <article class="node">
           <span class="num">06</span>
-          <h3>工具把结果落进真实系统</h3>
+          <h3>工具执行文件、浏览器等操作</h3>
           <p>插件、浏览器、文件、终端和获准的本机动作完成实际工作。</p>
         </article>
         <div class="return-path">SSE 事件、审批卡、进度与最终消息持续回到桌面和移动端</div>
@@ -455,9 +455,9 @@
     </section>
 
     <section class="shell" aria-labelledby="update-title">
-      <p class="section-kicker">0.24.0 最新复核</p>
+      <p class="section-kicker">本机 0.24.0 补充检查</p>
       <h2 id="update-title">模型已经不止一个名字，先看它在链路里负责什么</h2>
-      <p class="section-intro">我重新拆了当前安装包。0.24.0 的第一方 bundle 没有公开源码映射，所以这次按压缩文件中的稳定字符串和字节位置复核。能确认的是客户端怎样选、怎样发、怎样接收结果。</p>
+      <p class="section-intro">0.24.0 的第一方 bundle 没有公开源码映射，这次按压缩文件中的稳定字符串和字节位置检查。下面记录模型选择相关的客户端配置，不据此确定某个账号最终调用了哪个服务端模型。</p>
       <div class="update-note">
         当前包的硬编码兜底仍是 <code>grok-4.5</code>，参数为 <code>effort high</code>、<code>fast true</code> 和 <code>maxMode true</code>。这只说明没有其他配置命中时客户端会请求什么，不能单凭这一行断定你账号里的每次对话都跑在 Grok 4.5。
       </div>
@@ -510,7 +510,7 @@
     <div class="evidence-wrap">
       <section class="shell" aria-labelledby="evidence-title">
         <p class="section-kicker">源码证据层</p>
-        <h2 id="evidence-title">打开以后能看到的真实分工</h2>
+        <h2 id="evidence-title">0.16.0 source map 中的组件分工</h2>
         <p class="section-intro">下面的架构证据来自首次拆解的 0.16.0 安装包。它保留了 source map，因此可以回到源码文件和行号。0.24.0 的模型与额度补充来自当前已签名安装包，证据按压缩 bundle 的字节位置记录。</p>
 
         <div class="evidence-grid">
@@ -567,7 +567,7 @@
 
     <section class="shell" aria-labelledby="boundary-title">
       <p class="section-kicker">可信边界</p>
-      <h2 id="boundary-title">这套设计有几道硬门，也有清楚的共享面</h2>
+      <h2 id="boundary-title">权限检查和共享资源分别在哪里</h2>
       <div class="boundary-grid">
         <article class="boundary good">
           <h3>静态检查确认的保护</h3>
@@ -599,9 +599,9 @@
         <div class="mark" aria-hidden="true">GB</div>
         <div>
           <p class="section-kicker">我的判断</p>
-          <h2 id="verdict-title">Grok Bot 是一套完整的远程 Agent 产品，Mac App 主要承担控制台和可信接管</h2>
-          <p>“Bot 有自己的电脑”这句话在包内有完整实现对应。桌面端没有把模型和工具都塞进一个聊天窗口，它连接一台长期存在的 Linux Box，Box 里有网关、Agent runner、工具、SQLite、自动任务和独立更新。Grok 4.5 是客户端兜底请求，Grok 4.6 已进入选择链，最终解析仍由账号配置与后端响应共同决定。</p>
-          <p>这也给出了最实用的判断标准。把它当成能操作真实系统的远程同事，先给一个有明确结果的一次性任务，把外部副作用留在审批后，再把跑顺的过程保存成 Skill 或 routine。</p>
+          <h2 id="verdict-title">哪些能力在云端，哪些需要本机授权</h2>
+          <p>包内的连接代码和 Host 模块对应一套远程执行结构：桌面端连接 Linux Box，Host 内再组织 runner、工具、会话存储和后台任务。模型选择仍要经过会话配置和后端解析，不能只看兜底字符串。</p>
+          <p>实际使用时，我会先区分云端共享文件、浏览器登录和本机反向通道。允许某个云端任务运行，不代表也授权它操作本机；一次任务可执行，也不代表所有打包模块都已向该账号开放。</p>
         </div>
       </div>
     </section>

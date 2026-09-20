@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Codex / ChatGPT App · Computer History 完整记录</title>
+<title>Codex / ChatGPT App 的 Computer History：安装包里的采集与记忆路径</title>
 <meta name="date" content="2026-08-20">
-<meta name="description" content="对着本机 ChatGPT.app 和 SkyComputerUseService 还原 Computer History。产品名叫 Computer History，配置仍叫 chronicle，原生叫 skysight。">
+<meta name="description" content="从本机 ChatGPT 桌面安装包梳理 Computer History 的开关、采集 IPC、摘要与记忆路径。保留类型和字段参考，并明确本机未运行新采集器、没有真实事件样本。">
 <meta name="tags" content="Codex, ChatGPT, Computer History, macOS">
 <style>
 
@@ -63,17 +63,17 @@
 </div></div>
 <div class="shell">
 <main>
-<h1>Codex / ChatGPT App · Computer History 完整记录</h1>
+<h1>Computer History：从采集事件到 Markdown 记忆</h1>
 <figure class="fig">
   <img src="cover.svg" alt="Computer History、chronicle、skysight 三个名字，以及 App 到 events.jsonl 再到 Markdown 记忆的管线">
-  <figcaption>封面按正文画：三个内部名，再加上采集到记忆的那条路。</figcaption>
+  <figcaption>产品名、配置名与原生采集名不同；下文沿同一条事件到记忆的路径对照。</figcaption>
 </figure>
 <p>记录日期：2026-08-19  </p>
-<p>对象：ChatGPT 桌面端（macOS）里的 <strong>Computer History</strong>，不是会话 history、不是内置浏览器 OwlHistory、也不是旧 Chronicle 录屏本身。  </p>
-<p>性质：对着本机安装包还原。Electron 来自未加密 <code>app.asar</code>（无 source map）。采集内核是 <code>SkyComputerUseService</code>（Mach-O / Swift），没有 <code>.swift</code> 源文件，但类型名、JSON <code>kind</code>、摘要管线、硬编码 bundle 列表能从字符串完整抽出。  </p>
-<p>补全轮次：2026-08-19 第二轮（Service 21MB + Client MCP + Record &amp; Replay 同源事件层）。</p>
-<h2 id="0-一句话">0. 一句话</h2>
-<p>Computer History 把你允许范围内的 Mac App / 网站交互事件，周期性收成 Markdown 记忆和时间线，给 ChatGPT 与 Codex 当「你刚才在干什么」的上下文。产品名是 Computer History；配置和 UI 代码仍叫 <code>chronicle</code>；原生采集和 feature flag 叫 <code>skysight</code>。</p>
+<p>这篇检查 macOS ChatGPT 桌面包中的 Computer History。先区分它与聊天历史、OwlHistory 和旧 Chronicle，再沿开关、原生采集、摘要生成和时间线读取往下看。</p>
+<p>材料来自未加密的 app.asar 和原生 <code>SkyComputerUseService</code>。Electron 没有 source map，Service 也没有 Swift 源文件，因此压缩 JS、类型布局和字符串提供的证据强度不同。下面保留字段与路径供查阅，不把它们称为完整运行实现。</p>
+<p>本机尚未让新采集器生成真实 <code>events.jsonl</code>。这限制了本文能验证的内容：安装包中的接口和提示词可以检查，实际采样、过滤和清理行为仍缺运行样本。</p>
+<h2 id="0-一句话">先看功能与数据去向</h2>
+<p>按安装包中的接口和摘要提示词，Computer History 将允许范围内的交互事件整理为 Markdown 记忆和时间线，供后续会话查询。产品名称、配置中的 <code>chronicle</code> 与原生层的 <code>skysight</code> 指向同一组相关功能。下文说明这些部件怎样连接，不代表本机已经实际采集。</p>
 <h2 id="1-不要和这些搞混">1. 不要和这些搞混</h2>
 <div class="tw"><table>
 <tr><th>名字</th><th>是什么</th><th>路径 / 标识</th></tr>
@@ -162,7 +162,7 @@ webview/assets/computer-history-suggestion-prompt-*.js
 .vite/build/src-*.js                             # App Server 侧 coordinator</code></pre></div>
 <p>没有 <code>.map</code>。源码是压缩 JS，不是原始 TypeScript。</p>
 <h2 id="4-谁能开-什么条件">4. 谁能开、什么条件</h2>
-<p>官方 + 本机代码对齐后的硬条件：</p>
+<p>这里把公开说明与本机代码中的启用条件并列。开关写为 true、权限齐备和服务实际运行，需要分别检查：</p>
 <ol>
 <li><strong>平台</strong>：macOS。代码里 sidecar/Skysight 额外要求 <code>darwin &amp;&amp; arm64</code>（或 <code>NODE_ENV===test</code>）。Intel Mac 走不通这条。</li>
 <li><strong>套餐</strong>：Pro / Business / Enterprise。API key、Amazon Bedrock 不可用。</li>
@@ -231,7 +231,7 @@ webview/assets/computer-history-suggestion-prompt-*.js
     <text x="40" y="384" fill="var(--faint)" font-size="13">同一客户端还提供 Computer Use（mcp）和 Record &amp; Replay（event-stream mcp）。</text>
   </g>
 </svg>
-<figcaption>Electron 管开关。21MB 的 SkyComputerUseService 管采集。记忆是本机 <code>codex exec</code> 压出来的 Markdown。</figcaption>
+<figcaption>Electron 管理开关与界面，Service 包含采集和摘要相关组件。实际记录内容仍需要运行样本确认。</figcaption>
 </figure>
 <div class="code"><span class="lang">text</span><pre><code>允许的 App / 网站
         │  macOS Accessibility（点击、按键、切窗、AX 文本/diff、选中、焦点、鼠标/键盘目标）
@@ -368,7 +368,7 @@ CodexSkysightMcpToolCalled
 CodexSkysightStatusItemActionClicked</code></pre></div>
 <p>传输：Apple Events + XPC。Client 字符串里有 <code>CodexComputerUseIPC-3</code>、<code>CodexComputerUseNativeBridge-1</code>、<code>ComputerUseIPCXPCTransport</code>、<code>sendRequestWithTypeName:requestData:...</code>。版本不一致会要求用户重启 ChatGPT.app。</p>
 <p><code>events.jsonl</code> <strong>不在 Client 里</strong>。写入器在 Service：<code>EventStreamJSONLWriter</code>、<code>SkysightSegmentWriter</code>。路径经 Status 回传。</p>
-<p>MCP 工具（类 <code>ComputerHistoryMCPServer</code>）完整文案：</p>
+<p><code>ComputerHistoryMCPServer</code> 中定位到的工具说明：</p>
 <div class="tw"><table>
 <tr><th>工具</th><th>文案</th></tr>
 <tr><td><code>computer_history_pause</code></td><td>Temporarily pause Computer History without disabling it.</td></tr>
@@ -438,16 +438,16 @@ last_day            → clear_last_day</code></pre></div>
 <p>Record &amp; Replay 同一套存储还会写 <code>session.json</code>（<code>endReason</code> 如 <code>recording_controls_cancelled</code>）。Computer History 用滚动 segment。</p>
 <p>路径相关字段：<code>rootDirectoryURL</code>、<code>directoryURL</code>、<code>eventsURL</code>、<code>metadataURL</code>、<code>suppressedEventsURL</code>、<code>memoryResourcesURL</code>、<code>memoryExtensionURL</code>、<code>configurationRootURL</code>。  </p>
 <p>容器：<code>appGroupContainerUnavailable</code>（官方 App Group；本机 Group Container <code>2DC432GLL2.com.openai.sky.CUAService</code> 目前只有 IPC socket <code>computeruse.sock</code>，没有 segment 目录——功能没开过）。</p>
-<p><strong>TTL / 删除（补上原先的缺口）：</strong></p>
+<p>TTL 与删除相关字段：</p>
 <ul>
 <li>存储对象带 <code>ttl</code>、<code>expiresAt</code>、<code>expirationTime</code>、<code>retainUntil</code>。</li>
 <li><code>EventStreamStorageConfiguration</code> / <code>EventStreamStorageError</code> / <code>missingEventsFile</code>。</li>
 <li>产品文档写事件最多 48 小时；Electron 时间线建议窗口也是 <code>2880 <em> 60 </em> 1000</code> ms = <strong>48 小时</strong>。两边用同一量级。</li>
 <li>没有在二进制里看到字面量 <code>&quot;48 hours&quot;</code>；删除走 TTL 字段，不是 cron 文案。</li>
-<li><code>segmentDurationSeconds</code>：每个滚动段时长。10 分钟摘要任务叫 <code>tenMinuteSummaryTasks</code>，因此 segment <strong>不会长过 10 分钟</strong>（常见实现就是 10 分钟一段，值在运行时配置里，不在 reflstr）。</li>
+<li><code>segmentDurationSeconds</code> 表示滚动段时长。实际值在运行时配置中，本次没有从事件记录确认；<code>tenMinuteSummaryTasks</code> 这个名称不能单独确定每段的长度。</li>
 <li>调度：<code>tenMinuteSummaryTasks</code>、<code>sixHourRollupTasks</code>。</li>
 </ul>
-<p>不录屏、不录音、不要 Screen Recording。隐私浏览：<code>privateBrowsingExcluded</code>、<code>PrivateBrowsingIndicators</code>，以及一长串本地化「无痕/隐私浏览」窗口标题碎片。</p>
+<p>产品说明不采集录屏和音频。包内另有 <code>privateBrowsingExcluded</code>、<code>PrivateBrowsingIndicators</code> 及本地化隐私浏览标题，用于相关排除判断；本次没有运行各浏览器逐项验证过滤效果。</p>
 <h3 id="9-1-一条事件-eventstreamrecord">9.1 一条事件（<code>EventStreamRecord</code>）</h3>
 <p><code>__swift5_reflstr</code> 里，记录字段和枚举 case 紧挨着，这就是 Codable 用的名字。</p>
 <p>记录字段：</p>
@@ -465,7 +465,7 @@ ax</code></pre></div>
 eventsPath, eventCount, suppressedEventCount
 directoryURL, eventsURL, metadataURL, suppressedEventsURL</code></pre></div>
 <p>Swift 构造器还带 <code>diagnostic: EventStreamDiagnostic?</code>。没有 <code>typedText</code> 这个键；键盘输入走 <code>keyboard</code> + kind <code>keyboardTextInput</code>，缓冲在 <code>_textBuffer</code> / <code>_textFlushTask</code>。</p>
-<h3 id="9-2-eventstreameventkind-完整枚举">9.2 <code>EventStreamEventKind</code>（完整枚举）</h3>
+<h3 id="9-2-eventstreameventkind-完整枚举">9.2 定位到的 EventStreamEventKind 枚举</h3>
 <p class="kinds" aria-label="八种事件 kind">
   <span>window.changed</span>
   <span>mouse.click</span>
@@ -492,7 +492,7 @@ directoryURL, eventsURL, metadataURL, suppressedEventsURL</code></pre></div>
 <p>底层 AX 通知（先变成 pending，再 debounce 成上面的 kind）：</p>
 <p><code>AXApplicationActivated</code> / <code>Deactivated</code> / <code>Shown</code> / <code>Hidden</code>，<code>AXFocusedUIElementChanged</code>，<code>AXFocusedWindowChanged</code>，<code>AXMainWindowChanged</code>，<code>AXSelectedTextChanged</code>，<code>AXSelectedChildrenChanged</code>，<code>AXWindowMiniaturized</code> / <code>Deminiaturized</code>，<code>AXUIElementDestroyed</code>，<code>AXMenuItemSelected</code>。</p>
 <p>AX 树：<code>EventStreamAXTree</code> + <code>Mode</code>；<code>isAXTreeDiffingEnabled</code>、feature <code>axTreeDiffing</code>。diff 语法：<code>~</code> / <code>+</code> / <code>-</code>。残留路径：<code>ComputerUse/RefetchableSkyshotAXTree.swift</code>。</p>
-<h3 id="9-2-1-采集循环-service-字段-不再是黑盒">9.2.1 采集循环（Service 字段，不再是黑盒）</h3>
+<h3 id="9-2-1-采集循环-service-字段-不再是黑盒">9.2.1 采集循环相关的 Service 字段</h3>
 <p><code>EventStreamRecorder</code> 内部状态（reflstr）：</p>
 <div class="code"><span class="lang">text</span><pre><code>_eventTap
 _currentAppPID
@@ -526,7 +526,7 @@ urlExcluded
 urlPolicyBlocked</code></pre></div>
 <p>另有错误态：<code>appNotAllowed</code>、<code>recorderSuppressed</code>、<code>appGroupContainerUnavailable</code>。</p>
 <h3 id="9-3-硬编码特殊-bundle-service-连续字符串表">9.3 硬编码特殊 bundle（Service 连续字符串表）</h3>
-<p>密码器（几乎肯定默认抑制 / 特殊处理）：</p>
+<p>以下密码管理器 bundle 出现在相邻字符串区域。它们提示存在相关处理，默认是否全部抑制还不能只凭列表确认：</p>
 <div class="code"><span class="lang">text</span><pre><code>com.1password.1password
 com.1password.safari
 com.bitwarden.desktop
@@ -561,7 +561,7 @@ ai.perplexity.comet
 com.openai.atlas*</code></pre></div>
 <p>紧接着是 <code>com.apple.UserNotificationCenter</code>、<code>LocalAuthenticationRemoteService</code>、<code>SecurityAgent</code>，以及多语言「无痕/隐私浏览」标题碎片。</p>
 <p>Electron 时间线另外还滤：<code>com.openai.sky.CUAService</code>、Dock、Control Center、WindowManager 等（第 10 节）。</p>
-<h2 id="9-4-记忆生成管线-service-不再只靠官方一句话">9.4 记忆生成管线（Service，不再只靠官方一句话）</h2>
+<h2 id="9-4-记忆生成管线-service-不再只靠官方一句话">9.4 从事件到摘要的 Service 组件</h2>
 <p>类型：</p>
 <div class="code"><span class="lang">text</span><pre><code>SkysightMemoryPipeline
 SkysightSummariser / SkysightSummarizer
@@ -577,9 +577,9 @@ codex exec timed out.
 codex exec failed:
 invalid summary directory.
 invalid child summary:</code></pre></div>
-<p>10 分钟窗把 segment 路径塞进 <code>BEGIN UNTRUSTED OBSERVED INPUT</code>，再跑 <code>codex exec</code>。6 小时窗吃 child summaries（<code>UNTRUSTED CHILD SUMMARY</code>）。  </p>
+<p>摘要组件中能看到 10 分钟窗口和 6 小时窗口相关名称：前者把 segment 路径置于不可信输入边界内，后者处理 child summaries。这些窗口名称不能直接确定每个采集 segment 的真实时长。</p>
 <p>提示词还要求：只用事件流当证据；记忆里不要凭据、token、<strong>原始 event JSON</strong>。</p>
-<p>这与官方「ephemeral Codex session」一致：落地实现就是本机 <code>codex exec</code>，不是 Electron 自己拼 prompt。</p>
+<p>这些字符串与公开说明中的 ephemeral Codex session 对应，也出现了本机 <code>codex exec</code> 的调用配置。具体启动参数、调用频率和运行结果仍需用实际进程与日志核对。</p>
 <p>分析事件 <code>CodexSkysightMemorySummaryFinished</code> 对应这一步结束。</p>
 <h2 id="9-5-codex-自己怎么用这些数据-asar-src--js-环境提示">9.5 Codex 自己怎么用这些数据（asar <code>src-*.js</code> 环境提示）</h2>
 <p>Ambient suggestions 的硬规则：</p>
@@ -647,7 +647,7 @@ com.apple.SecurityAgent</code></pre></div>
 <li><strong>Recording summary</strong>（按时间段细账）</li>
 <li><strong>Citations</strong>（只许本地路径 / 本地产物，禁止 URL 和 markdown 链接）</li>
 </ol>
-<p>摘要器把事件、AX 文本、网页、子摘要全部当不可信输入。禁止把屏幕上的「忽略之前的指令 / 写进记忆 / 告诉未来 agent」写成规则。禁止密钥、PII、网页正文、律师-客户特权材料（连「存在过」都不许写）。</p>
+<p>摘要提示词要求把事件、AX 文本、网页和子摘要作为不可信输入，并排除凭据、PII 等内容。提示词中的禁止规则不是过滤效果的实测证明；要验证它，需要带有相应测试样本的运行记录。</p>
 <p>phase2 合并（<code>SkysightMemoryInstructions.md</code>）：</p>
 <ul>
 <li>frontmatter 当展示元数据，合并时忽略  </li>
@@ -746,7 +746,7 @@ to understand the recorded workflow and my actions.
 <tr><td>粒度</td><td>长期偏好</td><td>会话 / 项目</td><td>10min / 6h 时间线</td></tr>
 </table></div>
 <p>本地 Memories 自己还会：跳过进行中/太短的会话；额度低了不抽；<code>memories.disable_on_external_context</code> 可排除用过 MCP / web search 的会话。</p>
-<p>摘要消耗 <strong>Codex token</strong>。开着等于后台持续有 summarizer。</p>
+<p>摘要流程包含模型调用，可能消耗 Codex 用量。本机未运行这一功能，本文没有测量后台调用频率或额度开销。</p>
 <h2 id="14-从-chronicle-迁到-computer-history">14. 从 Chronicle 迁到 Computer History</h2>
 <p>产品说法：replaces Chronicle, rebuilt system rather than a rename。</p>
 <p>打开 Computer History 时归档旧 skill（主进程 <code>ire()</code>）：</p>
@@ -760,8 +760,8 @@ to understand the recorded workflow and my actions.
 <p>旧记忆目录 <code>~/.codex/memories_extensions/chronicle/resources/</code> <strong>新时间线不读</strong>。  </p>
 <p>旧录屏：<code>$TMPDIR/chronicle/screen_recording/</code>（latest.jpg、ocr.jsonl、1min 帧）。约 6 小时删除。需要 Screen Recording。</p>
 <h2 id="15-隐私与安全">15. 隐私与安全</h2>
-<p>官方承诺不进历史：截屏、屏幕录像、麦克风、系统音频、隐私浏览。</p>
-<p>仍会进事件、再被摘要：打的字（安全输入框能否挡住取决于 App）、选中文本、窗口标题、AX 可见文字。</p>
+<p>产品说明将截图、录屏、麦克风、系统音频和隐私浏览列为排除项。它们是产品声称的范围，需要与实际版本的运行验证区分。</p>
+<p>字段表包含键盘文本、选中文本、窗口标题和 AX 内容。安全输入框怎样处理、哪些字段最终落盘，本次缺少采集样本，还不能确认。</p>
 <p>磁盘：</p>
 <ul>
 <li>skysight Markdown <strong>明文、未加密</strong>  </li>
@@ -772,7 +772,7 @@ to understand the recorded workflow and my actions.
 <li>周期性：事件 → OpenAI 写记忆。官方称事后不留事件、不训练。  </li>
 <li>以后对话引用记忆：记忆进该次 chat，是否训练看 data controls。</li>
 </ol>
-<p>Prompt injection：文档写明，恶意网页指令可能被 ChatGPT / Codex 执行。摘要器做了隔离；记忆再进后续对话时隔离变弱。</p>
+<p>观察到的网页与文本可能包含注入指令。摘要提示词设置了不可信输入边界，但没有端到端测试，不能据此保证后续记忆使用安全，也不能直接断言隔离在某一步已经失效。</p>
 <p>官方建议：通讯应用先暂停或排除；健康 / 财务 / 密码器直接 exclude。</p>
 <h2 id="16-官方产品能力-文档口径">16. 官方产品能力（文档口径）</h2>
 <p>用途：</p>
@@ -781,7 +781,7 @@ to understand the recorded workflow and my actions.
 <li>用记得的说法找回文档 / 对话  </li>
 <li>重复劳动 → 建议 skill / automation，再让 Codex 做  </li>
 </ul>
-<p>定位：history 用来 <strong>认源</strong>，认完去读 Google Doc / Slack / 本地文件，不要把摘要当原文。</p>
+<p>按文档设计，history 可帮助定位信息来源，再去读取原文。摘要保留的范围和措辞可能与原始内容不同，不宜直接代替文档、消息或本地文件。</p>
 <p>官方文档 <a href="https://learn.chatgpt.com/docs/customization/computer-history">learn.chatgpt.com/docs/customization/computer-history</a></p>
 <p>Memories <a href="https://learn.chatgpt.com/docs/customization/memories">learn.chatgpt.com/docs/customization/memories</a></p>
 <h2 id="17-本机状态-2026-08-19-检查">17. 本机状态（2026-08-19 检查）</h2>
@@ -796,7 +796,7 @@ to understand the recorded workflow and my actions.
 <tr><td><code>~/.codex/skills/chronicle</code></td><td>还在（尚未被 <code>skysight_gate_enabled</code> 归档）</td></tr>
 <tr><td>Computer History 插件</td><td>在 ChatGPT.app 和 <code>~/.codex/.tmp/bundled-marketplaces/</code>；<code>plugins/cache</code> 里没有常驻一份</td></tr>
 </table></div>
-<p>结论：这台机器用过旧 Chronicle，<strong>还没让新 Computer History 写出过记忆</strong>。设置页时间线会是空的。旧 242 条不会出现在新时间线里。</p>
+<p>本机记录显示旧 Chronicle 曾经使用过，新 Computer History 尚未生成可供时间线读取的记忆。旧目录里的 242 条 Markdown 不会自动变成新格式下的条目。</p>
 <p>若要开：</p>
 <ol>
 <li>Settings → Personalization → Enable memories  </li>
@@ -816,25 +816,25 @@ to understand the recorded workflow and my actions.
 <li>官方 Learn 文档（2026-08）</li>
 </ul>
 <p>没有 <code>.swift</code> 源文件，也没有跑过 Skysight 的真实 <code>events.jsonl</code>。</p>
-<h2 id="19-完整度-相对-实现说明书">19. 完整度（相对「实现说明书」）</h2>
+<h2 id="19-完整度-相对-实现说明书">19. 已定位的接口与尚缺的运行验证</h2>
 <div class="tw"><table>
 <tr><th>块</th><th>状态</th></tr>
-<tr><td>命名、开关、归档、时间线读盘</td><td>完整（asar）</td></tr>
-<tr><td>观察策略 schema、清除范围、暂停档位</td><td>完整</td></tr>
-<tr><td>MCP 工具名与文案</td><td>完整；JSON Schema 原文未嵌入二进制</td></tr>
-<tr><td><code>EventStreamEventKind</code> 8 case + JSON raw value</td><td>完整（<code>__swift5_reflstr</code>）</td></tr>
-<tr><td>Record 字段、抑制原因、采集循环内部状态</td><td>完整（reflstr 字段表）</td></tr>
-<tr><td>摘要：<code>codex exec</code> + 10min/6h 任务名</td><td>完整到管线；模型名/超时秒数未出现在字符串里</td></tr>
-<tr><td>硬编码密码器/终端/浏览器/无痕标题</td><td>完整</td></tr>
+<tr><td>命名、开关、归档、时间线读盘</td><td>已定位客户端代码</td></tr>
+<tr><td>观察策略 schema、清除范围、暂停档位</td><td>已定位相关配置或字符串，未实测</td></tr>
+<tr><td>MCP 工具名与文案</td><td>工具名与文案已定位；JSON Schema 未取得</td></tr>
+<tr><td><code>EventStreamEventKind</code> 8 case + JSON raw value</td><td>已定位反射字段</td></tr>
+<tr><td>Record 字段、抑制原因、采集循环内部状态</td><td>已定位字段表</td></tr>
+<tr><td>摘要：<code>codex exec</code> + 10min/6h 任务名</td><td>已定位组件；模型名与超时值未确认</td></tr>
+<tr><td>硬编码密码器/终端/浏览器/无痕标题</td><td>已定位相关配置或字符串，未实测</td></tr>
 <tr><td>事件 TTL</td><td>有 <code>ttl</code> / <code>expiresAt</code> / <code>retainUntil</code>，与文档 48h、建议窗口 48h 对齐；字面量秒数未写出</td></tr>
-<tr><td><code>segmentDurationSeconds</code> 的数字</td><td>字段有，运行时才填；上界是 10 分钟摘要</td></tr>
+<tr><td><code>segmentDurationSeconds</code> 的数字</td><td>字段可见，实际值未从运行记录确认</td></tr>
 <tr><td>真实 <code>events.jsonl</code> 一行样本</td><td>本机没有。要打开 Computer History 才会出现</td></tr>
 <tr><td>App Group 里的 segment 目录</td><td>容器在 <code>2DC432GLL2.com.openai.sky.CUAService</code>，目前只有 <code>IPC/computeruse.sock</code></td></tr>
 <tr><td>设置页 14MB chunk 状态机</td><td>i18n + activation 字段已覆盖产品行为</td></tr>
 </table></div>
-<h2 id="20-压缩结论">20. 压缩结论</h2>
-<p>Computer History 是 ChatGPT.app 在 macOS Apple Silicon 上的被动工作记忆。Electron 管开关、时间线、插件；<code>SkyComputerUseService</code> 用 Accessibility / EventTap 写成 <code>EventStreamRecord</code> JSONL（<code>mouse.click</code>、<code>keyboard.text_input</code> 这类 kind），再 <code>codex exec</code> 跑 <code>SkysightSummarizer.md</code> 变成 <code>memories/extensions/skysight/resources</code> 里的 10 分钟 / 6 小时 Markdown。配置 key 仍叫 <code>chronicle</code>，IPC 叫 <code>skysight</code>。</p>
-<p>采集循环、事件 kind、抑制原因、TTL 字段已经从 Swift 反射段补全。本机仍然没有一行真实 <code>events.jsonl</code>——那要打开功能才会写到 App Group。没开的话，这份就是安装包能还原的全部。</p>
+<h2 id="20-压缩结论">20. 回到最初的数据路径</h2>
+<p>目前能串起的结构是：Electron 管理开关与插件，Service 包含事件记录和摘要组件，后续通过 Markdown 资源构建时间线。中间的字段、IPC 与提示词已经分别列出，便于继续沿同一条路径查验。</p>
+<p>最重要的缺口仍是运行证据。本机没有新采集器的真实事件文件，因此 segment 时长、过滤效果、清理时序和最终摘要都没有得到端到端验证。开启功能后应先用明确授权的测试数据检查这些行为，再讨论它能可靠记住什么。</p>
 </main>
 </div>
 </body>

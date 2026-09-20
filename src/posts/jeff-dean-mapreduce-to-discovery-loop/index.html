@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Jeff Dean:从分布式三支柱到 Discovery Loop 的 27 年</title>
+<title>Jeff Dean：从 Google 分布式系统到 Discovery Loop</title>
 <meta name="date" content="2026-08-06">
-<meta name="description" content="Jeff Dean 完整传记:从夏威夷的少年、明尼苏达与日内瓦的公共卫生软件,到与 Sanjay Ghemawat 共建 GFS/MapReduce/Bigtable,再到 Google Brain、TensorFlow、TPU、Pathways、Gemini,最终于 2026 年离开 Google 创办 Discovery Loop。含逐年大事记、八篇核心论文深度解析、一手访谈引语与同侪对比。">
+<meta name="description" content="沿公开论文、访谈和产品记录梳理 Jeff Dean 的工作：分布式存储与计算、机器学习系统、硬件协同设计，以及 Discovery Loop 公布的研究方向。">
 <meta name="tags" content="人物, AI 历史, Google, 分布式系统, 机器学习">
 <style>
   :root{
@@ -135,8 +135,8 @@
   <div class="hero-grid"></div>
   <div class="hero-content">
     <div class="hero-eyebrow">The Engineer Who Built Google’s AI</div>
-    <h1>Jeff Dean:<em>从分布式三支柱</em>到 Discovery Loop 的 27 年</h1>
-    <p class="hero-lead">2026 年 8 月 5 日,Google 宣布首席科学家 Jeff Dean 离职,与老搭档 Sanjay Ghemawat 等四人创办 AI for Science 公司 <strong>Discovery Loop</strong>。这 27 年,几乎就是半部 Google 工程史与 AI 基础设施史。</p>
+    <h1>Jeff Dean：从 Google 分布式系统到 Discovery Loop</h1>
+    <p class="hero-lead">2026 年 8 月，Jeff Dean 与 Sanjay Ghemawat、Oriol Vinyals、Quoc Le 共同创办 Discovery Loop。新公司的方向是用 AI 自动化实验过程。要理解这次选择，可以先沿他在 Google 的公开论文和产品记录，看看过去具体解决过哪些问题。</p>
     <div class="hero-meta">
       <span class="pill">2026-08-06</span>
       <span class="pill">人物 · AI 历史</span>
@@ -176,9 +176,9 @@
 <main id="main">
 
 <section id="summary">
-  <p class="lead drop-cap">他是 Google 最早的员工之一,与 Sanjay Ghemawat 共同发明了 GFS、MapReduce、Bigtable 等现代互联网的地基;他创建了 Google Brain,推动了 TensorFlow、TPU、Pathways 与 Gemini;他既是系统工程师,也是机器学习研究者。本文先做<strong>功绩总览</strong>与<strong>逐年大事记</strong>,再用<strong>自传式叙事</strong>串起他的经历与选择,最后附<strong>八篇核心论文解析</strong>、<strong>一手访谈引语</strong>与<strong>同侪对比</strong>。</p>
+  <p class="lead drop-cap">本文按求学、分布式系统和机器学习系统展开，后半部分保留八篇论文的技术摘要。Dean 的工作与多位合作者、不同团队交织，不能把这些系统写成一个人独立创造的结果；访谈回忆也与论文中的可核对设计分开列出。</p>
 
-  <h2 data-num="01">功绩总览:他到底做了什么?</h2>
+  <h2 data-num="01">先看参与过的系统与研究</h2>
 
   <h4>关键数字</h4>
   <div class="kpi">
@@ -294,65 +294,65 @@
 
   <h3>在热带病研究者家庭长大</h3>
   <p>Jeffrey Adgate Dean 1968 年 7 月 23 日出生于夏威夷。他的父亲 <strong>Andy Dean</strong> 是热带病研究者,后来担任过明尼苏达州流行病学家并在 CDC 工作;母亲是医学人类学家。由于父母工作的关系,童年时期他随家庭频繁搬迁。</p>
-  <p>多份传记提到一个细节:1981 年,他<strong>跳过八年级最后三个月</strong>,随父母去索马里的一处难民营帮忙。这段经历早早把他放在"全球公共卫生"的现场——与他后来在世界卫生组织的工作、以及 2026 年创办 Discovery Loop 选择"AI 加速科学发现"的方向,形成了一条隐约的线索。</p>
+  <p>传记资料记载，Dean 少年时曾随父母到索马里参与相关工作。父亲的公共卫生研究让他较早接触到统计与软件处理的实际需求。</p>
 
   <h3>第一台电脑与 16 岁的 20 万行 Pascal</h3>
   <p>Dean 的编程启蒙来自父亲。父亲在家组装了一台 <strong>Altair 8800</strong> 套件计算机,Dean 在旁边帮忙调试,逐渐学会自己编程。12、3 岁时,他买了一本包含游戏源代码的书,先照着写,再修改,最后开始原创。</p>
-  <p>在明尼苏达的少年时期,他加入了当地大学的青少年计算机网络,写游戏和其他程序。1985 年夏天,全家搬到亚特兰大(父亲加入 CDC),16 岁的 Dean 据报道为父亲的流行病学软件 <strong>Epi Info</strong> 写了约 <strong>20 万行 Pascal 代码</strong>——一个高中生参与公共卫生软件的规模,已远超普通编程爱好者。这个数字来自多家传记网站,虽非学术来源,但多个独立报道一致提及,可信度较高。</p>
+  <p>Dean 少年时期参与过父亲使用的流行病学软件 Epi Info。传记中反复出现“约 20 万行 Pascal”的记述；本文没有对应版本的代码仓库，保留为传记来源中的说法。</p>
 
   <h3>明尼苏达本科:计算机 + 经济学</h3>
-  <p>1990 年,他以 <strong>最优等荣誉(summa cum laude)</strong> 获得明尼苏达大学计算机科学与经济学双学士学位。本科毕业论文的题目与<strong>神经网络的并行训练</strong>相关——在 1990 年,神经网络正处于第一次寒冬后的低谷,这个选题说明他早早就认准了这条路径。他后来在播客里回忆:</p>
+  <p>1990 年，Dean 获得明尼苏达大学计算机科学与经济学学位，并在课程中接触神经网络并行训练。他后来描述过在 32 处理器 Hypercube 上实现模型并行和数据并行的经历：</p>
   <blockquote><p>我本科最后一年上一门并行计算课,其中一节讲到了神经网络,我就是这样接触到它的。我在一台 32 处理器的 Hypercube 机器上实现了模型并行和数据并行。</p>
   <span class="en">"I got introduced to neural nets in one section of one class on parallel computing that I was taking in my senior year... I implemented model parallelism and data parallelism on a 32-processor Hypercube machine." — Dwarkesh Podcast, 2025-02</span></blockquote>
-  <p>也就是说,"用并行系统扩大神经网络"这件他 27 年后才做完的事,1990 年就在本科课程里埋下了种子。大一期间,他结识了后来的妻子 Heidi Hopper。</p>
+  <p>课程中的并行训练实验，是他早年接触机器学习系统的记录。本科期间，他也结识了后来的妻子 Heidi Hopper。毕业后，他先从事公共卫生软件，再进入编译器研究。</p>
 
   <h3>日内瓦:用软件追踪艾滋病疫情</h3>
-  <p>本科毕业后的 1990–1991 年,Dean 没有立刻读研,而是去了<strong>世界卫生组织(WHO)驻日内瓦总部</strong>,为全球艾滋病项目(Global Programme on AIDS)开发统计建模、预测与分析软件。这段工作的性质是"用计算理解疾病"——与他四十年后创办 Discovery Loop 时说的"用 AI 加速科学发现",在精神上是同一类事。</p>
+  <p>1990–1991 年，Dean 在日内瓦为 WHO 的全球艾滋病项目开发统计建模、预测和分析软件。模型需要接收数据、执行计算，并给使用者返回可解释的结果；这份工作将软件开发与科学问题放在了同一个项目里。</p>
 
   <h3>华盛顿大学博士:编译器与整体程序优化</h3>
-  <p>离开 WHO 后,Dean 进入<strong>华盛顿大学</strong>攻读计算机科学博士,1996 年在导师 <strong>Craig Chambers</strong> 指导下毕业,研究方向是编译器与面向对象语言的整体程序优化(whole-program optimization)。这段训练塑造了他此后一生的工作方式:<strong>不满足于局部修补,而是从系统全局找杠杆点</strong>。</p>
+  <p>之后他进入华盛顿大学，在 Craig Chambers 指导下研究编译器和面向对象语言的整体程序优化，1996 年取得博士学位。</p>
 </section>
 
 <section id="dec">
-  <h2 data-num="04">DEC 与 Sanjay:改变互联网的搭档关系</h2>
+  <h2 data-num="04">DEC 时期与 Sanjay Ghemawat 的合作</h2>
   <p class="section-intro">THE FRIENDSHIP THAT MADE GOOGLE HUGE</p>
 
-  <p>博士毕业后,Dean 加入 <strong>DEC 西部研究院</strong>(Western Research Lab, WRL)。那里是 1990 年代系统研究的圣地,聚集了一批顶尖的编译器、操作系统与网络研究者。在这里,他遇到了 <strong>Sanjay Ghemawat</strong>。</p>
+  <p>博士毕业后，Dean 加入 DEC Western Research Lab，在系统研究工作中结识了 Sanjay Ghemawat。两人后来在 Google 合作多年，共同署名的论文提供了比人物轶事更清楚的工作记录。</p>
 
   <h3>像爵士乐手一样结对编程</h3>
-  <p>《纽约客》2018 年那篇著名特写《The Friendship That Made Google Huge》(James Somers 著)描述了两人的合作方式:他们共用一台电脑,一个人敲键盘,另一个人在旁边实时审阅、提示、挑战,像爵士乐手即兴交换 solo。Jeff 节奏快、点子多、擅长宏观架构;Sanjay 更安静、更擅长把边界条件和异常情况想透。Dean 自己说过:</p>
+  <p>《纽约客》2018 年的特写描写了两人共用一台电脑结对编程：一人输入，另一人审阅和讨论。文章对性格与节奏的描述属于采访观察。Dean 也谈过这种合作带来的收益：</p>
   <blockquote><p>和 Sanjay 一起写出的代码,比我们各自单独写的都要好。</p>
   <span class="en">"When I work with Sanjay, the code we write together is better than anything either one of us could write alone."</span></blockquote>
 
-  <h3>"要我就得也要 Sanjay"</h3>
-  <p>1999 年,Dean 面试 Google 时,有报道称他向 Google 开出的条件是:<strong>"你们要我就得也要 Sanjay。"</strong>两人于 1999 年同年加入。这个细节多次出现在传记与新闻报道中,虽难找到一手录音,但已成为两人合作史的标志性注脚。</p>
+  <h3>两人随后都加入了 Google</h3>
+  <p>Dean 与 Ghemawat 于 1999 年先后加入 Google。此后，他们与同事共同发表的系统论文，记录了两人从搜索基础设施到机器学习系统的合作。</p>
 </section>
 
 <section id="google-early">
   <h2 data-num="05">加入 Google 与 2000 年的那个周末</h2>
-  <p class="section-intro">THE WEEKEND THAT SAVED THE INDEX</p>
+  <p class="section-intro">EARLY GOOGLE · 索引故障与排查</p>
 
   <p>Dean 于 1999 年年中加入 Google,是公司大约第 30 号员工。彼时 Google 只有 25 到 30 人。他的第一份工作是广告、抓取、索引与查询服务系统,此后参与了五代爬取、索引与查询服务系统的实现。他回忆:</p>
   <blockquote><p>我加入的时候,公司也就 25、26 个人,差不多那样。</p>
   <span class="en">"When I joined, we were 25 people, 26 people, something like that." — Dwarkesh Podcast, 2025-02</span></blockquote>
 
-  <h3>2000 年 3 月:索引崩溃,Yahoo 交易命悬一线</h3>
-  <p>《纽约客》详细记录了 2000 年 3 月的一个周末:Google 的核心索引系统停止更新,搜索结果落后了五个月。Larry Page 和 Sergey Brin 当时正在和 Yahoo 谈判,准备为 Yahoo 提供搜索服务——如果索引继续瘫痪,这笔关键交易可能告吹。</p>
+  <h3>一次索引故障的排查</h3>
+  <p>《纽约客》记录了 Google 早期的一次索引故障。当时公司正在扩大搜索业务，索引的可靠性是团队需要处理的实际问题。下面的过程来自这篇报道，不等同于完整事故报告。</p>
   <p>六位工程师挤进临时作战室。公司的第一位员工 Craig Silverstein 和 Bogdan Cocosel 花了四天没找到原因。Dean 和 Ghemawat 接手后,把损坏的索引文件转储成原始二进制,最终发现:<strong>廉价内存芯片会在运行时自发翻转比特位</strong>(0 变 1,1 变 0),造成静默数据损坏,而不是软件 bug。</p>
-  <p>他们用一个周末重写了整个索引系统,让它能够检测并绕过损坏数据,把系统变成<strong>自愈合架构</strong>。这次危机不仅保住了 Yahoo 交易,也奠定了 Dean-Ghemawat 系统设计的核心哲学:<strong>把硬件故障当作常态,在软件层做容错</strong>。后来 GFS、MapReduce、Bigtable 的容错设计,都能追溯到这个周末。</p>
+  <p>报道中的排查把问题追到数据损坏与容错。随着机器数量增加，组件故障需要成为系统的常规处理对象。这也是后来 GFS、MapReduce 等论文中反复出现的设计条件。</p>
 </section>
 
 <section id="infra">
-  <h2 data-num="06">基础设施十年:三支柱与 Jeff Dean 数字</h2>
+  <h2 data-num="06">Google 的存储与分布式计算系统</h2>
   <p class="section-intro">GFS · MAPREDUCE · BIGTABLE</p>
 
-  <p>2000 年代是 Dean 的系统黄金期。他与 Sanjay 以及同事一起,为 Google 建造了支撑整个互联网的分布式基础设施。这些系统后来被写成论文,成为开源大数据生态的"圣经"。</p>
+  <p>随后，Dean 与 Ghemawat 及其他同事参与了 GFS、MapReduce、Bigtable 等系统。它们分别处理文件存储、批量计算和结构化数据，工作负载不同，共同面对集群规模与故障恢复问题。</p>
 
   <h3>GFS(2003):把廉价硬盘当成一个文件系统</h3>
-  <p>Google 需要存储整个互联网,但买不起昂贵的企业存储。Dean、Ghemawat 与 Howard Gobioff 在 2003 年 SOSP 发表了 <strong>The Google File System</strong>,设计思想是:用大量廉价商用机,通过三副本、主从架构和容错,把 unreliable hardware 包装成 reliable storage。这篇文章直接催生了 Hadoop 的 HDFS。</p>
+  <p>Ghemawat、Howard Gobioff 与 Dean 在 SOSP 2003 发表 GFS 论文，讨论用商用机器支持大文件、追加写入与故障恢复。master 管理元数据，chunkserver 保存数据，副本与恢复机制应对组件故障。</p>
 
-  <h3>MapReduce(2004):定义大数据处理的两步舞</h3>
-  <p>2004 年 OSDI,Dean 与 Ghemawat 发表了只有两位作者的 <strong>MapReduce: Simplified Data Processing on Large Clusters</strong>。它把并行计算抽象成 map 和 reduce 两个函数,隐藏了分布式容错、数据分发、负载均衡的复杂性。Hadoop MapReduce、Spark 之前的整个大数据产业都建立在这篇论文之上。</p>
+  <h3>MapReduce（2004）：把任务与运行时分开</h3>
+  <p>Dean 与 Ghemawat 在 OSDI 2004 发表 MapReduce。应用提供 map 和 reduce 等逻辑，运行时负责分配任务、移动数据和重试失败任务。这让程序员可以减少每个批处理任务中重复编写的分布式执行逻辑。</p>
 
   <h3>Bigtable(2006):半结构化数据的分布式答案</h3>
   <p>2006 年 OSDI,Dean、Ghemawat 与 Fay Chang、Mike Burrows 等发表了 Bigtable,为 Google 的搜索索引、Google Earth、Google Finance 等提供可扩展的稀疏表存储。它是 HBase、Cassandra 等 NoSQL 系统的直接灵感来源。</p>
@@ -375,16 +375,16 @@
   <p>Dean 从基础设施转向机器学习,有一个常被提到的转折故事。2007 年前后,Google 的机器翻译系统慢到令人难以置信。他在 2025 年 2 月的 Dwarkesh 播客里回忆:</p>
   <blockquote><p>"翻译一个句子要 12 个小时。"我们重新设计了内存中的压缩 N-gram 表示和并行查询,把延迟降到了百毫秒级。</p>
   <span class="en">"It takes 12 hours to translate a sentence." — Jeff Dean, Dwarkesh Podcast, Feb 2025</span></blockquote>
-  <p>这件事让他意识到,Google 的核心产品不仅需要更好的系统,也需要更聪明的模型。于是他开始把更多精力放在机器学习上。</p>
+  <p>这段访谈提到的需求，把机器学习模型与系统性能放在同一个问题里。随后要解决的不仅是模型如何训练，还有更多机器参与以后，数据与参数怎样交换。</p>
 
   <h3>2011:Google Brain 的诞生</h3>
   <p>2011 年,Dean 与 Andrew Ng(时任斯坦福大学教授)、Greg Corrado 等人共同创建了 <strong>Google Brain</strong>。团队被放进 Google X 实验室,目标是"建造非常大的神经网络"。2012 年,Dean 开始直接领导这个团队。第一代训练系统 <strong>DistBelief</strong> 让模型可以扩展到数千个 CPU 核心,训练出的模型比之前大约大 60 倍,被部署在 Search、Ads、Translate、Photos、Maps、Street View、语音识别和 YouTube 等产品中。</p>
 
-  <h3>2012:猫神经元与 Scaling Law 的预演</h3>
+  <h3>2012：大规模无监督图像实验</h3>
   <p>2012 年,Google Brain 团队发表了 ICML 论文 <strong>"Building high-level features using large scale unsupervised learning"</strong>(Quoc Le 等,包括 Jeff Dean 与 Andrew Ng)。实验用 <strong>1,000 台机器、16,000 个 CPU 核心</strong>,无监督地观看了约 <strong>1,000 万张 YouTube 视频帧</strong>。结果,网络最高层自发涌现出一个对"猫脸"强烈响应的神经元——它从未被告诉过"猫"是什么。Dean 回忆:</p>
   <blockquote><p>那个神经网络可能比之前训练过的最大网络大 50 倍,而且效果很好。扩大神经网络规模看起来是个好主意——事实证明它确实是。</p>
   <span class="en">"That neural net was probably 50x bigger than one that had been trained previously, and it got good results... scaling up neural nets seems like, I thought it would be a good idea and it seems to be." — Dwarkesh Podcast, 2025-02</span></blockquote>
-  <p>这个实验在今天看来像是 Scaling Law 的早期预演:<strong>规模本身可以带来涌现能力</strong>。它比业界集体醒悟早了将近五年。</p>
+  <p>实验在当时的数据和训练设置下，观察到对特定视觉模式有选择性响应的单元。它提供了一组关于大规模无监督学习的结果，具体效果要与论文的任务和对照一起阅读。</p>
 </section>
 
 <section id="dl-infra">
@@ -392,10 +392,10 @@
   <p class="section-intro">DISTBELIEF → TENSORFLOW → TPU</p>
 
   <h3>TensorFlow:重写 DistBelief,开源 2015</h3>
-  <p>2013–2014 年,Dean 判断 DistBelief 的架构无法适应 GPU 崛起和新数据类型(如复杂语音数据),决定不是修补,而是<strong>重写一个全新框架,并把它开源</strong>。2015 年 11 月 9 日,Google 在 GitHub 上以 Apache 2.0 协议发布了 <strong>TensorFlow v0.5.0</strong>,同时发表了白皮书。这是 Sundar Pichai 出任 CEO 后首批重大发布之一。</p>
-  <p>Dean 自称是"初始 TensorFlow 系统的主要设计与实现者之一"。TensorFlow 相对于 DistBelief 的关键改进包括:GPU 支持、自动微分、更灵活的数据流图编程模型,以及移动端(Android/iOS)可移植性。开源一年内就有数百名贡献者,迅速成为 GitHub 上最热门的机器学习项目。</p>
+  <p>TensorFlow 接续了 DistBelief 之后的训练系统工作，2015 年 11 月 9 日开源。相比仅看“重写”这个动作，更值得检查的是数据流图、设备放置、自动微分和部署接口怎样变化。</p>
+  <p>Dean 将自己列为 TensorFlow 初始设计与实现者之一。开源后的框架让研究者可以在公开接口上定义计算图、训练模型并尝试不同设备，相关功能也随版本继续变化。</p>
 
-  <h3>TPU:从"如果每天用语音搜索 3 分钟"开始的芯片革命</h3>
+  <h3>TPU：从工作负载估算到专用硬件</h3>
   <p>TPU 项目的触发点是一个粗略估算:如果用户每天只用语音搜索 3 分钟,Google 就得把数据中心容量翻倍。这促使团队设计专用 ASIC。Dean 参与撰写的 ISCA 2017 论文 <em>In-Datacenter Performance Analysis of a Tensor Processing Unit</em> 显示,TPU v1 在推理任务上相对同时期 GPU 有约 15–30 倍吞吐优势、30–80 倍能效优势。Dean 提到,TPU v1 从设计想法到部署进数据中心大约只用了 15 个月。他解释设计动机时说:</p>
   <blockquote><p>我们在 Google 开始造 TPU,它本质上就是一台低精度线性代数机器。顺便说一句,这些算术可以用很低的精度完成,所以你还能塞进更多乘法器单元。</p>
   <span class="en">"We started to build TPUs at Google that were really just reduced-precision linear algebra machines... the arithmetic can be really low precision, so then you can squeeze even more multiplier units in." — Dwarkesh Podcast, 2025-02</span></blockquote>
@@ -427,10 +427,10 @@
   <p class="section-intro">PATHWAYS → PaLM → GEMINI</p>
 
   <h3>Pathways 愿景(2021)</h3>
-  <p>2021 年 10 月,Dean 在 Google 博客上发表 <em>Introducing Pathways: A next-generation AI architecture</em>,提出一个激进愿景:训练一个单一、多模态、稀疏激活的模型,能够处理数百万种任务,而不是为每个任务单独训练一个模型。2022 年 3 月,Pathways 系统论文 <em>"Pathways: Asynchronous Distributed Dataflow for ML"</em>(Barham、Chowdhery、Dean、Ghemawat 等)发布,描述了一个基于异步分布式数据流、单控制器、支持复杂并行模式的大规模加速器编排层。</p>
+  <p>2021 年的 Pathways 博客提出统一处理多类任务的方向，2022 年系统论文进一步描述异步分布式数据流和加速器编排。愿景与已经实现的系统接口需要分开看，不能把前者的任务范围写成当时已有能力。</p>
 
-  <h3>PaLM:Pathways 的首次大考(2022)</h3>
-  <p>2022 年 4 月,Google 发布 <strong>PaLM(Pathways Language Model)</strong>:5,400 亿参数、稠密激活的 Transformer,在 <strong>6,144 块 TPU v4</strong> 上、用 Pathways 训练完成。它在数百个基准上取得少样本最优结果,并在多步推理任务上首次展现出接近或超过人类平均水平的能力。PaLM 证明了 Pathways 不是空中楼阁。</p>
+  <h3>PaLM（2022）：Pathways 的大规模训练案例</h3>
+  <p>PaLM 使用 Pathways 在 6,144 块 TPU v4 上训练 5,400 亿参数模型。它既是一项模型实验，也是观察跨加速器训练编排的案例；后文分别列出模型任务表现和系统利用率。</p>
 
   <h3>2023:Google Brain 与 DeepMind 合并</h3>
   <p>2023 年,Google 将 Google Brain 与 DeepMind 合并为 <strong>Google DeepMind</strong>。Dean 转任 <strong>Google 首席科学家</strong>,同时担任 <strong>Gemini 的联合技术负责人</strong>。他的角色从"带一支团队"变成"把 Google 最前沿的 AI 研究串在一起"。在 2025 年的访谈中,他透露 Gemini 1.5 曾在<strong>多个都市区的数据中心之间联合训练</strong>——"我们已经在这么做了"。</p>
@@ -440,7 +440,7 @@
   <h2 data-num="10">离开与 Discovery Loop:2026 年 8 月 5 日</h2>
   <p class="section-intro">THE NEXT CHAPTER</p>
 
-  <p>2026 年 8 月 5 日,Google 同时宣布了多项 AI 领导层变动,震动行业:</p>
+  <p>2026 年 8 月，Google 公布 AI 组织调整，Dean 与几位长期合作者也公布新公司。组织职务的变化与新公司的研究目标分别列在下面。</p>
   <ul>
     <li><strong>Jeff Dean 离开 Google</strong>,结束 27 年生涯(时年 58 岁)。</li>
     <li><strong>Demis Hassabis 卸任 Google DeepMind CEO</strong>,转任 DeepMind 董事长与 <strong>Alphabet 首席科学家</strong>,继续领导 Isomorphic Labs;他在内部信里表示 AGI"近在咫尺"。DeepMind 日常管理由高级副总裁 <strong>Koray Kavukcuoglu</strong> 接管,直接向 Sundar Pichai 汇报。</li>
@@ -460,9 +460,9 @@
     </tbody>
   </table></div>
 
-  <h3>一个闭环?</h3>
-  <p>把 Dean 的职业线拉长,这次创业像是一个回到原点的弧线:1990–1991 年,20 岁出头的他在日内瓦为 WHO 写艾滋病建模软件;2026 年,58 岁的他离开世界上最大的科技公司,去做"用 AI 加速科学发现"。从"用计算理解疾病"出发,绕了 27 年分布式系统、深度学习、大模型的远路,又回到"用计算解决科学问题"。</p>
-  <p>当然,这是<strong>我个人的解读</strong>,不是事实陈述。但放在他一贯"先造工具,再用工具解决真问题"的轨迹里,这个闭环并不牵强。对 Google 而言,同一天失去 DeepMind CEO 和首席科学家,是在与 OpenAI、Anthropic 等对手白热化竞争时的一次剧烈失血;接下来几个季度,Gemini 与 Google AI 的稳定性,会是观察重点。</p>
+  <h3>新公司准备解决什么问题</h3>
+  <p><a href="https://www.discoveryloop.com/">Discovery Loop 的公开说明</a>把自动化实验循环作为目标：提出实验、执行、分析结果，再据此迭代。与以往为研究提供计算基础设施相比，这次公布的目标还包括让 AI 参与安排实验。</p>
+  <p>新公司的目标尚需后续研究和系统结果来检验。组织调整说明了人员与职责变化，还不足以判断一个研究项目的技术前景。</p>
 </section>
 
 <hr>
@@ -470,22 +470,22 @@
 <section id="papers">
   <h2 data-num="11">八篇核心论文深度解析</h2>
   <p class="section-intro">KEY PAPERS, PROBLEM → DESIGN → IMPACT</p>
-  <p>Dean 的名字出现在十余篇改变行业的论文作者名单上。以下八篇是理解他工作的钥匙。</p>
+  <p>以下八篇论文覆盖存储、分布式计算、训练框架和硬件。每篇先交代问题，再列设计与实验范围，便于回到原文继续阅读。</p>
 
   <div class="paper">
     <p class="ph">① The Google File System</p>
     <p class="pm">SOSP 2003 · Ghemawat, Gobioff, Dean</p>
-    <p class="pl">问题</p><p>如何在数千台随时会坏的廉价机器上,可靠地存储整个互联网的数据?</p>
+    <p class="pl">问题</p><p>怎样在规模较大的商用机器集群中，支持大文件工作负载并处理持续发生的组件故障？</p>
     <p class="pl">设计</p><p>单 master 元数据服务器 + 大量 chunkserver;文件切成 64MB 的 chunk,每块三副本;把"组件必然失效"写进设计前提,靠快速重复制而非持久硬件保证可靠性。</p>
-    <p class="pl">影响</p><p>HDFS 的直接思想来源;此后所有"用商品硬件堆出可靠存储"的系统都在回应这篇论文。</p>
+    <p class="pl">影响</p><p>GFS 的接口、数据布局与容错设计影响了 HDFS 等后续系统。阅读后继实现时，还要看其工作负载和相应改动。</p>
   </div>
 
   <div class="paper">
     <p class="ph">② MapReduce</p>
     <p class="pm">OSDI 2004 · Dean, Ghemawat(仅两位作者)</p>
     <p class="pl">问题</p><p>Google 有大量"对全量数据做某种统计"的需求,但每次都要手写分布式并行、容错、数据分发代码。</p>
-    <p class="pl">设计</p><p>把计算抽象为 map 与 reduce 两个纯函数,运行时负责分区、调度、容错(失败任务重执行)与数据本地性。</p>
-    <p class="pl">影响</p><p>Hadoop MapReduce 照此实现,定义了整个"大数据"产业十年的编程范式;后来的 Spark 是对它的内存化改进。</p>
+    <p class="pl">设计</p><p>应用提供 map 和 reduce 计算，运行时负责分区、调度、数据本地性和失败任务重执行。函数是否无副作用，以及重试需要什么条件，应按论文的编程模型讨论。</p>
+    <p class="pl">影响</p><p>Hadoop MapReduce 借鉴了这套编程与执行模型。Spark 后来采用不同的数据抽象和执行机制，以处理包括迭代计算在内的其他需求。</p>
   </div>
 
   <div class="paper">
@@ -493,7 +493,7 @@
     <p class="pm">OSDI 2006 · Chang, Dean, Ghemawat 等</p>
     <p class="pl">问题</p><p>Google 的数据形态介于关系表与文件之间:稀疏、海量、需要低延迟随机读写。</p>
     <p class="pl">设计</p><p>"稀疏的、分布式的、持久的多维排序映射",构建在 GFS 之上;tablet 为管理单位,按行键排序;牺牲 SQL 语义换取扩展性。</p>
-    <p class="pl">影响</p><p>HBase、Cassandra 等 NoSQL 系统的蓝本;证明了"弱模型 + 大规模"是可行路线。</p>
+    <p class="pl">影响</p><p>Bigtable 影响了 HBase、Cassandra 等系统的部分设计。它对数据模型和一致性的选择，服务于论文中描述的工作负载。</p>
   </div>
 
   <div class="paper">
@@ -501,15 +501,15 @@
     <p class="pm">ICML 2012 · Quoc Le 等(含 Dean, Andrew Ng)</p>
     <p class="pl">问题</p><p>不标注数据,神经网络能否自己学出有意义的概念?</p>
     <p class="pl">设计</p><p>9 层局部连接的稀疏自编码器,约 10 亿连接,跑在 1,000 台机器 / 16,000 CPU 核心上;喂入 1,000 万张 200×200 的 YouTube 无标注帧,训练三天。</p>
-    <p class="pl">数字与影响</p><p>图像识别准确率相对提升 70%;一个神经元对猫脸选择性响应,登上《纽约时报》头版。这是"规模带来涌现"的第一个公开实证。</p>
+    <p class="pl">数字与影响</p><p>论文记录了相应识别评估中的提升，并观察到对猫脸等模式有选择性响应的单元。这些结果的范围由训练数据、模型和测试任务共同决定。</p>
   </div>
 
   <div class="paper">
     <p class="ph">⑤ TensorFlow 白皮书</p>
     <p class="pm">arXiv 2016 / OSDI 2016 · Abadi 等(Dean 为主要设计者之一)</p>
-    <p class="pl">问题</p><p>DistBelief 绑定内部基础设施、不支持 GPU、研究者难用、无法开源。</p>
+    <p class="pl">问题</p><p>DistBelief 的系统接口与硬件适配限制，促使团队重新考虑面向研究和部署的数据流框架。具体限制要回到论文描述，不能笼统写成旧系统无法使用或无法开源。</p>
     <p class="pl">设计</p><p>数据流图 + 自动微分;算子可放置在 CPU/GPU/移动设备;同一套代码从手机跑到数千卡集群。</p>
-    <p class="pl">影响</p><p>2015-11-09 开源后成为全球最流行的 ML 框架,把深度学习从少数公司的私有能力变成公共基础设施。</p>
+    <p class="pl">影响</p><p>TensorFlow 开源后，研究者和开发者可以基于公开接口构建训练与部署程序。它与其他框架一起，降低了重复实现底层计算和设备适配的工作量。</p>
   </div>
 
   <div class="paper">
@@ -517,7 +517,7 @@
     <p class="pm">ISCA 2017 · Jouppi 等(含 Dean)</p>
     <p class="pl">问题</p><p>CNN 推理需求爆炸,通用 CPU/GPU 的能效撑不住"每人每天 3 分钟语音搜索"这种规模。</p>
     <p class="pl">设计</p><p>推理专用 ASIC:256×256 INT8 脉动阵列(92 TOPS)、约 28MiB 片上存储、PCIe 协处理器;砍掉通用性换取密度与能效。</p>
-    <p class="pl">数字与影响</p><p>相对同期 GPU 约 15–30 倍吞吐、30–80 倍能效;从想法到部署约 15 个月。开启"为算法造芯片"的时代,后续七代 TPU 训练了 PaLM 与 Gemini。</p>
+    <p class="pl">数字与影响</p><p>原稿摘录的吞吐、能效和开发周期数字，要与论文使用的基准、硬件及功耗口径一起阅读。它们说明专用加速器在那组负载中的表现，不代表对所有同期 GPU 任务的统一倍率。</p>
   </div>
 
   <div class="paper">
@@ -533,7 +533,7 @@
     <p class="pm">2022 · Chowdhery, Narang, Devlin 等 60+ 作者(含 Dean)</p>
     <p class="pl">问题</p><p>Pathways 愿景能不能在真实规模上兑现?</p>
     <p class="pl">设计</p><p>540B 参数稠密 Transformer,跨两个 Cloud TPU v4 Pod、共 6,144 块芯片训练,模型并行度 12 路、数据并行 512 路。</p>
-    <p class="pl">数字与影响</p><p>模型 FLOPs 利用率(MFU)达 57.8%,当时公开报告的最高水平;BIG-bench 多步推理部分超过人类平均。一次性验证了"系统 + 规模"两条路线,直接影响后续 Gemini 系列。</p>
+    <p class="pl">数字与影响</p><p>报告列出的 MFU 为 57.8%，并给出了语言与推理任务结果。MFU 衡量训练执行效率，基准分数衡量指定任务表现，不能合并成对模型全部能力的一次验证。</p>
   </div>
 </section>
 
@@ -579,9 +579,9 @@
 </section>
 
 <section id="peers">
-  <h2 data-num="13">同侪坐标中的 Dean</h2>
-  <p class="section-intro">THE SYSTEMATIZER AMONG THE PIONEERS</p>
-  <p>把 Dean 放进 AI 群星里,才能看清他独特的位置。2026 年 AI 圈流传的一句总结很说明问题:<strong>"Google 的四位 Gemini 联合负责人,现在只剩一位了。Jeff Dean 和 Oriol Vinyals 今天离开去做 Discovery Loop,Noam Shazeer 去了 OpenAI。"</strong></p>
+  <h2 data-num="13">与合作者的工作如何衔接</h2>
+  <p class="section-intro">COLLABORATORS · 结合具体论文和项目阅读</p>
+  <p>Dean 与多位研究者在不同项目中合作。下表按项目和工作方向列出关联，便于继续查阅各自的论文与职责。</p>
 
   <div class="tw"><table>
     <thead><tr><th>人物</th><th>原型</th><th>代表作</th><th>与 Dean 的对照</th></tr></thead>
@@ -596,15 +596,15 @@
     </tbody>
   </table></div>
 
-  <p>这张对照表勾勒出一个清晰的原型:<strong>Dean 不是某个算法的发明者</strong>——反向传播不是他、深度学习不是他、Transformer 论文的作者名单里也没有他。他反复扮演的角色是<strong>系统化者(enabler)</strong>:把一个研究想法,变成能在上万台机器上可靠运行、并且开放给全世界使用的系统。GFS 之于分布式存储、TensorFlow 之于深度学习、TPU 之于 AI 算力、Pathways 之于大模型训练,都是同一个动作的重复。</p>
-  <p>这也是他与 Shazeer 轨迹对照最耐人寻味的地方:Shazeer 两次离开 Google 追逐产品落地,Dean 在同一家公司做了 27 年地基,最后离开时选择的却不是产品,而是科学。当然,这一段是我的解读;但它让"Dean 是 AI 时代的总工程师,而非发明家"这个定位更加清晰。</p>
+  <p>这些论文经常涉及同一个难点：研究方法能在小规模实验中运行以后，怎样在更大的系统里保持效率和可靠性。GFS、TensorFlow、TPU 和 Pathways 给出的回答各不相同。</p>
+  <p>合作关系帮助串起这些项目，具体贡献仍以论文和公开项目记录为准。</p>
 </section>
 
 <section id="philosophy">
   <h2 data-num="14">合作方式与工程哲学</h2>
   <p class="section-intro">PRINCIPLES, NOT JUST SYSTEMS</p>
 
-  <h3>双核处理器:Jeff + Sanjay</h3>
+  <h3>Jeff 与 Sanjay 的结对工作</h3>
   <p>Dean 与 Ghemawat 的合作是 Google 工程文化最持久的传奇。他们共用一台电脑,一人敲键盘、一人实时审阅;《纽约客》把他们的关系比作 Monet 与 Renoir、Picasso 与 Braque 式的"双重创造力"。他们一起获得 2012 年 ACM-Infosys Foundation Award,并成为 Google 最早的两位 Senior Fellow(L11)。</p>
 
   <h3>几条贯穿始终的原则</h3>
@@ -624,7 +624,7 @@
   <div class="meme">"Jeff Dean 的键盘只有两个键:0 和 1。"</div>
   <div class="meme">"编译器不会警告 Jeff Dean;Jeff Dean 会警告编译器。"</div>
   <div class="meme">"当上帝说'要有光'时,Jeff Dean 在场做代码评审。"</div>
-  <p>最有趣的是,Dean 本人只花了 1–2 小时就通过查询内部系统日志找到了网站的作者——让 meme 的预设成了真。这些段子本质上是工程师文化的玩笑,但也从侧面说明他在业内的地位:人们真的相信,他能在系统层面做到常人做不到的事。</p>
+  <p>这些段子是工程师文化中的玩笑，不是技术事实。关于 Dean 查日志找到作者的故事，也应作为轶事阅读，不能拿来证明他具备超常能力。</p>
 </section>
 
 <section id="refs">

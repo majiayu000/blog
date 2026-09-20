@@ -6,7 +6,7 @@
 <title>Code Agent 是如何处理视频的</title>
 <meta name="date" content="2026-08-04">
 <meta name="tags" content="Codex, Claude Code, 视频理解, Agent 工具链">
-<meta name="description" content="把视频交给 Codex，它并不会直接把 mp4 交给模型看，却仍可能把任务做完。对照 Codex、Claude Code、Pi、Grok Build 源码：四家都不会直接看视频，差在拒绝方式与生成/播放。">
+<meta name="description" content="检查 Codex、Claude Code、Pi 与 Grok Build 的输入和读文件路径，并用同一个 MP4 对照直接读取与 ffmpeg 抽帧。区分视频任务完成、静态画面识别和完整视频理解。">
 <style>
   :root{--bg:#0e1014;--panel:#14171e;--card:#191d26;--soft:#1e232e;--line:#2a303c;
     --ink:#e6e9f0;--ink2:#c3c9d6;--muted:#8b93a4;--faint:#616a7c;
@@ -67,7 +67,7 @@
   <a href="/" class="tag" style="text-decoration:none;color:var(--acc)">← 博客</a>
   <span class="tag">源码对比</span>
   <b>Code Agent 是如何处理视频的</b>
-  <span class="tag">白话成稿</span>
+  <span class="tag">源码与本机对照</span>
   <span class="tag">Codex · Claude · Pi · Grok</span>
 </div></div>
 
@@ -89,10 +89,7 @@
 
 <main>
 <h1>Code Agent 是如何处理视频的</h1>
-<p class="meta">
-  Codex · Claude Code · Pi · Grok Build 源码对比 · 2026-08-04<br>
-  写法：先结论，再分三块白话展开，最后回答「没能力为什么还能做好」
-</p>
+<p class="meta">Codex · Claude Code · Pi · Grok Build 源码对比 · 2026-08-04<br>范围限于文中检查的客户端代码与一次本地 MP4 测试。</p>
 
 <div class="herowrap">
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 700" font-family="'PingFang SC','Microsoft YaHei',system-ui,sans-serif">
@@ -114,28 +111,28 @@
   </g>
 
   <rect x="56" y="124" width="1168" height="64" rx="10" fill="url(#apex)"/>
-  <text x="640" y="150" text-anchor="middle" fill="#0f1319" font-size="16" font-weight="700">结论：四家都不会「直接看视频」</text>
-  <text x="640" y="174" text-anchor="middle" fill="#1a2030" font-size="14">差在：格式允不允许 · 读文件时怎么挡 · 有没有生成/播放把场面做大</text>
+  <text x="640" y="150" text-anchor="middle" fill="#0f1319" font-size="16" font-weight="700">本文检查的输入路径：文字与图片</text>
+  <text x="640" y="174" text-anchor="middle" fill="#1a2030" font-size="14">分别检查请求内容、读文件工具和生成 / 播放入口</text>
 
   <rect x="56" y="214" width="360" height="270" rx="12" fill="#1a2030" stroke="#2a3344"/>
   <rect x="460" y="214" width="360" height="270" rx="12" fill="#1a2030" stroke="#2a3344"/>
   <rect x="864" y="214" width="360" height="270" rx="12" fill="#1a2030" stroke="#2a3344"/>
 
-  <text x="236" y="248" text-anchor="middle" fill="#e8975a" font-size="13" font-weight="700">第一块 · 最重要</text>
+  <text x="236" y="248" text-anchor="middle" fill="#e8975a" font-size="13" font-weight="700">请求内容</text>
   <text x="236" y="280" text-anchor="middle" fill="#eef1f6" font-size="18" font-weight="700">发给模型的数据</text>
   <text x="76" y="320" fill="#cdd4de" font-size="14">只有文字和图片</text>
   <text x="76" y="348" fill="#cdd4de" font-size="14">没有「视频」这种内容</text>
-  <text x="76" y="376" fill="#cdd4de" font-size="14">门在格式上就锁了</text>
-  <text x="76" y="430" fill="#4fd0a0" font-size="13" font-weight="600">四家答案一样：没有</text>
+  <text x="76" y="376" fill="#cdd4de" font-size="14">未见视频内容块</text>
+  <text x="76" y="430" fill="#4fd0a0" font-size="13" font-weight="600">范围限于本文检查的代码</text>
 
-  <text x="640" y="248" text-anchor="middle" fill="#4fd0a0" font-size="13" font-weight="700">第二块 · 日常体感</text>
+  <text x="640" y="248" text-anchor="middle" fill="#4fd0a0" font-size="13" font-weight="700">读文件工具</text>
   <text x="640" y="280" text-anchor="middle" fill="#eef1f6" font-size="18" font-weight="700">去读 mp4 时</text>
   <text x="480" y="320" fill="#cdd4de" font-size="14">Claude：直接报错</text>
-  <text x="480" y="348" fill="#cdd4de" font-size="14">Codex：官方不看，可换路</text>
+  <text x="480" y="348" fill="#cdd4de" font-size="14">Codex：先抽帧再读图</text>
   <text x="480" y="376" fill="#cdd4de" font-size="14">Pi / Grok：不当图处理</text>
-  <text x="480" y="430" fill="#4fd0a0" font-size="13" font-weight="600">都不会自动截帧给模型</text>
+  <text x="480" y="430" fill="#4fd0a0" font-size="13" font-weight="600">未见默认自动抽帧流程</text>
 
-  <text x="1044" y="248" text-anchor="middle" fill="#c88bff" font-size="13" font-weight="700">第三块 · 容易误会</text>
+  <text x="1044" y="248" text-anchor="middle" fill="#c88bff" font-size="13" font-weight="700">产品入口</text>
   <text x="1044" y="280" text-anchor="middle" fill="#eef1f6" font-size="18" font-weight="700">生成 / 播放</text>
   <text x="884" y="320" fill="#cdd4de" font-size="14">Grok 能产片、能播放</text>
   <text x="884" y="348" fill="#cdd4de" font-size="14">播放 ≠ 模型看过</text>
@@ -144,52 +141,46 @@
 
   <rect x="56" y="514" width="1168" height="140" rx="12" fill="#141a24" stroke="#2a3344"/>
   <text x="76" y="556" fill="#9aa4b4" font-size="13">那 Codex 任务是靠什么做好的？</text>
-  <text x="76" y="592" fill="#eef1f6" font-size="17" font-weight="600">靠「不看视频也能完成」的办法，不是靠看懂了 mp4</text>
+  <text x="76" y="592" fill="#eef1f6" font-size="17" font-weight="600">本次实测：ffmpeg 抽帧，再经图片入口识别</text>
   <text x="76" y="626" fill="#9aa4b4" font-size="14">例如：活本来就不用看画面 · 终端截帧再当图 · 你已经说明了内容</text>
 </svg>
 </div>
 
 <ol class="toc">
-  <li><a href="#story">0 · 一个念头</a></li>
-  <li><a href="#top">1 · 先说结论</a></li>
+  <li><a href="#story">0 · 从 MP4 输入开始</a></li>
+  <li><a href="#top">1 · 检查范围</a></li>
   <li><a href="#p1">2 · 发给模型的数据里有没有视频</a></li>
   <li><a href="#p2">3 · 去读 mp4 时会发生什么</a></li>
-  <li><a href="#p3">4 · 生成、播放会不会冒充理解</a></li>
+  <li><a href="#p3">4 · 生成、播放与分析</a></li>
   <li><a href="#codex">5 · 任务是靠什么做好的</a></li>
-  <li><a href="#minor">6 · 其它细节往哪搁</a></li>
+  <li><a href="#minor">6 · 抽帧会损失什么</a></li>
   <li><a href="#defaults">7 · 自己做产品时怎么定</a></li>
   <li><a href="#appendix">附录 · 四家流程</a></li>
 </ol>
 
 <span id="story"></span>
-<h2>0 · 一个念头</h2>
+<h2>把 MP4 交给 Agent 以后</h2>
 <div class="story">
-  <p>我有一个很具体的念头。</p>
-  <p>我把<strong>一段视频</strong>交给 <strong>Codex</strong>。按现在的宣传，coding agent 好像都很「多模态」。可顺着代码往下挖会发现：Codex 允许用户提交的类型里，<strong>根本没有「视频」</strong>；能拿去「看」的，到<strong>本地图片</strong>就停了。</p>
-  <p><strong>即便如此，很多时候任务仍然能推进得不错。</strong></p>
-  <p>这就怪了：它到底在干什么？是偷偷会看视频，还是<strong>从来就没靠「看懂画面」在干活</strong>？如果是后者，我们把「做得好」和「会看视频」绑在一起——绑错了。</p>
-  <p>于是我对照了 Codex、Claude Code、Pi、Grok Build 的源码。结论有点反直觉。</p>
+  <p>把视频文件交给编程 Agent，任务有时能完成，但仅凭结果，看不出模型究竟收到过哪些画面。它可能读了字幕、检查了媒体参数，也可能运行脚本抽帧。</p>
+  <p>我先查 Codex 的输入定义和本地看图工具，再对照 Claude Code、Pi 与 Grok Build 的相应代码。检查的这几条路径接受文字和图片，没有把本地 MP4 直接作为视频内容块提交给模型的入口。</p>
+  <p>为了弄清任务怎样继续，我又用同一个 MP4 做了对照：直接交给 <code>view_image</code> 会失败，用 ffmpeg 导出 JPEG 后，同一工具可以读取画面。后文保留了文件参数、命令和结果。</p>
+  <p>这几步回答的是不同问题：客户端能接收什么，读文件工具如何处理 MP4，以及 Agent 能否借助其他工具取得画面。生成视频、播放视频也需要另看，不能从界面能播就推断模型看过内容。</p>
+
 </div>
 
 <span id="top"></span>
-<h2>1 · 先说结论</h2>
-<blockquote>
-<strong>四家都不会「直接把 mp4 交给模型看」。</strong><br><br>
-处理方式确实不一样——但差不在「谁更能看片」，而在：<br>
-① 发给模型的数据格式里有没有视频；<br>
-② 读一个 mp4 时是骂你、装死、还是当普通文件；<br>
-③ 产品上有没有生成/播放，让人误以为它会分析。
-</blockquote>
+<h2>检查到的输入范围</h2>
 
-<p><strong>一句话：</strong>Code Agent 并不会「看视频」。真正能进模型「眼睛」的，一直是<strong>文字 + 图片</strong>。「把视频交给 agent 还能做好」——多半靠别的办法做完，不是软件把整段 mp4 塞进了多模态接口。</p>
+
+<p>在本文检查的客户端路径中，模型获得画面信息要经过图片输入。Agent 可以先把 MP4 转成帧图，也可以只用文本和媒体参数完成某些任务。因此，“任务完成了”不足以证明整段视频进入过模型，更不能概括所有版本和产品入口。</p>
 
 <div class="tw">
 <table>
-  <thead><tr><th>顺序</th><th>白话名字</th><th>在问什么</th><th>为什么重要</th></tr></thead>
+  <thead><tr><th>顺序</th><th>检查对象</th><th>在问什么</th><th>为什么重要</th></tr></thead>
   <tbody>
-    <tr><td>第一块</td><td><strong>发给模型的数据</strong></td><td>请求里能不能带「视频」？</td><td>这里没有，后面补不回来</td></tr>
-    <tr><td>第二块</td><td><strong>去读文件时</strong></td><td>对 .mp4 点读取，怎么反应？</td><td>决定日常体感</td></tr>
-    <tr><td>第三块</td><td><strong>产品还提供了什么</strong></td><td>会不会生成、播放？和理解混没混？</td><td>决定会不会被宣传带偏</td></tr>
+    <tr><td>请求格式</td><td><strong>发给模型的数据</strong></td><td>请求里能不能带「视频」？</td><td>这里没有，后面补不回来</td></tr>
+    <tr><td>文件工具</td><td><strong>去读文件时</strong></td><td>对 .mp4 点读取，怎么反应？</td><td>决定日常体感</td></tr>
+    <tr><td>产品入口</td><td><strong>产品还提供了什么</strong></td><td>会不会生成、播放？和理解混没混？</td><td>决定会不会被宣传带偏</td></tr>
   </tbody>
 </table>
 </div>
@@ -210,7 +201,7 @@
     </tr>
     <tr>
       <td>四家大不相同吗？</td>
-      <td><strong>是，差在挡法和热闹程度</strong></td>
+      <td><strong>是，差在工具处理与产品入口</strong></td>
       <td>相同：都不会直接把视频交给模型。不同：拒绝响不响、有没有生成/播放</td>
     </tr>
     <tr>
@@ -224,15 +215,15 @@
 
 <!-- P1 -->
 <span id="p1"></span>
-<h2>2 · 第一块：发给模型的数据里有没有「视频」？</h2>
+<h2>请求里有没有视频内容块</h2>
 <div class="callout">
-  <div class="k">用白话讲</div>
-  <p style="margin:0;color:var(--ink2)">判断 agent「能不能看 X」，第一刀不是看官网广告，而是看：它发给大模型的那包数据里，<strong>允许出现哪些内容</strong>。如果只允许文字和图片，就没有正规路径把「一整段 mp4」直接塞给模型——除非先截成图。</p>
+  <div class="k">检查位置</div>
+  <p style="margin:0;color:var(--ink2)">我先检查发送给模型的数据结构。要把整段 MP4 交给模型，需要对应的内容类型、文件传递方式和服务端支持；依赖中出现一个 Video 类型名，并不能说明客户端已经接通这条路径。</p>
 </div>
-<p><strong>四家在这一层的答案一样：没有「视频」这种内容类型。</strong></p>
+<p>下面列的是这次检查到的四套输入实现。结论限于这些代码，不涵盖同品牌的网页产品或其他 API。</p>
 
 <h3>2.1 Codex</h3>
-<p>用户能提交的类型是固定列表：文字、图片（含本地图片路径）、Skill、Mention 等。<strong>没有</strong>「本地视频」。实时相关配置里也是不接收视频的。</p>
+<p>Codex 的用户输入类型列有文字、图片、本地图片路径、Skill 和 Mention 等，没有本地视频类型。检查到的实时配置也没有启用视频输入。</p>
 <div class="code"><span class="lang">要点</span>
 <pre><code>能提交：文字、图片、本地图片路径…
 不能提交：视频路径 / 视频内容块
@@ -240,33 +231,33 @@
 </div>
 
 <h3>2.2 Pi</h3>
-<p>协议里用户内容只有：文字、图片。提问时可选「带一组图片」，没有「带一组视频」。会话树、分支摘要是另一套能力，改不了「模型只收字和图」。</p>
+<p>Pi 的这份协议把用户内容定义为文字和图片，提问时可以附带一组图片。会话树和分支摘要处理的是历史组织，不会增加视频输入类型。</p>
 
 <h3>2.3 Claude Code</h3>
-<p>「读文件」返回类型大致是：文字、图片、笔记本、PDF。图片只认常见静图格式。依赖库里若出现 Video 名字，是别人 SDK 的类型，不是主流程在发「视频内容块」。</p>
+<p>Claude Code 的读文件结果包括文字、图片、笔记本和 PDF。图片分支识别常见静图格式；依赖 SDK 中的 Video 类型没有出现在这里检查的主请求路径上。</p>
 
 <h3>2.4 Grok Build</h3>
-<p>对话内容块只有文字和图片。代码里和视频地址相关的，主要是<strong>生成完下载文件</strong>，不是拿视频当视觉输入。所以 Grok 再像「视频产品」，分析这一侧和另外三家一样——请求里没有视频块。</p>
+<p>Grok Build 的这份对话协议包含文字和图片。代码中的视频地址主要用于接收生成结果和下载文件，不能据此认定请求端支持上传视频进行分析。</p>
 
 <div class="sum">
   <strong>小结</strong>
-  <p style="margin:0">门在「能提交什么」上就锁了。唯一正经绕法：先变成图片（截帧/截图），再走各家已有的看图。</p>
+  <p style="margin:0">这些客户端已经有图片入口，因此可以先抽帧再提交。这是后文实测采用的路径；调用其他视频服务也是可能的扩展方式，但本次没有验证。</p>
 </div>
 
 <!-- P2 -->
 <span id="p2"></span>
-<h2>3 · 第二块：去读一个 mp4，会发生什么？</h2>
+<h2>读文件工具怎样处理 MP4</h2>
 <div class="callout">
-  <div class="k">用白话讲</div>
-  <p style="margin:0;color:var(--ink2)">体感来自：我让 agent <strong>打开这个文件</strong>，它回了什么。四家对图片有成熟流程；对视频则是报错、没通道、或不当图处理。没有任何一家默认：打开 mp4 → 自动截帧 → 自动给模型看。</p>
+  <div class="k">检查位置</div>
+  <p style="margin:0;color:var(--ink2)">接着看工具行为。支持读取图片，不代表工具会替 MP4 解码、采样并提交帧图。我在检查的默认路径中没有找到这套自动处理流程。</p>
 </div>
 
 <div class="tw">
 <table>
   <thead><tr><th></th><th>图片</th><th>视频</th><th>你的感觉</th></tr></thead>
   <tbody>
-    <tr><td>Claude</td><td>压缩后当图读</td><td>明确：二进制，不能读</td><td><strong>拒绝最响</strong></td></tr>
-    <tr><td>Codex</td><td>看图工具 / 本地图</td><td>没有「读视频」工具</td><td><strong>不报视频错，也不会看</strong>；可用终端自己绕</td></tr>
+    <tr><td>Claude</td><td>压缩后当图读</td><td>明确：二进制，不能读</td><td><strong>明确返回二进制错误</strong></td></tr>
+    <tr><td>Codex</td><td>看图工具 / 本地图</td><td>没有「读视频」工具</td><td><strong>本次直接读取失败</strong>；可用终端自己绕</td></tr>
     <tr><td>Pi</td><td>认静态图</td><td>不认 video</td><td>不会当图给模型</td></tr>
     <tr><td>Grok</td><td>粘贴图 / 读 image</td><td>当二进制拒绝</td><td>挡文件；旁边能生成、能播</td></tr>
   </tbody>
@@ -274,25 +265,25 @@
 </div>
 
 <h3>Claude：两张名单</h3>
-<p>图名单（png/jpg…）→ 压缩后当图。二进制名单（含 mp4/mov/webm…）→ 直接报错，不会解成一帧帧画面。你很难误以为「它其实看过了」。</p>
+<p>Claude Code 对图片和二进制文件分别处理。png、jpg 等会进入图片分支；mp4、mov、webm 等在二进制名单中，读取时返回错误，不会在这条路径里逐帧解码。</p>
 
 <h3>Codex：看图工具只服务图片</h3>
-<p>没有官方「用户给 mp4 → 自动截帧 → 送模型」。但 agent 仍可能：用终端跑 ffmpeg 导出几张图再看图；或任务根本是改代码/脚本，不用看画面。所以常出现「没能力却还能做好」。</p>
+<p>Codex 的看图工具读取静态图片。Agent 仍能在终端运行 ffmpeg，再把导出的图片交给看图工具；转码、剪辑脚本和页面布局等任务，也可能只靠代码与媒体参数完成。</p>
 
 <h3>Pi / Grok</h3>
-<p>Pi 默认极简，视频不是一等公民。Grok 挡文件时接近 Claude 那么硬，但产品上还能生成和播放，人容易晕（见下一块）。</p>
+<p>Pi 的默认输入中没有视频类型。Grok Build 需要另行区分读文件、视频生成和播放入口，后两者的存在不等于前者会提供视频画面。</p>
 
 <div class="sum">
   <strong>小结</strong>
-  <p style="margin:0">相同：都不会默认「读 mp4 = 模型看视频」。不同：拒绝响不响、有没有终端可绕。Claude 拒绝最响；Codex 换路空间最大。</p>
+  <p style="margin:0">要判断某次任务有没有读取画面，查看工具调用和实际提交的内容即可。错误提示是否醒目、终端能否执行辅助程序，都不能代替这一步检查。</p>
 </div>
 
 <!-- P3 -->
 <span id="p3"></span>
-<h2>4 · 第三块：生成、播放，会不会冒充「会分析」？</h2>
+<h2>生成和播放不等于分析</h2>
 <div class="callout">
-  <div class="k">用白话讲</div>
-  <p style="margin:0;color:var(--ink2)">分析画面：四家都不会直接吃视频。让人觉得差很多的，是会不会<strong>生成</strong>视频、会不会<strong>播放</strong>，以及文案有没有把这两件事和「理解内容」写成一回事。Grok 在前两件上最热闹。</p>
+  <div class="k">检查位置</div>
+  <p style="margin:0;color:var(--ink2)">生成接口接收提示词并返回视频，播放器把文件展示给用户，内容分析则需要把视频或采样画面送进模型。这三种功能可以同时出现在一个产品里，但数据路径不同。</p>
 </div>
 
 <div class="tw">
@@ -306,28 +297,27 @@
   </tbody>
 </table>
 </div>
-<p style="font-size:13.5px">* 文档里可能出现 Sora 等名字，不是「丢 mp4 就会分析」的正式路径。</p>
+<p style="font-size:13.5px">文档里出现 Sora 等名称，也需要找到实际的输入调用，才能确定该入口能做什么。</p>
 
-<p><strong>Grok 请拆成三件事：</strong></p>
+<p>Grok Build 中相关功能可以按数据去向分开看：</p>
 <ol>
   <li><strong>分析</strong>——看图，模型算看过图；</li>
   <li><strong>生成</strong>——写出 mp4 文件；</li>
   <li><strong>播放</strong>——终端播给你看，模型不当作看过。</li>
 </ol>
-<p>正确说法：会产片、会播给你看；理解内容仍要截帧再看图。<br>
-错误说法：「Grok 会分析视频」。</p>
+<p>这份实现能生成和展示视频；本文检查的画面分析路径仍依赖图片输入。这个结论不延伸到 Grok 的其他产品或后来版本。</p>
 
 <!-- 回应 -->
 <span id="codex"></span>
-<h2>5 · 回到念头：任务是靠什么做好的？</h2>
+<h2>任务可能怎样完成</h2>
 
 <div class="callout">
   <div class="k">判定（结论）</div>
-  <p style="margin:0;color:var(--ink2)"><strong>靠「不把 mp4 交给模型看」也能完成任务的办法，不是靠「看懂了视频」。</strong></p>
+  <p style="margin:0;color:var(--ink2)">接下来才是任务结果的问题。视频处理常包含剪辑、转码、提取字幕、生成代码或检查画面等不同要求，其中一部分可以在不把视频交给视觉模型的情况下完成。</p>
 </div>
 
-<h3>5.1 候选路径：不能拿单个案例排「常见程度」</h3>
-<p>官方路径不会把你的 mp4 直接送进图片视觉。下面列的是<strong>可能发生的路径，不是经过统计的频率排名</strong>；判断某次任务到底走了哪条，必须看那次对话和工具日志。</p>
+<h3>几种可能路径，要用日志区分</h3>
+<p>下表列出可发生的处理方式，不是使用频率排名。判断一个案例属于哪种，需要查看当次会话的工具结果，尤其是有没有实际产生并提交帧图。</p>
 
 <div class="tw">
 <table>
@@ -337,20 +327,20 @@
     <tr><td>B</td><td>自己截帧再当图看</td><td>终端 ffmpeg 导出图，再走看图</td><td>日志里有 ffmpeg，后面有看图</td></tr>
     <tr><td>C</td><td>你已经把内容说明白了</td><td>口述、字幕、剧本、关键截图</td><td>用户消息里已有描述或图</td></tr>
     <tr><td>D</td><td>只动旁边的文本</td><td>srt / json / prompt</td><td>读的是文本</td></tr>
-    <tr><td>E</td><td>嘴上「看过」（坏）</td><td>根据文件名瞎编</td><td>没图没帧却描述细节 → 打回</td></tr>
+    <tr><td>E</td><td>缺少画面证据的描述</td><td>仅依据文件名推测</td><td>检查描述能否追溯到画面输入</td></tr>
   </tbody>
 </table>
 </div>
 
-<h3>5.2 当前 Codex 实测：直接失败，截帧后成功</h3>
+<h3>同一个 MP4：直接读取失败，抽帧后可读</h3>
 <div class="callout">
   <div class="k">实测（事实）· 2026-08-04</div>
-  <p style="margin:0;color:var(--ink2)">同一个本地 MP4，先直接交给当前 Codex 的 <code>view_image</code>，再用 ffmpeg 抽帧后交给同一图片入口。结果清楚地复现了路径 B。</p>
+  <p style="margin:0;color:var(--ink2)">测试先把本地 MP4 交给 Codex 的 <code>view_image</code>，再用 ffmpeg 抽帧，将 JPEG 交给同一入口。两次结果对应下表中的路径 B，输入文件和抽帧参数如下。</p>
 </div>
 
 <div class="tw">
 <table>
-  <thead><tr><th>步骤</th><th>操作</th><th>当前会话的新鲜结果</th></tr></thead>
+  <thead><tr><th>步骤</th><th>操作</th><th>本次测试结果</th></tr></thead>
   <tbody>
     <tr><td>样本隔离</td><td>选择只有 <code>source.mp4</code>、没有同目录字幕或 JSON 的 15.069 秒视频；临时改名为 <code>sample.mp4</code></td><td>H.264 · 864×496 · 24 fps · AAC；SHA-256 <code>67190c6532f5…72ae19</code></td></tr>
     <tr><td>直接读取</td><td><code>view_image(sample.mp4)</code></td><td><code>image content omitted because it could not be processed</code>；没有画面进入视觉结果，也没有产生内容描述</td></tr>
@@ -365,13 +355,10 @@
 ffmpeg -i sample.mp4 -vf "fps=1/2.5,scale=432:248:force_original_aspect_ratio=decrease,pad=432:248:(ow-iw)/2:(oh-ih)/2:black,tile=3x2" -frames:v 1 contact-sheet.jpg</code></pre>
 </div>
 
-<p><strong>这次能下的结论：</strong>当前 Codex 会话没有直接处理该 MP4 的图片视觉路径；Agent 在直接读取失败后，可以调用 Shell 抽帧，再通过静态图片获得画面信息。内容识别发生在 JPEG 进入 <code>view_image</code> 之后，不是在 MP4 阶段。</p>
-<p><strong>这次不能下的结论：</strong>一个样本不能证明 A–E 哪条最常见，也不能覆盖所有 Codex 版本、产品界面或未来服务端能力。本次只直接验证了当前环境中的路径 B；六张采样帧也不能替代完整时间轴、音轨或逐帧动作理解。</p>
+<p>这次会话的画面识别发生在 JPEG 进入 <code>view_image</code> 之后。直接读取 MP4 没有成功，Shell 抽帧为已有的图片工具提供了可用输入。</p>
+<p>六张帧图只覆盖若干采样时刻，没有覆盖完整音轨和逐帧动作。一个样本也无法判断 A–E 哪条更常见，或代表所有 Codex 版本的行为。</p>
 
-<blockquote>
-Codex 强的是「一轮轮用工具（包括终端）+ 看图 + 改代码」，不是「内置视频理解」。<br>
-「交给视频仍做好」≠「视频能力已经接通」。
-</blockquote>
+
 
 <div class="tw">
 <table>
@@ -386,21 +373,21 @@ Codex 强的是「一轮轮用工具（包括终端）+ 看图 + 改代码」，
 
 <!-- minor -->
 <span id="minor"></span>
-<h2>6 · 其它细节往哪搁？</h2>
-<p>图要压多小、最长边多少——只影响截帧后清不清晰，不会 magically 变成「会看视频」。文档里的 Sora 名、SDK 里的 Video 类型名，没有提交路径就等于用户用不上。这些都不是第四套秘密能力。</p>
+<h2>抽帧之后还会损失什么</h2>
+<p>抽帧间隔决定哪些时刻会被遗漏，缩放尺寸影响小字和局部细节，静图本身也不包含音轨。即便图片入口工作正常，仍要按任务补充字幕、音频转写或更密的采样，不能把几张图片当成完整时间轴。</p>
 
 <!-- defaults -->
 <span id="defaults"></span>
-<h2>7 · 若我们自己做产品，默认怎么定？</h2>
-<p>不说「因为第几块」，直接说该怎么做：</p>
+<h2>做成产品时，需要补上的流程</h2>
+<p>这次对照暴露出的缺口可以直接落到产品设计上：说明输入能力，提供明确的预处理步骤，并在结果中保留模型实际看过的内容范围。</p>
 
-<h3>因为模型根本收不到视频</h3>
+<h3>先声明支持的输入</h3>
 <ul>
   <li>对外只承诺：能处理<strong>文字和图片</strong></li>
   <li>用户上传视频时，不要写「模型将直接理解视频内容」</li>
 </ul>
 
-<h3>因为读 mp4 不会自动变成「看过」</h3>
+<h3>把预处理接成可检查的流程</h3>
 <p>做成固定流程：</p>
 <div class="code"><span class="lang">流程</span>
 <pre><code>视频文件
@@ -411,13 +398,13 @@ Codex 强的是「一轮轮用工具（包括终端）+ 看图 + 改代码」，
   → 截帧失败就明确失败，禁止假装分析过</code></pre>
 </div>
 
-<h3>因为生成/播放容易冒充理解</h3>
+<h3>界面区分生成、播放与分析</h3>
 <ul>
   <li>能力表强制三列：<strong>理解 | 生成 | 展示</strong></li>
   <li>验收：直接丢 mp4 → 应拒绝，或能看到自动截帧的证据</li>
 </ul>
 
-<h3>记日志时别混</h3>
+<h3>日志记录实际输入</h3>
 <ul>
   <li>截了哪些帧、哪些图进了对话、模型实际吃到几张图</li>
   <li>是否生成了成片、是否播放了成片</li>
@@ -434,26 +421,15 @@ Pi      读静图→缩放→模型   │ 视频不是一等能力
 Grok    (A)看图 (B)生成mp4 (C)终端播放（给人看）│ 读 mp4→拒绝</code></pre>
 </div>
 
-<h2>收束</h2>
+<h2>这次对照说明了什么</h2>
 <div class="story">
-  <p>回到开头：把视频给了 Codex。它没有原生处理视频的能力，却仍可能做得很好。</p>
-  <p>源码解释是：</p>
-  <ol>
-    <li><strong>它确实不会</strong>把视频当成「给模型看的视频」——分析这一侧，四家一样。</li>
-    <li><strong>这条换路已在当前环境实测</strong>：直接读 MP4 失败，ffmpeg 抽帧后看图成功；其它旁路及其常见程度仍需对应会话日志。</li>
-    <li><strong>体感差很多</strong>：Claude 拒绝响；Codex 换路空间大；Pi 默认极简；Grok 分析同样不会直接看，但生成和播放把「会视频」演得很真。</li>
-  </ol>
-  <blockquote style="margin:14px 0 0">
-    <strong>别问「哪个 Code Agent 会看视频」。</strong><br>
-    <strong>问「截帧和看图接在谁家路径上，以及生成/播放有没有被算成已经理解」。</strong>
-  </blockquote>
+  <p>给 Agent 一个 MP4 后，下一步应检查它拿到了什么。对这次 Codex 测试，答案是 ffmpeg 导出的六张 JPEG；对只改转码脚本的任务，模型可能根本不需要画面。</p>
+  <p>后续判断应依据实际提交的内容和工具结果。文件路径、视频播放器和一段听起来合理的描述，都不能单独证明模型看过整段视频。</p>
+
+
 </div>
 
-<div class="foot">
-  白话成稿 · 2026-08-04 · 发布于 Silent Star<br>
-  本机实测补证 · 2026-08-04 · MP4 直接读取失败，ffmpeg 六帧联系表进入图片视觉成功<br>
-  已去掉「因支柱一 / video-in / MECE」等内部切口，改成第一块、第二块、第三块白话
-</div>
+<div class="foot">2026-08-04 · Silent Star<br>本机 MP4 对照：直接读取失败，ffmpeg 导出的六帧联系表可通过图片入口读取。</div>
 </main>
 </div>
 </body>

@@ -575,19 +575,19 @@
   <div>
     <p class="eyebrow">Apple Silicon · 50 unique prompts · deterministic scoring</p>
     <h1 id="page-title">Glimmer <span class="versus">vs</span><br>Gemma 4 12B</h1>
-    <p class="hero-deck">两个模型跑在同一台 Mac 上，题目和评分框架保持一致。<strong>一个用能力换时间，一个用速度换上限。</strong></p>
+    <p class="hero-deck">同一台 Mac 上，两套本地模型服务各跑五组题，每组 10 题。除了评分，我也记录输出截断、任务耗时和部署失败；这些细节会影响分数该怎样解释。</p>
   </div>
   <div class="score-stamp" aria-label="Glimmer 三胜，Gemma 一胜，一项平手">
     <div class="score-kicker">Head-to-head</div>
     <div class="score"><span class="g1">3</span><small>/</small><span class="g2">1</span><small> + 1 tie</small></div>
-    <p class="score-caption">五项本机实测，Glimmer 3 胜，Gemma 1 胜，代码生成打平。</p>
+    <p class="score-caption">本轮五项样本中，Glimmer 三项分数较高，Gemma 一项较高，代码生成持平。</p>
   </div>
 </section>
 
 <section class="verdict-band" aria-label="结论摘要">
   <div class="verdict-inner">
     <div class="verdict-label">Verdict / 结论</div>
-    <p class="verdict-copy"><strong>Glimmer 的综合能力更强</strong>，尤其是复杂指令、推理与多模态；<strong>Gemma 4 12B 更快、更轻，工具调用更稳</strong>，完成有效对照只用了前者约三分之一的时间。</p>
+    <p class="verdict-copy">Glimmer 在这组指令、推理与多模态样本中得分较高；Gemma 的工具调用样本全部通过，总运行时间较短。不过两边的复测安排不同，不能把总时长比直接当作模型吞吐比。</p>
   </div>
 </section>
 
@@ -614,7 +614,7 @@
   <p>输出上限随任务复杂度变化。BFCL 为 1024 token，IFEval 与 MMMU 为 2048 token，LiveBench 和 BigCodeBench 的最终有效上限为 4096 token。Gemma 使用 Google <a href="https://huggingface.co/google/gemma-4-12B">官方 Gemma 4 12B 模型</a>及其<a href="https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-gguf">官方 QAT Q4_0 GGUF</a>，两套服务的上下文均为 32768。</p>
   <div class="note"><b>边界提醒</b>每项只有 10 题。这组结果能暴露接口、截断和速度差异，适合本机选型与部署验收。它不能代替完整排行榜成绩。</div>
 
-  <h2 id="score">五项成绩，3 胜、1 负、1 平</h2>
+  <h2 id="score">五组题的本机成绩</h2>
   <figure class="benchmark-board" aria-labelledby="benchmark-title">
     <figcaption class="benchmark-head">
       <span>
@@ -669,16 +669,16 @@
   </figure>
   <p>IFEval 的 <code>final_acc</code> 是综合指标，不能简单翻译成“答对几题”。附加指标也呈现同样差距。Glimmer 的 prompt strict accuracy 为 0.900，instruction strict accuracy 为 0.933，Gemma 两项均为 0.600。</p>
 
-  <h2 id="tools">Gemma 靠工具调用拿下一局</h2>
+  <h2 id="tools">工具调用：Gemma 的 10 个样本全部通过</h2>
   <div class="duel" aria-label="BFCL 工具调用成绩">
     <div class="duel-card glimmer"><div class="duel-name">Glimmer / BFCL</div><p class="duel-big">0.900</p><p class="duel-small">5 分 31 秒 · 0 截断</p></div>
     <div class="duel-card gemma"><div class="duel-name">Gemma 4 / BFCL</div><p class="duel-big">1.000</p><p class="duel-small">1 分 54 秒 · 0 截断</p></div>
   </div>
   <p>BFCL 会检查模型选了哪个函数，也会核对传入参数。两个模型的 10 个样本都产生了框架可识别的原生工具调用，没有输出截断。Gemma 的 10 个样本全部正确。</p>
-  <p>Gemma 只用了 1 分 54 秒，Glimmer 用了 5 分 31 秒。模型如果主要服务于 Agent、自动化脚本或桌面助手，这段延迟差异每天都能感受到。</p>
+  <p>这组 BFCL 样本里，Gemma 用了 1 分 54 秒，Glimmer 用了 5 分 31 秒。这个差异值得在实际 Agent 工作流中继续测，但 10 道函数调用题不能覆盖全部交互场景。</p>
 
-  <h2 id="thinking">最大差距在于能不能停止思考</h2>
-  <p>长思考的收敛能力拉开了本轮最大差距。Gemma 在 MMMU 的 10 道题中有 8 道写满 2048 token。到了 LiveBench，即使上限升到 4096，仍有 9 道写满。</p>
+  <h2 id="thinking">截断影响了推理题的评分</h2>
+  <p>Gemma 在 MMMU 的 10 道题中有 8 道达到 2048 token 上限；LiveBench 提高到 4096 后，仍有 9 道达到上限。输出是否在预算内留下完整答案，是解释这组分数时必须单独检查的变量。</p>
   <div class="truncation" aria-label="LiveBench 截断率对比">
     <div class="bar-row"><span>Glimmer</span><div class="bar-track"><div class="bar glimmer" style="width:40%"></div></div><strong>4/10</strong></div>
     <div class="bar-row"><span>Gemma 4</span><div class="bar-track"><div class="bar gemma" style="width:90%"></div></div><strong>9/10</strong></div>
@@ -697,12 +697,12 @@
     </table>
   </div>
   <p>部分 Gemma 输出把预算几乎全部花在内部推理上，最后答案为空或不完整。这类输出会被评分器判错。LiveBench 的 0.100 里，有多少是推理本身不会，有多少是没来得及交答案，这组小样本分不开。当前日志至少说明一件事。<strong>在这套 llama.cpp 配置与输出预算下，它经常无法及时把推理收束成可评分答案。</strong></p>
-  <p>Glimmer 也有同类问题，但程度明显较轻。同样的最终有效预算下，它在 LiveBench 得到 0.600，截断数是 4/10。</p>
+  <p>Glimmer 也发生截断。在最终有效预算下，LiveBench 的分数为 0.600，截断数为 4/10。这里能比较的是这套运行配置下的结果，还不能把所有分差都归因于模型本身的推理能力。</p>
 
   <h2 id="code">代码生成打平，也都不够稳定</h2>
   <p>BigCodeBench 会把生成结果送进 Docker 沙箱执行隐藏测试。两个模型最终都是 0.400，10 个样本中各有 4 个通过。</p>
-  <p>这个平局有点出乎我的意料。Glimmer 在推理评测里的优势，没有直接变成更高的代码通过率；Gemma 虽然在长推理上落后，代码任务也没有继续掉队。</p>
-  <p>用它们写初稿、找思路都可以，直接提交还不行。4/10 的通过率意味着项目测试和人工审查都省不掉。</p>
+  <p>推理评测的分差没有直接延续到 BigCodeBench：两边都是 4/10。要判断具体失败原因，还需要分别检查生成代码和隐藏测试输出，不能用另一项榜单成绩代替。</p>
+  <p>这组结果还不足以支持免审提交代码。实际使用仍需要项目测试；本轮没有通过的六道题也值得继续做错误分类。</p>
 
   <h2 id="vision">多模态部署，先确认图片真的进了模型</h2>
   <p>Gemma 第一次跑 MMMU 时，服务直接返回“不支持图像输入”。模型本身支持视觉，失败出在部署参数。我当时只加载了主 GGUF，漏掉了配套的视觉投影文件 <code>mmproj</code>。</p>
@@ -725,12 +725,12 @@
     </table>
   </div>
   <p>Glimmer 的 LiveBench 与 BigCodeBench 采用“保留初轮自然停止题，再把截断题提升到 4096 token 复测”的校正方式；Gemma 直接用 4096 token 跑完整 10 题。每题最终有效上限一致，但耗时结构不完全相同。这张表记录的是实际部署成本，不能替代严格的纯吞吐基准。</p>
-  <p>即便考虑协议差异，Gemma 的速度优势仍然明确。它更适合对等待时间敏感的交互场景；Glimmer 则是在用更多时间，换更高的综合成功率。</p>
+  <p>Gemma 在这轮记录的总耗时较短。要把差异归因到推理速度，需要统一首次运行、重试和输出预算的计时方式；表格更适合用来查看本次完成评测付出的实际时间。</p>
 
-  <h2 id="choose">到底该选谁</h2>
+  <h2 id="choose">这组结果怎样用于本地选型</h2>
   <div class="choice-grid">
     <section class="choice">
-      <h3>选择 Glimmer，如果你更在意</h3>
+      <h3>Glimmer 值得继续验证的场景</h3>
       <ul>
         <li>复杂格式与多条件指令；</li>
         <li>综合推理的一次成功率；</li>
@@ -739,7 +739,7 @@
       </ul>
     </section>
     <section class="choice">
-      <h3>选择 Gemma 4，如果你更在意</h3>
+      <h3>Gemma 4 值得继续验证的场景</h3>
       <ul>
         <li>本地 Agent 与函数调用；</li>
         <li>更快的交互响应；</li>
@@ -749,10 +749,10 @@
     </section>
   </div>
   <p>代码生成方面，这 10 题没有分出胜负。如果代码是核心用途，我会换成与真实技术栈一致的私有测试，直接拿项目 issue、单元测试和实际修复任务来跑。</p>
-  <p>更稳妥的后续评测，则是把每项扩大到至少 50 题，再加入一套真实工作流数据。公开评测告诉你模型的通用能力，私有评测才能回答“它对我的任务到底有没有用”。</p>
+  <p>下一轮可以扩大每项样本，再加入真实工作流。公开评测与项目私有任务提供不同信息，两者都需要保留输入、运行参数和失败记录。</p>
 
   <div class="closing">
-    <p>如果只能保留一个，我会把 <strong>Glimmer 留作主模型</strong>。Gemma 也值得留下。它可以处理高频、结构化、可验证的任务，复杂推理和多模态请求则交给 Glimmer。</p>
+    <p>按这轮样本，我倾向继续用 Glimmer 验证复杂任务，同时保留 Gemma 测结构化工具调用。最终是否保留哪一个，还要看自己的任务分布和资源预算；这 50 题先提供了一组可追查的起点。</p>
   </div>
   <p class="source-line">模型使用 Gemma 4 12B QAT Q4_0，本机运行时为 llama.cpp，评测日期是 2026-08-11。本文所有分数均来自同机实际日志，未混用厂商榜单。</p>
 </article>
