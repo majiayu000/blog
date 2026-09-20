@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GLM-5.2 / Kimi K3 / DeepSeek V4 三份技术报告拆解：后训练吃掉 75% 算力</title>
+<title>Kimi K3、DeepSeek V4 与 GLM：训练报告里的算力、数据和环境</title>
 <meta name="date" content="2026-08-05">
-<meta name="description" content="逐字读完 GLM-5、Kimi K3、DeepSeek V4 三份技术报告：架构分道扬镳，训练管线殊途同归。K3 算力账本显示后训练吃掉约 75% 总算力、MFU 仅 27%——预训练已不是主战场。">
+<meta name="description" content="整理 Kimi K3、DeepSeek V4 与 GLM 系列的训练材料。K3 表中后训练约占 75.6% 总 FLOPs；这个比例不代表另外两家。区分报告数字、累计消融与尚未核实的字段。">
 <meta name="tags" content="LLM, 训练管线, RL, MoE, 技术报告">
 <meta name="featured" content="true">
 <style>
@@ -41,15 +41,15 @@
 <body>
 <a class="back" href="/">← 博客首页</a>
 
-<h1>拆完 GLM-5.2、Kimi K3、DeepSeek V4 三份技术报告：后训练吃掉 75% 算力，架构是最不重要的部分</h1>
+<h1>Kimi K3、DeepSeek V4 与 GLM：训练报告里的算力、数据和环境</h1>
 
 <p><picture><source srcset="cover.webp" type="image/webp"><img src="cover.png" alt="三家模型与训练管线封面图" width="1536" height="1024" decoding="async" fetchpriority="high"></picture></p>
 
-<p>三份技术报告全部读完：Kimi K3（arXiv 2607.24653，47 页）、DeepSeek V4（arXiv 2606.19348，58 页）、GLM-5（arXiv 2602.15763；GLM-5.2 没有独立报告，其改动来自 GLM-5 报告 + 官方 research 页）。加上三家的 checkpoint 结构、许可证和部署方案，做一个完整拆解。</p>
+<p>这篇整理 Kimi K3（arXiv 2607.24653，47 页）、DeepSeek V4（arXiv 2606.19348，58 页）和 GLM 系列的训练材料。GLM-5.2 没有在本文材料中对应一份独立报告，相关说明来自 GLM-5 报告与官方 research 页。V4 后半部分曾提取失败，因此下文不能视作三份报告逐页完整核验的结果；存疑字段保留标记。</p>
 
-<p>先说结论：<strong>三家在架构上分道扬镳，却在训练管线上殊途同归——而真正拉开差距的，是后训练那部分没人愿意公开的工程细节。</strong>真正让我意外的不是架构，是 K3 公开的算力账本：<strong>后训练吃掉了总计算量的 75% 左右，后训练阶段 MFU 只有 27%</strong>。预训练已经不是主战场了。</p>
+<p>K3 的算力表有一个值得展开的比例：按表中 FLOPs 计算，后训练约占总量的 75.6%，相应阶段 MFU 为 27%。后文先拆这份账本，再对照数据来源、累计消融和环境规模。</p>
 
-<p>三个最值得带走的数字：</p>
+<p>先列出后文会用到的三个 K3 数字；它们采用的统计口径分别是计算量、利用率和数据构成：</p>
 <ul>
 <li>K3 后训练 token 量（14.6T）≈ 预训练 token 量（15.6T），但后训练算力占比高达 75.6%</li>
 <li>V4 在 1M 上下文下只需稠密 MLA 约 1/10 的计算量</li>
@@ -67,7 +67,7 @@
 <tr><td>许可证</td><td>Modified MIT</td><td>MIT</td><td>MIT</td><td>MIT</td></tr>
 <tr><td>技术报告</td><td>arXiv 2607.24653（47 页）</td><td colspan="2">arXiv 2606.19348（58 页）</td><td>arXiv 2602.15763</td></tr>
 </table></div>
-<p><strong>事实</strong>：四者全是 MoE，全都冲 1M 上下文，许可证全都宽松。<strong>推断</strong>：这说明"超大 MoE + 超长上下文"已经是行业共识，不再是差异化来源——差异化只能来自训练。</p>
+<p>表中几款模型都有 MoE 和长上下文配置，但注意力实现、激活参数、训练流程及许可证条款并不相同。共同的配置标签不足以证明架构不再影响效果或成本。</p>
 
 <h2>1 · 架构细节与消融</h2>
 
@@ -82,16 +82,16 @@
 <li><strong>Stable LatentMoE</strong>：384 个专家选 8 个，每块（block）24 个专家</li>
 <li>MLA latent 4,096，head input 256 / output 512</li>
 </ul>
-<p>消融数据是这份报告最值钱的部分（<strong>事实</strong>，均为论文表格）：</p>
+<p>下表保留本文摘录的消融结果。比较时要看对应实验规模和任务，不直接外推到全部部署负载：</p>
 <div class="tw"><table>
 <tr><th>表</th><th>结论</th></tr>
 <tr><td>Table 16（混合注意力）</td><td><strong>KDA + GMLA 优于纯 KDA</strong>；上下文课程 80K→240K→480K 的组合 PPL 最优（2.529 / 3.183）</td></tr>
 <tr><td>Table 17（KDA 消融，2.4B）</td><td>逐项拆 KDA 各组件的贡献</td></tr>
 <tr><td>Table 18（MoE 组件，8B）</td><td>Stable LatentMoE / SiTU / AttnRes / Gated DeltaNet 各自有效</td></tr>
 <tr><td>Table 19（QAT 层敏感性）</td><td><strong>早期层最敏感</strong>（量化后 ΔPPL 1.142 &gt; 晚期 1.066 &gt; 中期 1.045）——量化要优先保早期层</td></tr>
-<tr><td>Table 20（FP4）</td><td><strong>FP4 几乎无损</strong>：PPL 2.645 vs FP8 的 2.633</td></tr>
+<tr><td>Table 20（FP4）</td><td><strong>该消融中 FP4 与 FP8 PPL 接近</strong>：PPL 2.645 vs FP8 的 2.633</td></tr>
 </table></div>
-<p><strong>做法上的启示</strong>：QAT 不是"训练完再压"，而是要按层敏感度区别对待；FP4 已经可以当默认部署精度。这两点 K3 是用消融数据说话的，不是口号。</p>
+<p>在这组消融中，量化精度对不同层和任务的影响不一样。因此部署时还需要用目标负载检查质量损失与吞吐，表里的 PPL 不能替代全部任务评估。</p>
 
 <h3>1.2 V4：DSA 稀疏注意力，为 1M 上下文而生</h3>
 <p>V4 的核心是 <strong>DSA（DeepSeek Sparse Attention）</strong>，由两部分组成（<strong>事实</strong>）：</p>
@@ -99,7 +99,7 @@
 <li><strong>DLA（DeepSeek Linear Attention）</strong>：lightning attention + gated delta net 混合，top-k 稀疏比约 1%</li>
 <li><strong>VLA（Vectorized Latent Attention）</strong>：用 lightning indexer 做细粒度稀疏，分 intra-block 和 inter-block 两种 kernel</li>
 </ul>
-<p><strong>核心卖点（事实）</strong>：1M 上下文下，DSA 的计算量约为稠密 MLA 的 <strong>1/10</strong>。这就是 V4 敢把 Pro / Flash 都推到 1M 的底气。</p>
+<p>报告中列出的比较是：在 1M 上下文条件下，DSA 计算量约为稠密 MLA 的 1/10。这里的分母是对应注意力实现，不能把它直接当作整次训练或推理的总成本降幅。</p>
 <p>架构超参（Table 16，<strong>只列我有把握的行</strong>——Pro 的部分字段提取顺序存疑，宁缺毋滥）：</p>
 <div class="tw"><table>
 <tr><th>字段</th><th>Flash</th><th>Pro</th></tr>
@@ -111,22 +111,22 @@
 <tr><td>MLA latent</td><td>2048</td><td>—</td></tr>
 <tr><td>head input / output</td><td>256 / 512</td><td>—</td></tr>
 </table></div>
-<p>另外两点（<strong>事实</strong>）：优化器用 <strong>Muon</strong>，开了 QK-norm。<strong>推断</strong>：Muon + QK-norm + 稀疏注意力，和 K3 的选择不谋而合——这俩已经是超大 MoE 训练的事实标准。</p>
+<p>材料还列出了 Muon 和 QK-norm。这些相同的选择可以继续按训练条件和消融结果对照。</p>
 
-<h3>1.3 GLM-5：披露最少，路线最保守</h3>
-<p>GLM-5 报告对架构细节的披露明显少于前两家（<strong>事实</strong>：可提取的量化架构字段更少）。能确认的是 744B 总参 / 40B 激活 / 1M 上下文 / MIT。<strong>推断</strong>：GLM 这一代把重心放在工程落地和推理优化，而不是架构叙事——这和它"最先开放权重、主打可用"的产品策略一致。</p>
+<h3>1.3 GLM：先区分报告与产品版本</h3>
+<p>本文使用 GLM-5 报告、GLM-5.2 的产品说明和权重配置，它们不是同一份材料。表中的 744B/40B、上下文与许可证字段仍需对应到具体版本，不能据此补出一份 GLM-5.2 的完整训练账本。</p>
 
-<h3>1.4 分岔的本质</h3>
+<h3>1.4 各自需要核对的架构问题</h3>
 <div class="tw"><table>
 <tr><th></th><th>K3</th><th>V4</th><th>GLM</th></tr>
 <tr><td>架构重心</td><td>混合注意力 + MoE 稳定性</td><td>稀疏注意力压 1M 成本</td><td>工程落地</td></tr>
-<tr><td>最大亮点</td><td>消融做得最全</td><td>1M 计算量 1/10</td><td>开放最激进</td></tr>
+<tr><td>可对照的设计</td><td>消融做得最全</td><td>1M 计算量 1/10</td><td>开放最激进</td></tr>
 <tr><td>短板</td><td>报告叙事偏学术</td><td>部署复杂（见 4.2）</td><td>细节披露少</td></tr>
 </table></div>
 
-<h2>2 · 训练算力与成本：K3 是唯一把账算明白的</h2>
+<h2>2 · K3 的训练算力账本</h2>
 <p><picture><source srcset="compute-ledger.webp" type="image/webp"><img src="compute-ledger.png" alt="后训练吃掉约 75% 算力示意图" width="1536" height="1024" loading="lazy" decoding="async"></picture></p>
-<p>这一节是全篇信息密度最高的。<strong>K3 的 Table 5 是三份报告里唯一一份完整的算力账本</strong>，值得逐行看（<strong>事实</strong>）：</p>
+<p>K3 的 Table 5 把不同阶段的计算量和利用率列在一起。下面沿用本文摘录，重点看同一份账本内部怎样分配成本：</p>
 <div class="tw"><table>
 <tr><th>阶段</th><th>tokens</th><th>kH800</th><th>PFU-days</th><th>FLOPs</th><th>MFU</th></tr>
 <tr><td>预训练</td><td>15.6T</td><td>379,134,855</td><td>95,169</td><td>1.04e24</td><td><strong>54%</strong></td></tr>
@@ -134,13 +134,13 @@
 <tr><td><strong>后训练</strong></td><td><strong>14.6T</strong></td><td><strong>1,190,757,067</strong></td><td><strong>298,885</strong></td><td><strong>3.25e24</strong></td><td><strong>27%</strong></td></tr>
 <tr><td><strong>总计</strong></td><td>~30.4T</td><td>1,575,421,683</td><td>395,442</td><td>4.30e24</td><td>33%</td></tr>
 </table></div>
-<p>从这张表能读出三个别人不告诉你的结论（<strong>推断，但数字是事实</strong>）：</p>
+<p>按上表口径计算，可以得到以下差异。比例是表内推算，造成差异的原因需要另有证据：</p>
 <ul>
-<li><strong>后训练吃掉了总算力的约 75%</strong>。1,190,757,067 / 1,575,421,683 ≈ 75.6%，用 PFU-days 和 FLOPs 算也都是 75% 上下。大家以为"训练=预训练"，实际上后训练才是算力大头。</li>
-<li><strong>后训练的 token 量几乎等于预训练（14.6T vs 15.6T），但每 token 的 FLOPs 高得多</strong>：后训练约 2.2e11 FLOPs/token，预训练约 6.7e10。原因是 RL 要反复采样 rollout、多次前向，是"用算力换智能密度"的阶段。</li>
-<li><strong>后训练 MFU 只有 27%，远低于预训练的 54%</strong>。RL 的 rollout / 环境交互 / 长尾样本让算力利用率掉了一半以上。<strong>这是全行业后训练效率的最大优化空间</strong>——谁把 RL 的 MFU 提上去，谁就能用同样预算训出更强的模型。</li>
+<li><strong>K3 表内后训练占总 FLOPs 约 75.6%。</strong>1,190,757,067 / 1,575,421,683 ≈ 75.6%；按 PFU-days 计算也约为 75%。这个比例限于该报告的阶段划分。</li>
+<li><strong>后训练与预训练的 token 量接近（14.6T 与 15.6T），每 token 对应计算量不同。</strong>按表内口径推算，分别约为 2.2e11 和 6.7e10 FLOPs/token。RL 中的采样与多次前向可能参与这一差异，但表格没有单独拆出各项贡献。</li>
+<li><strong>K3 后训练 MFU 为 27%，预训练为 54%。</strong>两者相差一半。要判断环境等待、rollout 和调度分别造成多少损失，还需要阶段内的性能剖析。</li>
 </ul>
-<p>V4 和 GLM 没给这种级别的账本（<strong>事实</strong>：V4 报告附录里可能有部分算力数据，但本次 PDF 后半部分提取失败，我无法确认；GLM 报告未提供）。<strong>建议</strong>：评估任何一家"开源"模型时，先看它敢不敢公开后训练算力——这是比权重更诚实的信号。</p>
+<p>本文没有取得 V4、GLM 同口径的完整算力账本，V4 后半部分还存在提取缺口。因此这里先解释 K3 自身各阶段的比例，不做三家总训练成本排名。</p>
 
 <h2>3 · 训练数据</h2>
 <h3>3.1 规模对比</h3>
@@ -150,7 +150,7 @@
 <tr><td>V4</td><td>未完整披露</td><td>报告重心在架构与 RL</td></tr>
 <tr><td>GLM</td><td>未完整披露</td><td>—</td></tr>
 </table></div>
-<blockquote>修正：我早先写"K3 未披露数据量"是错的。K3 的 Table 1 和 Table 4 把语料构成和 token 账本都给了，是三家里数据披露最完整的之一。</blockquote>
+<blockquote>更正：K3 Table 1 和 Table 4 已列出语料构成与 token 账本，早先“未披露数据量”的表述不准确。本文据此补入表格。</blockquote>
 
 <h3>3.2 K3 语料构成（Table 1 + Table 25 + Appendix I，事实）</h3>
 <div class="tw"><table>
@@ -163,24 +163,24 @@
 <tr><td>考试</td><td>0.03%</td><td>6.7B</td></tr>
 <tr><td><strong>合计</strong></td><td><strong>100%</strong></td><td><strong>~23T</strong></td></tr>
 </table></div>
-<p>Web 占七成、代码和 STEM 占一成半——这个配比和 LLaMA / Qwen 系的主流做法一致，没有特别激进的偏向。<strong>真正值得看的是下面这条。</strong></p>
+<p>这张表描述 K3 预训练数据的配比。它不能说明某个来源已经用尽，也不能替代后训练阶段的数据账本；下面另看合成数据占比。</p>
 
 <h3>3.3 后训练数据：93% 是合成的</h3>
-<p>K3 的后训练数据 <strong>93.13% 是合成数据（13.66T）</strong>（<strong>事实</strong>，Table 4）。这是我认为全篇最重要的单个数字之一：</p>
+<p>K3 Table 4 列出的后训练合成数据占比为 93.13%，对应 13.66T：</p>
 <ul>
 <li>预训练靠爬来的互联网语料（Web 70%）</li>
 <li>后训练几乎全靠模型自己生成 / 蒸馏出来的数据</li>
 </ul>
-<p><strong>推断</strong>：真实世界的高质量文本已经被预训练阶段消耗得差不多了，后训练阶段的"数据"本质上是<strong>用算力 + 教师模型造出来的</strong>。这直接呼应第 2 节——后训练吃 75% 算力，一部分就是在"造数据"。</p>
+<p>这个比例说明合成数据在该训练流程中的份额很高。生成、筛选和验证各自需要多少算力，还需要单独的成本数据，不能由 token 占比反推。</p>
 
-<h3>3.4 长上下文数据：不是靠堆长度，是靠课程</h3>
-<p>K3 的上下文扩展候选池有 <strong>31.5T</strong>，但真正用于扩展的只有 108B（<strong>事实</strong>）。Table 16 的消融显示最优课程是 <strong>80K→240K→480K</strong> 分阶段拉长。<strong>结论</strong>：1M 上下文不是喂长文本喂出来的，是精心设计的课程 + 从超大候选池里筛出来的少量高质量长样本。</p>
+<h3>3.4 长上下文：候选池、实际用量与课程</h3>
+<p>K3 材料中的扩展候选池为 31.5T，实际用于扩展的量为 108B；本文摘录的 Table 16 比较了 80K→240K→480K 等课程安排。要解释长上下文效果，需要同时看采样和课程消融，不能只比较最终标注的窗口长度。</p>
 
 <h2>4 · 端到端管线走查：数据 → 预训练 → mid-train → post-train → checkpoint</h2>
 <p><picture><source srcset="pipeline.webp" type="image/webp"><img src="pipeline.png" alt="训练管线五阶段示意图" width="1536" height="1024" loading="lazy" decoding="async"></picture></p>
-<p>把三家管线并排走一遍，差异立刻清楚。</p>
+<p>下面按数据、训练阶段和产物整理已有材料。没有取得同等细节的位置保留空缺，不替报告补齐。</p>
 
-<h3>4.1 K3 管线（披露最完整）</h3>
+<h3>4.1 K3：报告列出的阶段与 token 用量</h3>
 <pre><code>数据:   23T 预训练语料（Web 70% / Code&amp;STEM 15% / 合成 8%）
 预训练: 15.6T tokens，MFU 54%
 上下文: 从 31.5T 候选池选 108B，课程 80K→240K→480K，MFU 62%
@@ -192,7 +192,7 @@ checkpoint: Base / Instruct / Thinking</code></pre>
 <p>token 账本（Table 4，<strong>事实</strong>）逐项：预训练 15.6T / 上下文扩展 108B / mid 489B / SFT 259B / MOPD 11.3T / Agentic 2.47T / 交错 2.4T / 并行 RL 670B。</p>
 <blockquote>一处存疑：这些分项加起来约 33.3T，而报告口径的总消耗是 30.4T，两者对不齐。可能是部分阶段 token 重复计数口径不同。<strong>我无法确认原因，如实标注。</strong></blockquote>
 
-<h3>4.2 V4 管线（架构省钱，部署不省）</h3>
+<h3>4.2 V4：主模型与 draft 模型分别计成本</h3>
 <pre><code>架构:   DSA（DLA+VLA）稀疏注意力，1M 计算量约稠密 MLA 的 1/10
 优化:   Muon + QK-norm
 post:   SFT 30 万样本 → rubric RL（详见第 5 节）
@@ -200,13 +200,13 @@ post:   SFT 30 万样本 → rubric RL（详见第 5 节）
 部署:   DSA 与 MTP 不兼容 → 额外训一个稠密 draft 模型
         （6 层 Flash 式稠密 MLA + 稠密 FFN，V4 权重初始化 + 100B token 继续训练）
 checkpoint: Pro / Flash 两个尺寸</code></pre>
-<p><strong>关键坑（事实）</strong>：DSA 和 MTP（multi-token prediction）不兼容，所以 V4 不得不多训一个稠密 draft 模型来做投机解码。<strong>架构上省下来的 1M 计算量，在部署侧要靠额外的 draft 模型补回来</strong>——这是"稀疏注意力便宜"这句话背后没人提的代价。</p>
+<p>V4 材料中使用单独的稠密 draft 模型支持投机解码。评估总成本时，除了主模型的注意力计算，还要计入 draft 的训练、内存和调度，并在相同负载下比较。</p>
 
-<h3>4.3 GLM 管线（披露最少）</h3>
-<p>GLM 报告能确认的管线节点有限：744B/40B、1M 上下文、MIT 权重。<strong>事实</strong>层面我无法像 K3 那样给出完整 token 账本，这里不编。<strong>建议</strong>：想了解 GLM-5.2 相对 GLM-5 的具体改动，看官方 research 页比看论文更有效。</p>
+<h3>4.3 GLM：本文材料中的版本缺口</h3>
+<p>这里没有与 K3 同口径的完整 token 账本。GLM-5 报告、GLM-5.2 research 页和具体 checkpoint 的字段也不能直接合并成一条已核验的训练流程。需要核对某项改动时，应回到对应版本的原始说明。</p>
 
 <h2>5 · RL 与后训练深挖</h2>
-<p>这是三家真正分高下的地方，也是最有信息量的部分。</p>
+<p>这一节查看后训练阶段、累计消融和环境规模。它们能说明报告测到了哪些变化，不能据此给三家团队排出整体高下。</p>
 
 <h3>5.1 K3：后训练是一条多阶段流水线</h3>
 <p>K3 的后训练 token 分配（<strong>事实</strong>，Table 4）：</p>
@@ -226,7 +226,7 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 <tr><td>+ General</td><td>58.6</td></tr>
 <tr><td>+ Thinking</td><td>71.3</td></tr>
 </table></div>
-<p><strong>结论</strong>：Agent 数据是单阶段提升最大的（7.6→41.6），Thinking 模式的收尾提升也很可观。<strong>推断</strong>：K3 的 Thinking / Instruct 双版本，本质是这条流水线开不开最后一级开关的产物。</p>
+<p>表中加入 Agent 阶段后，相关分数从 7.6 变为 41.6。由于各行是逐阶段累计的结果，不能把它当作完全隔离其他因素的单项因果实验，也不能仅凭末行推断 Thinking 与 Instruct 的全部训练差别。</p>
 
 <h3>5.2 K3：环境规模化（Table 22，事实）</h3>
 <p><picture><source srcset="rl-env-scaling.webp" type="image/webp"><img src="rl-env-scaling.png" alt="RL 并行环境规模化示意图" width="1536" height="1024" loading="lazy" decoding="async"></picture></p>
@@ -237,9 +237,9 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 <tr><td>BrowseComp</td><td>29.1</td><td>35.6</td></tr>
 <tr><td>Terminal-Bench 2</td><td>38.9</td><td>47.3</td></tr>
 </table></div>
-<p><strong>结论</strong>：环境数量规模化对 BrowseComp / Terminal-Bench 这类 agentic 任务提升明显，对 SWE 提升有限。<strong>RL 的瓶颈不只在算法，更在能并行跑多少个真实环境。</strong></p>
+<p>在列出的实验范围内，扩展环境数量对 BrowseComp、Terminal-Bench 等项目的影响不同。要判断收益来自并行数、更多 rollout 还是总训练量，还需要实验中其他条件的控制信息。</p>
 
-<h3>5.3 V4：rubric-based RL 是目前披露最细的 RL 方案</h3>
+<h3>5.3 V4：rubric-based RL 与环境规模实验</h3>
 <p>V4 第 4 章把后训练拆得很清楚（<strong>事实</strong>）：</p>
 <ul>
 <li><strong>SFT</strong>：30 万样本</li>
@@ -250,8 +250,8 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 <li><strong>动态采样</strong>：过滤全对 / 全错的 rollout，只留有信息量的样本</li>
 <li><strong>跨代蒸馏</strong>：R1 / V3.2 当 teacher，抬高 SFT / RL 起点</li>
 </ul>
-<p>最关键的是 <strong>Figure 10 的 RL 环境 scaling law（事实）</strong>：并行环境从 1K 扩到 100K，SWE-bench Verified <strong>对数线性提升、无饱和</strong>。最终规模——6 万 SWE rollout、10 万并行环境、3,600+ SWE rubrics。</p>
-<p><strong>这是全篇我认为最重要的趋势信号</strong>：RL 环境数量正在变成一条新的 scaling law，而且还没到头。配合第 2 节"后训练 MFU 只有 27%"，方向很清楚——<strong>下一代竞争 = 谁的 RL 环境基建更强 + 谁的 RL 算力效率更高。</strong></p>
+<p>Figure 10 比较了从 1K 到 100K 的并行环境，展示范围内的分数随规模增长。材料还列出 6 万 SWE rollout、10 万并行环境和 3,600+ SWE rubrics，它们分别描述样本量、环境规模与评分要求。</p>
+<p>这组结果值得继续追踪，但曲线在已测区间没有饱和，不代表扩到任意规模都继续有效。环境扩展、数据生成与硬件利用率应一起计成本；K3 的 MFU 数据也不能直接用来解释 V4 的收益。</p>
 
 <h3>5.4 V4 自己承认的三个局限（第 6 章，事实）</h3>
 <ul>
@@ -259,10 +259,10 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 <li>rubric 生成的算力成本高</li>
 <li>长程任务的 RL reward hacking</li>
 </ul>
-<p>第 3 条尤其值得记——<strong>reward hacking 在长程 agentic 任务上是公开承认的未解难题</strong>。任何拿 agentic benchmark 吹牛的模型，都要先回答这个问题。</p>
+<p>其中 reward hacking 与长程任务的验证方式有关。比较 agentic benchmark 时，需要看验证器覆盖了哪些要求、有没有检查利用评分规则取得高分的情况。</p>
 
 <h2>6 · Benchmark 交叉核对</h2>
-<p>只列我有把握的数字，并标注存疑处（<strong>事实</strong>，除特别注明）。</p>
+<p>以下分数按报告摘录，存疑字段继续作标记。由于测试协议与模型版本可能不同，表格用于寻找需要核对的任务差异，不合成为总榜。</p>
 <div class="tw"><table>
 <tr><th>指标</th><th>K3 Thinking</th><th>K3 Instruct</th><th>V4 Pro</th><th>GPT-5.4 xhigh</th></tr>
 <tr><td>MMLU-Pro</td><td>88.7</td><td>—</td><td>85.7</td><td>90.5</td></tr>
@@ -276,24 +276,18 @@ checkpoint: Pro / Flash 两个尺寸</code></pre>
 <tr><td>LongBench v2</td><td>61.0</td><td>—</td><td>67.0</td><td>—</td></tr>
 <tr><td>MRCR v2 1M</td><td>—</td><td>—</td><td>60.8</td><td>—</td></tr>
 </table></div>
-<p>两点提醒（<strong>重要</strong>）：</p>
+<p>跨报告比较还有两个限制：</p>
 <ul>
 <li>K3 的 SWE-bench Verified 要区分版本：<strong>Instruct 66.4，Thinking 71.3</strong>，别混用。</li>
 <li>V4 的 76.7 在提取文本里<strong>没有明确标签</strong>，是我按表格位置推断的，采信时请打折。V4 在 OpenAI DeepSearch 上 56.7 vs GPT-5.4 的 74.0，Tool-Decathlon 46.3 vs 78.1——<strong>长程工具任务是 V4 的明显短板</strong>。</li>
 </ul>
 
-<h2>7 · 结论：五个判断</h2>
-<ul>
-<li><strong>架构趋同，竞争转移到训练管线。</strong> MoE + 1M + Muon + QK-norm 已经是标配，差异化在预训练之后的每一个环节。</li>
-<li><strong>后训练吃掉约 75% 算力（K3 数据），但 MFU 只有 27%。</strong> 这是全行业最大的效率洼地，也是最大的机会。</li>
-<li><strong>后训练数据 93% 是合成的（K3 数据）。</strong> 高质量真实文本见顶后，"用算力造数据"成为主流，数据壁垒变成了算力 + 教师模型壁垒。</li>
-<li><strong>RL 环境规模化是一条新的、未饱和的 scaling law（V4 Figure 10）。</strong> 1K→100K 并行环境对数线性提升，基建能力 = 下一代竞争力。</li>
-<li><strong>开源的诚意要看披露深度。</strong> K3 给了完整算力 + 数据账本，V4 给了最细的 RL 方案，GLM 给了最宽松的权重但最少的细节。三者"开源"的含金量不一样。</li>
-</ul>
+<h2>7 · 这些材料能支持哪些判断</h2>
+<p>K3 的账本给出了后训练计算量、利用率与合成数据占比，V4 的材料进一步涉及环境规模与评分要求。它们可以帮助确定下一步该查哪些训练成本，但目前没有同口径数据可比较三家的总效率。</p><p>对部署与选型，仍要回到任务表现、许可证、资源需求和可复现材料。报告中的一个高比例或一条上升曲线，只回答其对应实验的问题。</p>
 
 <h2>附录 · 数据可信度声明</h2>
 <ul>
-<li>所有数字均来自三份技术报告原文（K3 arXiv 2607.24653、V4 arXiv 2606.19348、GLM arXiv 2602.15763），我尽量逐项核对。</li>
+<li>表格沿用三份技术报告的摘录（K3 arXiv 2607.24653、V4 arXiv 2606.19348、GLM arXiv 2602.15763），提取缺口和存疑字段列于下方。</li>
 <li><strong>明确存疑项</strong>：① K3 Model Card <code>n_layers 3,168</code> 与 93 层矛盾；② K3 token 分项合计与总口径对不齐；③ V4 的 SWE-bench Verified 76.7 为位置推断；④ V4 Table 16 Pro 列部分字段提取顺序存疑，本文只保留高置信行。</li>
 <li><strong>未能获取</strong>：V4 报告后半部分（约 34–58 页）PDF 提取失败，可能含部分算力 / 部署附录数据，本文相关结论以能提取的部分为准。</li>
 <li>benchmark 均为各家自报，未做独立复测。</li>

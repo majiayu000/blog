@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Codex App 并不比 CLI 更省 token：它每轮多带 949 token</title>
+<title>Codex App 与 CLI 的 token 差在哪：本机 app-context 对照</title>
 <meta name="date" content="2026-08-27">
-<meta name="description" content="从本机 ChatGPT.app 和 Codex CLI 拆开同一条请求：Base Instruction 两边相同；Desktop 从第一轮就多带约 949 token。长到 200K 时，这截税大约不到 1 credit。">
+<meta name="description" content="对照本机 Codex CLI 与 Desktop 的指令、app-context 和会话记录。默认桌面段约 949 token，实际配置会变化；区分上下文差异、缓存假设和未做受控 A/B 的费用估算。">
 <meta name="tags" content="Codex, Token, ChatGPT Desktop, CLI, Agent">
 <style>
   :root{
@@ -118,8 +118,8 @@
 </nav>
 
 <main>
-  <h1>Codex App 并不比 CLI 更省 token：<em>它每轮多带 949 token</em></h1>
-  <p class="dek">网上常说 Codex CLI 比 ChatGPT Desktop 更省额度。我把本机的 CLI 和 ChatGPT.app 拆开看了：本地写代码时，它们走同一条 <code>/backend-api/codex</code>。系统提示两边相同。Desktop 从第一轮就多塞一段桌面说明书，大约 949 token。对话长到 200K 时，这截税大概不到 1 credit。</p>
+  <h1>Codex App 与 CLI 的 token 差在哪：本机 app-context 对照</h1>
+  <p class="dek">我对照本机 Codex CLI、ChatGPT.app 的 Codex 模式和会话文件，想知道桌面端多带了哪些内容。两边记录的基础指令相同；Desktop 另有默认约 949 token 的 app-context，带 Git 设置的样本为 1,203 token。下面把这个输入差异与缓存、费用估算分开说明。</p>
   <p class="meta">核对日期 2026-08-27 · tokenizer <code>tiktoken o200k_base</code> · 模型 gpt-5.6-sol · 数据见同目录 <code>aggregate.json</code></p>
 
   <section class="hero" aria-label="三个关键数字">
@@ -142,16 +142,16 @@
     </div>
   </section>
 
-  <h2 class="first" id="answer">先说答案</h2>
-  <p>本地 Codex 任务里，CLI 没有另一套更省 token 的计费器。ChatGPT Desktop 现在的 Codex 模式，就是同一个 Rust <code>app-server</code> 外面加了 Electron 驾驶舱。计费发生在请求离开本机之后，公式按模型的 input / cached / output credit，不按窗口是终端还是 GUI。</p>
+  <h2 class="first" id="answer">先限定比较对象</h2>
+  <p>这里比较本机两种 Codex 客户端的请求构造，不比较普通 ChatGPT 聊天。两边使用相关的 Rust app-server 路径，但这不足以单独证明服务端对所有客户端、账号和套餐执行完全相同的计费规则。本文可核对的是指令文本、客户端配置和已有会话记录。</p>
   <blockquote>真正多出来的，是 Desktop 写进 history 的那段 <code>&lt;app-context&gt;</code>。默认 949 token。第一轮就在，后面每轮还带着，但不会 949、1898 那样叠加。</blockquote>
   <p>普通 ChatGPT 聊天气泡不走这条链路。Help Center 写明 Regular Chat 不进 Desktop 的 Codex 用量看板。本文只比较 <strong>Codex CLI</strong> 和 <strong>ChatGPT.app 里的 Codex 模式</strong>。</p>
 
-  <h2 id="not-chat">本机 ChatGPT.app 已经是 Codex 壳</h2>
+  <h2 id="not-chat">本机安装的两个客户端版本</h2>
   <p>我看的安装包是 ChatGPT.app 26.818.61809，bundle id <code>com.openai.codex</code>，从 <code>codex/codex-apps/electron</code> 打出来。旁边还有 ChatGPT Classic.app（<code>com.openai.chat</code>），那是旧聊天客户端。现在这个 ChatGPT.app 里同时有 Codex 线程和 ChatGPT 会话，别把两者的额度混着谈。</p>
   <p>捆绑的 <code>codex</code> 二进制版本是 <code>0.149.0-alpha.4.3</code>。本机 npm 安装的 CLI 是 <code>0.149.1</code>。两个 Mach-O 都大约 210MB，都带 <code>https://chatgpt.com/backend-api/codex</code> 这条基址。</p>
 
-  <h2 id="engine">同一台引擎，两套驾驶舱</h2>
+  <h2 id="engine">请求怎样进入 app-server</h2>
   <p>CLI 的 TUI 在进程里启动 app-server，<code>client_name</code> 是 <code>codex-tui</code>。Desktop 用 stdio 拉起捆绑二进制，<code>originator</code> 写成 <code>Codex Desktop</code>，并且固定加上 <code>-c features.code_mode_host=true</code>。</p>
   <div class="flow" aria-hidden="false">
     <svg viewBox="0 0 920 220" role="img" aria-labelledby="flow-title">
@@ -183,9 +183,9 @@
     <div class="stat"><b>3,552</b><span>o200k token</span></div>
     <div class="stat"><b>13.8%</b><span>占 CLI 实测首包 25,832</span></div>
   </div>
-  <p>它每轮都在 <code>instructions</code> 字段里。这不是 App 税。换模型才会变：gpt-5.4-mini 大约 2,303，gpt-5.5 大约 4,090。</p>
+  <p>这份基础指令与桌面 app-context 分开记录。不同模型的指令长度也不同；原稿统计的 gpt-5.4-mini 约为 2,303 token，gpt-5.5 约为 4,090 token。不能把它们算作只属于 Desktop 的开销。</p>
 
-  <h2 id="extra">Desktop 多出来的是 app-context，不是另一套系统提示</h2>
+  <h2 id="extra">Desktop 额外附带的 app-context</h2>
   <p>Electron 把一段 <code>&lt;app-context&gt;</code> 塞进第一段 developer 消息。CLI 的 TUI 启动线程时不传这段。最近 12 条 Desktop 会话（0.148 到 0.149）默认都是下面这组小节：</p>
   <div class="tw"><table>
     <thead><tr><th>小节</th><th>o200k</th><th>作用</th></tr></thead>
@@ -199,19 +199,19 @@
     </tbody>
   </table></div>
   <p>视线程类型还会再加：工作区依赖 27、Git 设置 244、无项目目录 140。自动化线程另有 remark-directive <strong>709</strong>，手聊没有。用户会话（带 Git）整段 app-context 实测 <strong>1,203</strong>。</p>
-  <p>所以「第一次 prompt 一样、后面才变」是误读。系统提示从头到尾一样。Desktop 从第一轮就多了这段说明书。</p>
+  <p>在这些会话样本中，app-context 从第一轮就存在。基础指令相同，与开发者消息中另有桌面上下文并不矛盾。实际长度还会随线程设置变化。</p>
 
   <h2 id="every-turn">每轮都带，不等于每轮按全价再收一次</h2>
-  <p>每一轮发出去的请求更像一叠纸：</p>
+  <p>为了看清重复部分，可以把请求中的基础指令、桌面上下文、历史和新增内容分别列出：</p>
   <ol>
     <li>信头：Base Instruction + tool 定义，几乎固定。</li>
     <li>已经写过的正文：对话、工具结果、Memory、AGENTS.md，以及 Desktop 的 app-context。</li>
     <li>这轮新写的几行。</li>
   </ol>
-  <p>信头和 app-context 每轮都会附上，所以看起来「每次都在用这些 token」。同一条 thread 带同一个 <code>prompt_cache_key</code>。服务端认的是前缀：第一轮把前缀写入 cache，后面只对<strong>新长出来的那截</strong>按全价收，前面按 cached input 收。</p>
-  <p>官方 Sol 卡：cached 是 input 的十分之一。949 token 未命中大约 <strong>0.095 credit</strong>，命中后大约 <strong>0.0095 credit</strong>。</p>
+  <p>同一 thread 使用相同的 <code>prompt_cache_key</code>，但有这个字段不保证每次都命中缓存。是否按 cached input 计量，要查看具体请求的 usage；前缀变化、失效和路由等都可能影响结果。后面的计算器只是给定命中假设后的估算。</p>
+  <p>按原稿采用的 Sol credit 单价，949 token 全部未命中时约为 0.095 credit，全部按缓存输入计算时约为 0.0095 credit。这是给定单价的算式，不是每轮实测账单。</p>
 
-  <h2 id="cache">Cache 不是把 prompt 改了</h2>
+  <h2 id="cache">从 usage 看实际命中，而非只看线程名</h2>
   <p>本机一条 CLI 会话的 <code>token_count</code> 是这样涨的。input 变大是因为历史在长，不是 Base Instruction 从 3,552 变成了别的数：</p>
   <div class="tw"><table>
     <thead><tr><th>第几次</th><th>input</th><th>cached</th><th>命中率</th><th>uncached</th></tr></thead>
@@ -222,10 +222,10 @@
       <tr><td>7</td><td>56,421</td><td>56,064</td><td>99.4%</td><td>357</td></tr>
     </tbody>
   </table></div>
-  <p>Desktop 首包同样已经有 cache：27,946 input 里 cached 6,912。新开 thread 等于换信纸，前缀要再付一次全价。</p>
+  <p>Desktop 的这条首包记录已有缓存：27,946 input 中 cached 为 6,912。因此，新建 thread 不等于所有前缀必然按未缓存输入计费；应读取实际 usage，不能仅用“第一轮”推算。</p>
 
-  <h2 id="long">对话 200K 时，会贵多少</h2>
-  <p>200K 文本不会让 949 变成 200K 的某个百分比加成。多出来的仍是每轮 949。贵不贵取决于模型被调用了多少次 <code>N</code>（用户一句话往往不止一次，工具循环也算）。</p>
+  <h2 id="long">费用估算要给出调用次数和命中假设</h2>
+  <p>对话增长到 200K，不会把固定的桌面段自动变成一个百分比加成。估算需要知道每次 app-context 的长度、模型调用次数 N，以及各次缓存命中情况；一句用户消息也可能产生多次工具循环。</p>
   <div class="formula">
     <div class="label">额外 credit</div>
     <div class="math">949 / 1,000,000 × [100 + 10 × (N − 1)]</div>
@@ -239,8 +239,8 @@
       <tr><td>100</td><td>1.03</td><td>工具很碎、轮次很多</td></tr>
     </tbody>
   </table></div>
-  <p>窗口已经到 200K 的单次请求里，若大部分前缀命中 cache，App 多出来的 949 大约 <strong>0.0095 credit</strong>，占这一笔往往不到 0.3%。整条会话从短聊长到 200K，正文才是几十 credit 的量级；桌面税大约 <strong>0.3–1 credit</strong>。</p>
-  <p>套餐内额度没用完时，这不是额外钞票，只是额度多耗一点点。买 credit 续用时，第三方用 API 价反推大约 1 credit ≈ $0.04，OpenAI 价目表没有把这个美元换算写成官方标价。按那个量级，0.3–1 credit 大约 1–4 美分。</p>
+  <p>下方示例假设固定增加 949 token、第一调用未命中、之后全部命中，再沿用原稿单价计算。只要长度、调用次数或命中情况改变，结果就会变。因此不能把“200K 对话”直接等同于固定的 0.3–1 credit 差额。</p>
+  <p>本文不把这个估算换算成美元，也不据此推荐套餐。额度计量、套餐内使用和追加购买是不同问题，需要对应账号的正式账单或价格说明。</p>
 
   <div class="calc">
     <label for="call-count">模型调用次数 N = <span id="n-label">50</span></label>
@@ -254,8 +254,8 @@
   <h2 id="plugins">工具和插件：核心一样，外壳不同</h2>
   <p>核心 tool 规划器是同一份 <code>spec_plan.rs</code>。这台机器的 <code>~/.codex/config.toml</code> 两边共用，启用了 12 个插件。ChatGPT.app 还捆绑了 config 里没有的 5 个：<code>messages</code>、<code>latex</code>、<code>deep-research</code>、<code>computer-history</code>、<code>record-and-replay</code>。</p>
   <p>本机 CLI 和 Desktop 会话的 skills 清单都是 55 条、同名。Apps 连接器工具缓存 159 个；因为 ≥100，会走 <code>tool_search</code> 延迟加载，不会把大约 198k token 的 schema 整包塞进每一轮。</p>
-  <p>TUI 会丢掉可发现的 Plugin 工具；<code>codex-tui</code> 里装插件类 <code>request_plugin_install</code> 会直接拒绝。Desktop 还可能露出线程协调工具。Computer Use 截图不在 949 里，用到时另加，而且图像远比这段说明书贵。</p>
-  <p>首包 API <code>input_tokens</code> 减去 instructions 和已落盘 messages 之后，CLI 大约剩 8,847，Desktop 大约 9,186–9,268。这是 tool schema 加上未写入 rollout 的字段，不是受控 A/B，只能当量级：Desktop 大约再多 400–500。</p>
+  <p>两边暴露的工具还可能不同：TUI 的插件发现和安装路径有限制，Desktop 可能包含线程协调或 Computer Use 工具。相关 schema、截图和工具结果不在默认 949 token 中，不能用这一个数字概括总输入差异。</p>
+  <p>把首包 input_tokens 减去 instructions 和已落盘 messages 后，CLI 约剩 8,847，Desktop 约剩 9,186–9,268。这些余量可能包括工具 schema 和未写入 rollout 的字段，但样本不是受控 A/B，也没有逐项捕获请求体，所以不能将差额精确归因于工具。</p>
 
   <h2 id="limits">证据边界</h2>
   <ul>

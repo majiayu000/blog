@@ -8,7 +8,7 @@
   <meta name="date" content="2026-08-25">
   <meta name="description" content="继续追踪 Grok Build、Claude Code 和 Codex 的长任务完成路径，拆开进程退出、界面更新、消息入队和模型重新运行之间的差别。">
   <meta name="tags" content="Agent, Claude Code, Codex, Grok Build, 逆向分析">
-  <style>
+<style>
     :root {
       color-scheme: dark;
       --bg: #070a0f;
@@ -216,12 +216,12 @@
     <header class="hero">
       <p class="eyebrow">Agent runtime deep dive</p>
       <h1>Monitor 发出事件以后，谁来开下一回合</h1>
-      <p class="deck">上一篇查的是三个 Coding Agent 怎样等长任务。这次我继续往下追。进程已经结束，通知也已经发出，界面亮了一下。模型究竟有没有醒，答案要再穿过两层代码。</p>
+      <p class="deck">上一篇查了后台任务怎样等待。这次继续检查完成事件的去向：它可能只把界面上的 running 改成 completed，也可能进入会话输入，触发新的模型请求。要判断 Agent 是否会自己接着做事，需要把这两段路径连起来看。</p>
       <p class="meta">Grok Build 1.0.5 · Claude Code 2.1.241 · Codex CLI 0.149.1 · 记录于 2026 年 8 月 25 日</p>
 
       <div class="answer">
         <strong>Grok 把完成事件送成一条合成 Prompt。Claude Code 把 Monitor 通知放进 next 队列，空闲时会生成新的模型回合。Codex 也监听进程退出，但这条事件先更新界面，模型仍靠 <code>write_stdin</code> 取结果。</strong>
-        <p>这三种实现都用了事件。差别落在事件的收件人。界面收到退出消息，只能说明用户看见了完成状态。模型收到一条新的输入，才算主 Agent 真正被唤醒。</p>
+        <p>三套实现都有事件，但界面收到事件和模型收到新输入并不相同。下面分别检查进程退出、界面更新和会话续接，再用本机记录核对时序。</p>
       </div>
 
       <div class="wake-map" role="img" aria-label="后台进程完成以后经过退出事件、界面、消息队列和模型回合的路径">
@@ -277,8 +277,8 @@
           <p>这层区分改掉了我最初一个过于粗的说法。Codex 并不缺进程退出事件。它有完整的异步 watcher，也会推送输出增量和完成状态。它缺少的是从普通后台 terminal 的完成事件直达新模型回合的默认路径。</p>
 
           <div class="callout green">
-            <p><strong>判断监控体验时，先问事件最后交给了谁。</strong></p>
-            <p>交给 TUI，用户少按一次刷新。交给模型输入队列，Agent 才能在用户离开以后继续做下一步。</p>
+            <p>比较时要看完成事件最终进入哪个组件。</p>
+            <p>进入 TUI 可以及时更新状态；进入模型输入队列，才可能让 Agent 在没有新的人类消息时继续工作。后一条路径还需要取消、权限和重复通知处理。</p>
           </div>
 
           <details>
@@ -294,7 +294,7 @@
         <section id="grok">
           <p class="kicker">02 · Grok Build</p>
           <h2>Grok 把 TaskCompleted 改造成一条合成 Prompt</h2>
-          <p>Grok 的公开源码把这条路写得很直。后台 Bash 或 Monitor 自然退出后，shell adapter 产生 <code>ToolNotification::TaskCompleted</code>。<code>notification_bridge.rs</code> 先检查几件事。任务有没有被 block wait 接走，是否由模型明确停止，goal loop 是否还在运行，AutoWake 有没有开启。</p>
+          <p>Grok 中，后台 Bash 或 Monitor 自然退出后，shell adapter 产生 <code>ToolNotification::TaskCompleted</code>。<code>notification_bridge.rs</code> 随后检查 block wait 是否接管、任务是否被模型主动停止、goal loop 是否运行，以及 AutoWake 是否开启。</p>
 
           <p>通过这些检查以后，bridge 生成 <code>task-completed-{task_id}</code>，再向 session actor 发送 <code>SessionCommand::Prompt</code>。Prompt 的模式是 Agent，内容提醒模型 Monitor 已经结束，并告诉它从哪个任务读取完整输出。</p>
 
@@ -315,7 +315,7 @@
 
           <div class="codebox">
             <span class="lang">installed binary</span>
-            <pre><code>auto-wake: requesting synthetic prompt admission
+<pre><code>auto-wake: requesting synthetic prompt admission
 auto-wake: session actor received synthetic prompt
 skipping model inject for monitor event: task already auto-woke</code></pre>
           </div>
@@ -330,7 +330,7 @@ skipping model inject for monitor event: task already auto-woke</code></pre>
 
           <div class="codebox">
             <span class="lang">bundled js</span>
-            <pre><code>mode: "task-notification",
+<pre><code>mode: "task-notification",
 priority: "next"</code></pre>
           </div>
 
@@ -383,7 +383,7 @@ priority: "next"</code></pre>
 
           <div class="codebox">
             <span class="lang">rust</span>
-            <pre><code>if request.input.is_empty() {
+<pre><code>if request.input.is_empty() {
     time_ms.clamp(
         MIN_EMPTY_YIELD_TIME_MS,
         self.max_write_stdin_yield_time_ms,
@@ -391,11 +391,11 @@ priority: "next"</code></pre>
 }</code></pre>
           </div>
 
-          <p>于是 Codex 同时拥有两种相反的体验。用户能及时看到命令卡片结束，模型若已经交还当前回合，并不会仅凭这张卡片重新运行。模型仍在等待回合里时，会继续调用 <code>write_stdin</code>。用户后来再输入一句，它也可以回头读取已经结束的 session。</p>
+          <p>因此，用户能在界面上看到命令结束，并不表示模型已经重新运行。当前回合还在等待时，模型可以继续调用 <code>write_stdin</code>；回合已经结束时，用户后来再输入，也可以让模型回头读取结果。</p>
 
           <div class="callout pink">
-            <p><strong>Codex 0.149.1 是界面 push，模型 pull。</strong></p>
-            <p>退出事件真实存在，UI 也能实时更新。模型续接仍靠工具查询。这两个判断放在一起，才和源码完全对得上。</p>
+            <p>在 Codex 0.149.1 的这条路径上，界面接收推送，模型通过工具查询续接。</p>
+
           </div>
         </section>
 
@@ -430,11 +430,11 @@ priority: "next"</code></pre>
         <section id="tradeoff">
           <p class="kicker">06 · Tradeoff</p>
           <h2>自动唤醒省模型回合，也增加了运行时的责任</h2>
-          <p>把等待移到本地 watcher，收益很容易看见。没有状态变化时，模型不需要收一条“还在运行”。会话更短，工具调用更少，半小时任务尤其明显。</p>
+          <p>让本地 watcher 等待明确条件，可以减少没有新信息的模型调用。收益取决于原来的查询频率和任务时长，需要用请求记录衡量，不能只数后台进程有没有轮询。</p>
 
-          <p>运行时接着要回答几个难问题。通知到达时模型正在做什么。用户刚按过取消键怎么办。两个终态挨着到达会不会开两次回合。通知内容来自日志，能不能被当成人类授权。Grok 的 admission、suppression 和 reservation 正是在处理这些竞争。Claude Code 的 next 优先级、队列折叠和任务来源标记处理了另一部分。</p>
+          <p>事件到达后仍有几种竞争需要处理：模型可能还在执行工具，用户可能刚取消任务，同一终态也可能先后报告两次。日志内容还不能被当作新的用户授权。Grok 的 admission、suppression、reservation，以及 Claude Code 的优先级、队列合并和来源标记，都与这些问题有关。</p>
 
-          <p>Codex 的模型 pull 显得笨一些，却天然保留了一个边界。当前 turn 结束以后，普通 terminal 完成只更新界面，不会自行调用模型。这会浪费等待回合，也减少了后台输出在无人看守时推动 Agent 行动的机会。</p>
+          <p>Codex 的普通 terminal 完成事件在当前 turn 结束后不自行调用模型。这个边界减少了无人输入时启动后续动作的机会，但等待中的模型仍可能花回合查询。是否需要自动续接，应按任务权限和交互要求决定。</p>
 
           <div class="table-wrap">
             <table>
@@ -454,12 +454,12 @@ priority: "next"</code></pre>
 
         <section id="conclusion">
           <p class="kicker">07 · Reading the result</p>
-          <h2>长任务监控这一项，Grok 和 Claude Code 走得更完整</h2>
-          <p>只看当前三个版本的普通长任务路径，我会把 Grok 放在最容易审计的位置。公开代码从 TaskCompleted 一直连到 session actor，取消、重复事件和 fallback 都有对应测试。Claude Code 的用户体验同样接近完整事件驱动，本机记录证明它在空闲时会自行开启模型回合。它的关键实现藏在发布二进制里，外部核验成本更高。</p>
+          <h2>各自怎样把事件接到下一回合</h2>
+          <p>Grok 的公开代码能从 <code>TaskCompleted</code> 追到 session actor，并有取消、重复事件和回退测试。Claude Code 的本机会话记录显示，通知在空闲时能成为新的模型输入；对应实现需要从发布二进制核对。两者的来源形态不同，不能只因都有自动通知就省略版本对应关系。</p>
 
-          <p>Codex 的源码透明度最高，进程层也已经有可靠 watcher。模型侧少了最后一段连接。把 <code>ExecCommandEnd</code> 转成一种有来源、受权限约束、可以被 thread admission 接受的输入，普通后台终端才会从“界面知道结束”走到“Agent 接着干活”。源码里曾出现的 awaiter 仍靠重复工具查询，0.149.1 默认角色又暂时移除了它，这条路还没有解决事件直达模型的问题。</p>
+          <p>Codex 的退出 watcher 已经会发送完成状态；本文检查的默认路径没有把这条状态直接转成新 turn。要补上这段连接，还需要定义输入来源、权限和 thread admission，不能简单地在进程退出时再调一次模型。默认角色表中暂时移除的 awaiter 仍采用重复工具查询，也与事件直接续接不同。</p>
 
-          <p>那张 Grok 截图给人的感觉没有错。Monitor 在后台等，主 Agent 可以停。等条件成立以后，运行时再把它叫回来。好的监控还要知道什么时候保持安静，叫醒 Agent 时给它多大权限。</p>
+          <p>到这里，最初的问题可以拆开回答：后台任务结束，界面可以先更新；主 Agent 是否继续，则取决于运行时有没有提交新的模型输入，以及这次提交是否通过取消与权限检查。</p>
         </section>
 
         <section id="sources">
