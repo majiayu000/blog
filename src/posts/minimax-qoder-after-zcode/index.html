@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ZCode 之后我又拆了 MiniMax 和 Qoder，GLM 对话没有读回那份 Git 包</title>
+  <title>查完 ZCode，再看 MiniMax 和 Qoder 的代码上传</title>
   <meta name="date" content="2026-09-18">
   <meta name="updated" content="2026-09-19">
-  <meta name="description" content="同一天拆 MiniMax Code 3.0.68 与 Qoder CN 0.3.3。桌面版 ZIP 索引默认关且这台机器零记录。CN 云端搜代码走不通，因为产品表关掉远程索引，安装包没写原因。GLM 请求里没有 snapshot_id。">
+  <meta name="description" content="对照 MiniMax Code 3.0.68、Qoder CN 0.3.3 与 ZCode 3.10.1：安装包里的上传实现、实际开关和本机记录各不相同。另查 GLM 会话是否引用已经上传的仓库快照。">
   <meta name="tags" content="Agent, Agent 工具链, MiniMax, Qoder, ZCode">
   <style>
     :root {
@@ -144,30 +144,29 @@
   <a class="home-link" href="/">← Silent Star</a>
 <main>
   <p class="kicker">X-Ray · Agent 工具链</p>
-  <h1>ZCode 之后我又拆了 MiniMax 和 Qoder，GLM 对话没有读回那份 Git 包</h1>
-  <p class="lede">网上传编程 Agent 会静默上传仓库。<a href="/posts/zcode-repo-snapshot/">上一篇</a>把本机 ZCode 3.10.1 对上了。同一天我在另一台 Mac 上拆 MiniMax Code 3.0.68 和 Qoder CN 0.3.3，再回到本机看 GLM 运行时会不会把已经传走的快照用进对话。</p>
-
-  <p>三家客户端都带着云端代码相关实现。打出来的包不一样，开关也不一样。</p>
+  <h1>查完 ZCode，再看 MiniMax 和 Qoder 的代码上传</h1>
+  <p class="lede"><a href="/posts/zcode-repo-snapshot/">上一篇</a>在本机找到了 ZCode 的仓库快照。这次我在另一台 Mac 上检查 MiniMax Code 3.0.68 和 Qoder CN 0.3.3，又回到 ZCode，看 GLM 对话是否会读回那些快照。三份客户端都有云端代码相关实现，但打包内容、启用条件和留下的运行记录并不一样。</p>
 
   <figure>
     <img src="01-three-payloads.svg" alt="ZCode 传含 Git 的快照，MiniMax 和 Qoder 远程索引传源文件 ZIP" width="900" height="320">
-    <figcaption>ZCode 的包能还原 Git 历史。后两家若打开远程索引，传的是当前源文件，给 embedding 用。</figcaption>
+    <figcaption>图中比较的是已检查的打包实现。是否真的运行，还要看开关和本机记录。</figcaption>
   </figure>
 
-  <h2>MiniMax 桌面版还留着 ZIP 索引，这台机器没跑过</h2>
-  <p>应用在 <code>/Applications/MiniMax Code.app</code>，短版本 3.0.68。asar 大约 461 MB。公开仓库 <code>MiniMax-AI/minimax-code</code> 的 TUI 0.4.12 已经拆掉工作区索引。桌面版还留着完整子系统，名字叫 workspace indexing。代码会把用户选中的项目打成 <code>workspace.zip</code>，旁边再写一份 <code>manifest.json</code>，交给远程 worker。</p>
-  <p>本地 SQLite 表 <code>local_runtime_workspace_indexing_revisions</code> 的字段里有 <code>archive_oss_key</code>、<code>embedding_model</code>、<code>dimensions</code>。这条路是给语义搜索用的。asar 里搜不到 <code>pack-objects</code>。</p>
-  <p>开关在 <code>resolveWorkspaceIndexingPreference</code>。</p>
+  <h2>MiniMax：桌面版保留了索引，记录却是空的</h2>
+  <p>应用在 <code>/Applications/MiniMax Code.app</code>，短版本 3.0.68，asar 包约 461 MB。这里容易混淆的是公开 TUI 和桌面版：公开仓库 <code>MiniMax-AI/minimax-code</code> 的 TUI 0.4.12 已经移除了工作区索引，检查的桌面包仍保留着 workspace indexing 子系统。它会把用户选中的项目打成 <code>workspace.zip</code>，再生成一份 <code>manifest.json</code>，交给远程 worker。</p>
+  <p>本地 SQLite 表 <code>local_runtime_workspace_indexing_revisions</code> 包含 <code>archive_oss_key</code>、<code>embedding_model</code>、<code>dimensions</code> 等字段，对应上传归档和生成向量的流程。这条实现用于语义搜索。我没有在 asar 中搜到 <code>pack-objects</code>，但仅靠这个搜索结果，不能断言它没有其他打包路径。</p>
+  <p>是否启用由 <code>resolveWorkspaceIndexingPreference</code> 决定：</p>
   <pre>enabled = forced || persisted === true
 forced  = runtimeOwnerKind !== 'tui'
           && (internalBuild || buildEnv === 'test')</pre>
-  <p>正式桌面版默认关着，要把偏好写成 true 才会开。另外 <code>isWorkspaceIndexingSessionEligible</code> 要求 <code>isDefaultWorkspace === false</code>，避免把应用自己的回退目录传上去。注释写得很直白，旧记录如果缺这个字段，把 <code>undefined</code> 当成合格，会扫到应用自己的 fallback 文件夹。</p>
-  <p>这台机器的 <code>~/.minimax/v2/sqlite/runtime-state.sqlite</code> 里，<code>local_runtime_workspace_indexing_sessions</code> 和 <code>local_runtime_workspace_indexing_revisions</code> 都是 0 行。<code>local_runtime_file_api_uploads</code> 也是 0。代码在，上传记录没有。</p>
-  <p><code>eval_snapshot</code> 我只看到过一次超时失败。后来聊天成功，没有对应的快照行。桌面版有没有在对话里另走一条静默快照，这台机器给不出成功样本。</p>
+  <p>在这段逻辑里，正式桌面版默认不开远程索引，只有持久化偏好为 true 才启用；内部或测试构建另有强制条件。另一个检查 <code>isWorkspaceIndexingSessionEligible</code> 要求 <code>isDefaultWorkspace === false</code>。代码注释解释了为什么要写得这么严格：旧记录若缺少字段，把 <code>undefined</code> 当作合格，可能扫到应用自己的 fallback 目录。</p>
+  <p>本机 <code>~/.minimax/v2/sqlite/runtime-state.sqlite</code> 中，<code>local_runtime_workspace_indexing_sessions</code>、<code>local_runtime_workspace_indexing_revisions</code> 和 <code>local_runtime_file_api_uploads</code> 都是 0 行。所以这里查到了远程索引实现，没有查到它在这台机器上成功上传的记录。</p>
+  <p>另一个名为 <code>eval_snapshot</code> 的流程只留下过一次超时失败。后来的聊天成功了，却没有对应快照行。要判断对话是否还会经过其他静默快照路径，需要更多运行样本；这台机器目前的记录回答不了。</p>
 
-  <h2>Qoder CN 把远程索引写进产品表里关了</h2>
-  <p>另一台 Mac 装着 Qoder CN 0.3.3。插件 <code>qoder-context</code> 版本 <code>1.0.51.fa026ec3</code>。<code>qoder-search.bundle.mjs</code> 里有完整远程索引。本地 <code>mtree</code> 扫工作区，算 Merkle。远端比对之后，未同步文件读 <code>fileContent</code>，deflate 打成 <code>batch_N.zip</code>，<code>PUT</code> 到 <code>/algo/api/v2/service/codebase/file/upload</code>。模型写死 <code>text-embedding-v4</code>，512 维。</p>
-  <p>跳过 <code>node_modules</code>、<code>.git</code>、<code>dist</code>、<code>out</code>、<code>build</code>、<code>coverage</code>，再叠加 gitignore。Git watch 只用 <code>status</code>、<code>diff</code>、<code>rev-parse</code>、<code>hash-object</code> 做指纹，不打包 objects。</p>
+  <h2>Qoder CN：本地扫了文件，远程索引没有启动</h2>
+  <p>这台 Mac 安装的是 Qoder CN 0.3.3，<code>qoder-context</code> 插件版本为 <code>1.0.51.fa026ec3</code>。插件中的 <code>qoder-search.bundle.mjs</code> 包含远程索引实现：先由本地 <code>mtree</code> 扫描工作区、计算 Merkle 树，再与远端比对。未同步文件会被读取 <code>fileContent</code>，经 deflate 压缩为 <code>batch_N.zip</code>，随后 <code>PUT</code> 到 <code>/algo/api/v2/service/codebase/file/upload</code>。配置的 embedding 模型为 <code>text-embedding-v4</code>，维度是 512。</p>
+  <p>这条扫描路径跳过 <code>node_modules</code>、<code>.git</code>、<code>dist</code>、<code>out</code>、<code>build</code>、<code>coverage</code>，再应用 gitignore。Git watch 使用 <code>status</code>、<code>diff</code>、<code>rev-parse</code> 和 <code>hash-object</code> 计算指纹，没有在这条路径中打包 Git objects。</p>
+  <p>不过，包里有实现不代表 CN 产品会运行它。同一份插件里的两张产品配置表，把下面几项设成了不同的值：</p>
   <div class="card">
     <table>
       <thead>
@@ -201,34 +200,32 @@ forced  = runtimeOwnerKind !== 'tui'
       </tbody>
     </table>
   </div>
-  <p>两张表写在同一份插件里。host 里 <code>dk()</code> 直接返回 <code>qoder-cn</code>。进程环境 <code>QODER_PRODUCT_ID</code> 也是 <code>qoder-cn</code>。daemon 启动时不创建远程 client。<code>tryRemoteSync</code> 第一行看到 <code>remoteCodeIndexing</code> 为 false 就返回。国内网关地址 <code>https://gateway.qoder.com.cn</code> 和国际地址 <code>https://repo2.qoder.sh</code> 并排写在同一张 endpoint 表里。</p>
-  <p>所以这台 Qoder CN 云端搜代码走不通。登录、扫盘、发 prompt 都发生过。远端没有 <code>codebaseId</code>，语义搜索没有东西可查。设置页也没有索引开关，<code>indexSettings</code> 一并关掉了。</p>
-  <p>安装包里找不到为什么关。没有合规、PIPL、数据出境这类注释。日志原文是 <code>disabled by product profile</code>，按产品形态禁用。上传实现和国内网关地址都还在包里，客户端没接线。</p>
+  <p>host 中的 <code>dk()</code> 返回 <code>qoder-cn</code>，进程环境变量 <code>QODER_PRODUCT_ID</code> 也是这个值。daemon 启动时不创建远程 client；<code>tryRemoteSync</code> 遇到 <code>remoteCodeIndexing</code> 为 false 就返回。设置界面同时被 <code>indexSettings</code> 关闭，因此也看不到索引开关。</p>
+  <p>日志与配置相符。2026 年 9 月 18 日 22 点 53 分，日志写下 <code>knowledge remote config disabled by product profile</code>。22 点 55 分打开 <code>/Users/lifcc/Desktop/code</code> 后，<code>UserPromptSubmit</code> 触发 <code>mtree sync begin</code>，但 <code>codebaseId</code> 是 null；CLI 还记录了 <code>registerWorkspace skipped: non-target org</code>。22 点 57 分出现 <code>mtree sync end</code> 时，<code>fileCount</code> 为 100000，<code>codebaseId</code> 仍是 null。</p>
 
   <figure>
     <img src="02-qoder-gate.svg" alt="发提示词后先做本地 Merkle，CN 产品表把远程上传关掉" width="900" height="420">
-    <figcaption>22 点 55 分打开整个 code 目录，本地扫了约一分钟。codebaseId 从头到尾是 null。</figcaption>
+    <figcaption>打开整个 code 目录后，本地开始扫描；这段日志从 22 点 55 分记录到 22 点 57 分，没有建立远程 codebaseId。</figcaption>
   </figure>
 
-  <p>2026 年 9 月 18 日晚上 22 点 53 分，日志写 <code>knowledge remote config disabled by product profile</code>。22 点 55 分打开 <code>/Users/lifcc/Desktop/code</code>，<code>UserPromptSubmit</code> 触发 <code>mtree sync begin</code>，<code>codebaseId</code> 仍是 null。CLI 打出 <code>registerWorkspace skipped: non-target org</code>。22 点 57 分 <code>mtree sync end</code>，<code>fileCount</code> 等于 100000，<code>codebaseId</code> 还是 null。</p>
-  <p>本地 <code>index-settings.v1.json</code> 里 <code>autoIndex</code> 为 true，树里大约 25 万文件、10.9 万目录，索引文件数顶在 10 万。这是本机扫盘。没有 <code>qoder-search-indexing.log</code>。那份日志只在真正跑 <code>workspace_sync</code> 时写。</p>
-  <p>自动上传还有文件数门槛。自动触发在文件数大于等于 10000 时跳过。硬顶大于 100000 会失败。这台机器即使打开远程，自动路径也会被 10 万文件挡住。</p>
-  <p>国际版默认开，是从 CN 包里那张 <code>qoder</code> 表读出来的。我没有另装国际版客户端，也没有国际版运行日志。同一份上传实现，换产品 ID 就会走开着的配置。国际安装包如果换了插件或改写 flag，实际行为可能不一样。</p>
+  <p>本地 <code>index-settings.v1.json</code> 的 <code>autoIndex</code> 虽然是 true，仍不能据此判断发生了远程上传。工作区树里有约 25 万文件、10.9 万目录，本地索引文件数达到 10 万；同时没有找到真正运行 <code>workspace_sync</code> 时才会写出的 <code>qoder-search-indexing.log</code>。这些记录显示本地扫描发生了，远程代码库没有建起来，这轮云端语义搜索也就没有可查询的代码库。</p>
+  <p>文件数还有另一层限制：自动触发遇到大于等于 10000 个文件时会跳过，大于 100000 则超过硬上限。这台机器的目录达到 10 万文件，即便启用远程配置，自动上传路径仍会遇到前一个门槛。</p>
+  <p>至于 CN 为什么关闭这些功能，安装包没有给出原因。国内网关 <code>https://gateway.qoder.com.cn</code> 和国际地址 <code>https://repo2.qoder.sh</code> 都在 endpoint 表里，但没有找到解释关闭原因的注释。日志只说按产品配置禁用，不能从中推断是合规、成本或其他决策。</p>
+  <p>表格中 <code>qoder</code> 一列也有范围限制：它来自 CN 安装包内的配置，不能替代国际版实测。我没有另外安装国际版，也没有它的运行日志；国际安装包若更换插件或覆盖配置，行为可能不同。</p>
 
-  <h2>GLM 对话没有把快照读回来</h2>
-  <p>回到本机 ZCode。发提示词时 host 调用 <code>scheduleRepoSnapshotSidecar</code>，错误被 <code>catch</code> 掉。紧接着 <code>await session/send</code>。这一轮 GLM 等不到索引建完。</p>
+  <h2>回到 GLM：这些会话有没有引用仓库快照</h2>
+  <p>ZCode 已经有了快照上传记录，还需要检查另一件事：模型对话是否使用它。在本机的发送路径中，host 先调用 <code>scheduleRepoSnapshotSidecar</code>，对错误做 <code>catch</code>，随后执行 <code>await session/send</code>。这条路径没有等待快照上传或索引完成，单凭两者前后调用，不能认定对话已经拿到了快照。</p>
 
   <figure>
-    <img src="03-glm-sidecar.svg" alt="快照 sidecar 与 GLM session/send 并行，对话读本地磁盘" width="900" height="300">
-    <figcaption>采集函数和对话请求是两条腿。模型这一轮用不上一秒钟前才开始打的包。</figcaption>
+    <img src="03-glm-sidecar.svg" alt="快照 sidecar 与 GLM session/send 分开执行，已检查的对话使用本地工具" width="900" height="300">
+    <figcaption>快照调度与对话发送分开执行。判断模型是否读取快照，还需要看请求和工具记录。</figcaption>
   </figure>
 
-  <p><code>zcode.cjs</code> 里搜不到 <code>snapshot_id</code>，也搜不到 <code>/api/v1/snapshot</code>。asar 里和仓库快照有关的 HTTP 只剩 <code>GET /api/v1/snapshot/upload-credential</code>。没有 search、status、query、retrieve。</p>
-  <p>本机 3 份 <code>model-io</code> 打给 <code>GLM-5.3</code>。请求字段是 <code>messages</code>、<code>tools</code>、<code>system</code> 这类。没有 snapshot 字段。挂给模型的工具是 Agent、Read、Bash、Edit、Write、WebSearch 等。22 份 transcript 里实际出现的工具名是 Bash、Read、TodoWrite。agent 在读磁盘。</p>
-  <p>设置里的即时搜索是 <code>instantGrepIndexingEnabled</code>，本地 grep。和仓库快照上传分开。</p>
-  <p>服务端拿得到 AES 密钥。包能解开。拿去训练或以后做索引，客户端证明不了。3.10.1 的对话路径没有把快照读回来。</p>
+  <p>我在 <code>zcode.cjs</code> 中没有找到 <code>snapshot_id</code> 或 <code>/api/v1/snapshot</code>。asar 里查到的仓库快照 HTTP 接口是 <code>GET /api/v1/snapshot/upload-credential</code>，没有找到对应的 search、status、query、retrieve 调用。</p>
+  <p>再看运行记录：本机 3 份发往 <code>GLM-5.3</code> 的 <code>model-io</code> 请求包含 <code>messages</code>、<code>tools</code>、<code>system</code> 等字段，没有 snapshot 字段。提供给模型的工具包括 Agent、Read、Bash、Edit、Write、WebSearch；22 份 transcript 中实际出现的工具名是 Bash、Read、TodoWrite。这些样本显示 agent 在通过本地工具读文件，没有显示它读回了那份 Git 包。设置里的 <code>instantGrepIndexingEnabled</code> 控制本地 grep，也与快照上传分开。</p>
+  <p>这仍然只是已检查的客户端路径和会话样本。快照的内容密钥按客户端实现封装给服务端，服务端具备解包条件；之后是否用于索引、训练或其他用途，仅凭这些请求和日志无法判断。</p>
 
-  <h2>对照</h2>
+  <h2>三份客户端的差别</h2>
   <div class="card">
     <table>
       <thead>
@@ -241,32 +238,32 @@ forced  = runtimeOwnerKind !== 'tui'
       </thead>
       <tbody>
         <tr>
-          <td>上传物</td>
+          <td>代码中的打包内容</td>
           <td>工作区文件加整个 <code>.git/</code></td>
           <td><code>workspace.zip</code></td>
           <td>源文件 ZIP 批次</td>
         </tr>
         <tr>
-          <td>目的</td>
+          <td>客户端用途</td>
           <td>仓库快照，接口名 snapshot</td>
-          <td>远程 embedding / 语义搜</td>
-          <td>远程 embedding / 语义搜</td>
+          <td>远程 embedding / 语义搜索</td>
+          <td>远程 embedding / 语义搜索</td>
         </tr>
         <tr>
-          <td>默认</td>
+          <td>检查到的开关行为</td>
           <td>host 不读设置页开关</td>
-          <td>关，除非偏好写成 true</td>
+          <td>正式桌面版默认关，偏好为 true 时开</td>
           <td>国内产品表关掉远程</td>
         </tr>
         <tr>
-          <td>这台机器</td>
-          <td>公开小仓已传成功</td>
+          <td>本机记录</td>
+          <td>公开小仓的本地状态显示已接收</td>
           <td>索引表 0 行</td>
-          <td>本地扫了 10 万文件，未上传</td>
+          <td>本地扫了 10 万文件，未见索引上传记录</td>
         </tr>
         <tr>
-          <td>对话怎么读代码</td>
-          <td>Read / Bash 读磁盘</td>
+          <td>与对话的关系</td>
+          <td>已检查的会话用 Read / Bash 读磁盘</td>
           <td>未在这台机器上观察到 ZIP 回读</td>
           <td>CN 未建立 codebaseId</td>
         </tr>
@@ -274,10 +271,10 @@ forced  = runtimeOwnerKind !== 'tui'
     </table>
   </div>
 
-  <p class="note">这次只覆盖本机 ZCode 3.10.1、另一台 Mac 上的 MiniMax Code 3.0.68 与 Qoder CN 0.3.3。MiniMax 公开 TUI 仓库和桌面版不是同一份二进制。Qoder 国际版只看到 CN 包里的产品表。服务端怎样保存和解开这些包，我没有证据。</p>
+  <p class="note">本次检查覆盖本机 ZCode 3.10.1，以及另一台 Mac 上的 MiniMax Code 3.0.68 和 Qoder CN 0.3.3。表格区分实现、开关与运行记录，不代表检查过三家的所有数据发送路径或服务端行为。</p>
 
   <footer>
-    <p>ZCode 采集细节见 <a href="/posts/zcode-repo-snapshot/">上一篇</a>。MiniMax 源码在桌面 asar 的 workspace-indexing。Qoder 源码在 <code>~/.qoder-cn/plugins/cache/.../qoder-search.bundle.mjs</code>。</p>
+    <p>ZCode 快照的采集细节见 <a href="/posts/zcode-repo-snapshot/">上一篇</a>。MiniMax 的检查位置是桌面 asar 中的 workspace-indexing；Qoder 的检查位置是 <code>~/.qoder-cn/plugins/cache/.../qoder-search.bundle.mjs</code>。</p>
     <p><a href="/">回到首页</a></p>
   </footer>
 </main>
