@@ -17,11 +17,26 @@ jobs:
         with:
           fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
-      - name: Apply the individually reviewed text and validate protected bytes
+      - name: Apply reviewed text and validate protected bytes
         run: |
           set -euo pipefail
           python3 -m py_compile .editorial-workbench/apply.py
           python3 .editorial-workbench/apply.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess
+          protect=re.compile(r'<(pre|style|script)\b[^>]*>[\s\S]*?</\1>',re.I)
+          for name in subprocess.check_output(['git','diff','--name-only']).decode().splitlines():
+              if not (name.startswith('src/posts/') and name.endswith('/index.html')): continue
+              p=Path(name); original=p.read_text(); out=[]; cursor=0
+              for m in protect.finditer(original):
+                  out.extend([re.sub(r'(?m)^[ \t]+$','',original[cursor:m.start()]),m.group(0)])
+                  cursor=m.end()
+              out.append(re.sub(r'(?m)^[ \t]+$','',original[cursor:]))
+              text=''.join(out)
+              assert [m[0] for m in protect.finditer(original)]==[m[0] for m in protect.finditer(text)]
+              p.write_text(text)
+          PY
           git diff --check
       - name: Run repository tests and build
         run: |
