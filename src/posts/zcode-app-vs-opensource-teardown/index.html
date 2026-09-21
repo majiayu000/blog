@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZCode 开源首日：把安装包拆开，和 GitHub 源码做了逐行对照</title>
+<meta name="date" content="2026-09-21">
+<meta name="description" content="把 ZCode 3.14.1 安装包完整解包，与刚开源的仓库逐模块对照：代码同源成立，但开源的是清洗过的精简版；再用真机抓包实测，偷传代码的功能确实已经不在了。">
+<meta name="tags" content="逆向工程, AI Agent, 数据安全, ZCode">
+<link rel="canonical" href="https://blog.silencestar.com/posts/zcode-app-vs-opensource-teardown/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ZCode 开源首日：把安装包拆开，和 GitHub 源码做了逐行对照">
+<meta property="og:description" content="把 ZCode 3.14.1 安装包完整解包，与刚开源的仓库逐模块对照：代码同源成立，但开源的是清洗过的精简版；再用真机抓包实测，偷传代码的功能确实已经不在了。">
+<meta property="og:url" content="https://blog.silencestar.com/posts/zcode-app-vs-opensource-teardown/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"ZCode 开源首日：把安装包拆开，和 GitHub 源码做了逐行对照","description":"把 ZCode 3.14.1 安装包完整解包，与刚开源的仓库逐模块对照：代码同源成立，但开源的是清洗过的精简版；再用真机抓包实测，偷传代码的功能确实已经不在了。","datePublished":"2026-09-21","inLanguage":"zh-CN","mainEntityOfPage":"https://blog.silencestar.com/posts/zcode-app-vs-opensource-teardown/"}</script>
+<style>
+  :root { --fg:#1a1a2e; --muted:#666; --accent:#0e7490; --warn:#9a3412; --border:#e2e2e8; --bg:#fafafa; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif; color:var(--fg);
+         max-width:860px; margin:0 auto; padding:32px 20px 80px; line-height:1.75; background:var(--bg); }
+  h1 { font-size:1.7em; line-height:1.4; border-bottom:2px solid var(--accent); padding-bottom:12px; }
+  h2 { font-size:1.3em; margin-top:2em; border-left:4px solid var(--accent); padding-left:10px; }
+  h3 { font-size:1.08em; margin-top:1.5em; }
+  table { border-collapse:collapse; width:100%; margin:16px 0; font-size:.92em; background:#fff; }
+  th, td { border:1px solid var(--border); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:#f0f4f5; }
+  code { background:#eef0f2; padding:2px 6px; border-radius:4px; font-size:.9em; }
+  blockquote { border-left:3px solid var(--accent); margin:16px 0; padding:8px 16px;
+               color:var(--muted); background:#fff; }
+  strong { color:#b45309; }
+  hr { border:none; border-top:1px solid var(--border); margin:32px 0; }
+  .back { display:inline-block; font-size:13.5px; color:var(--accent); border:1px solid var(--border);
+          border-radius:6px; padding:3px 12px; background:#fff; margin-bottom:28px; text-decoration:none; }
+  .back:hover, a:hover { text-decoration:underline; }
+  a { color:var(--accent); text-decoration:none; }
+  .tw { overflow-x:auto; margin:16px 0; }
+  .tw table { margin:0; min-width:720px; }
+  .meta { color:var(--muted); font-size:.9em; }
+  .mermaid { background:#fff; border:1px solid var(--border); border-radius:8px;
+             padding:16px; margin:20px 0; overflow-x:auto; text-align:center; }
+  .disclaimer { border:1px solid var(--border); border-left:5px solid var(--accent); background:#fff;
+                padding:12px 16px; margin:20px 0; color:var(--muted); font-size:.92em; }
+</style>
+</head>
+<body data-pagefind-body>
+<a class="back" href="/">← 博客首页</a>
+
+<h1>ZCode 开源首日：把安装包拆开，和 GitHub 源码做了逐行对照</h1>
+<p class="meta">发布于 2026-09-21 · 约 8 分钟</p>
+
+<div class="disclaimer">
+  本文是对自己电脑上已安装软件的只读分析与本机抓包，不涉及任何他人系统。分析对象是 ZCode 3.14.1（macOS）与 9 月 21 日刚公开的开源仓库；每条结论都附了可复查的证据位置。与厂商无利益关系，非官方结论。
+</div>
+
+<p>9 月 18 日，ZCode 被曝出「代码库索引」功能在默认开启的情况下静默上传用户全量代码仓库（连 Git 历史一起）；9 月 19 日官方致歉并承诺修复、开源；9 月 20 日新版 App 构建；9 月 21 日——也就是今天——代码仓库正式公开。</p>
+
+<p>开源承诺兑现了，但一个更实际的问题摆在每个用户面前：<strong>这份开源代码，和你电脑上跑的这个 App，真的是同一份东西吗？偷传代码的功能，现在真的没了吗？</strong>光看 GitHub 仓库回答不了这两个问题，所以我把安装包完整拆开做了对照，又抓包实测了一遍。</p>
+
+<h2>1 · 结论先行</h2>
+<blockquote>
+  <p>① 代码<strong>确实同源</strong>：App 就是由这套代码库构建的，证据是压倒性的（有字节级一致）。<br>
+  ② 但开源的<strong>不等于 App 的全部</strong>：App 比仓库领先一个小版本，还多出 5 大块没有开源的功能；仓库公开前也被「打扫」过。<br>
+  ③ 偷传代码的功能<strong>确实已经不在了</strong>：静态分析找不到痕迹，真机抓包也只看到 3 个正常出口。</p>
+</blockquote>
+
+<pre class="mermaid">
+flowchart TB
+    APP["你装的 ZCode App 3.14.1 完整版"]
+    REPO["GitHub 开源仓库 3.14.0 公开版"]
+    SAME["同一棵代码树：图标、界面文案、命令库逐字节一致"]
+    APP --> SAME
+    REPO --> SAME
+    EXTRA["App 多出 5 大私有功能"]
+    CLEAN["仓库公开前被打扫过，且比 App 旧一个小版本"]
+    APP --> EXTRA
+    REPO --> CLEAN
+    VER["结论：代码同源成立，但开源的不等于 App 全部"]
+    EXTRA --> VER
+    CLEAN --> VER
+    style APP fill:#e3f2fd,stroke:#1565c0
+    style REPO fill:#e8f5e9,stroke:#2e7d32
+    style VER fill:#263238,color:#ffffff
+</pre>
+
+<h2>2 · 「同源」的证据有多硬</h2>
+<p>App 的主程序是个加密压缩包，解开后是几十 MB 的压缩 JS——它不可能和 TypeScript 源码逐字相同。判断同源靠的是那些<strong>构建过程动不掉的东西</strong>：界面文案、图标、数据清单、版本常量。结果：</p>
+
+<div class="tw"><table>
+  <tr><th>证据类型</th><th>仓库侧</th><th>App 侧</th><th>结果</th></tr>
+  <tr><td>bash 命令注册表（CLI 用）</td><td>生成脚本产物</td><td>内嵌约 1.9MB</td><td><strong>字节级一致</strong></td></tr>
+  <tr><td>图标资源</td><td>material-icons 目录</td><td>1146 个 SVG</td><td><strong>逐字节一致</strong>（抽样比对）</td></tr>
+  <tr><td>界面文案（i18n）</td><td>语言包源文件</td><td>中英文各抽 20 组</td><td><strong>逐字一致</strong>，仓库 0 个 key 在 App 中缺失</td></tr>
+  <tr><td>CLI 版本与模型清单</td><td>0.16.9 · 22 个模型 ID</td><td>内嵌常量</td><td><strong>精确一致</strong></td></tr>
+  <tr><td>依赖版本</td><td>lockfile</td><td>实装包抽样 16 个</td><td><strong>全部对上</strong>（含打过补丁的包）</td></tr>
+  <tr><td>Electron 运行时</td><td>开发依赖声明 41.0.3</td><td>框架二进制</td><td><strong>三方精确一致</strong></td></tr>
+</table></div>
+
+<p>更关键的一个反方向证据：App 的构建元数据里记录了构建自内部 commit <code>cead36fd</code>（9 月 20 日），而这个 commit <strong>不存在</strong>于开源仓库仅有的 2 个提交中。时间线完全对得上——App 先构建，仓库第二天被压缩成一个「初始开源提交」。</p>
+
+<h2>3 · 开源的不是全部</h2>
+<p>App 里有大量功能，在开源仓库里<strong>找不到任何对应代码</strong>：</p>
+
+<div class="tw"><table>
+  <tr><th>只在 App 里的功能</th><th>开源仓库里的状态</th></tr>
+  <tr><td>机器人平台（飞书 / 微信 / Telegram / Webhook 接入，约 230 个界面词条）</td><td>完全缺失</td></tr>
+  <tr><td>积分中心 rewards（专属网页 + 白名单域名）</td><td>完全缺失</td></tr>
+  <tr><td>手机远程控制 webRemoteControl（约 120 个界面词条）</td><td>完全缺失</td></tr>
+  <tr><td>多智能体权限模式（新增 4 种模式值）</td><td>完全缺失</td></tr>
+  <tr><td>电脑操作助手 CUA（111MB 真实实现）</td><td>只有一个「fail-closed」空壳占位包</td></tr>
+</table></div>
+
+<p>合计约 <strong>529 个界面词条</strong>在仓库里没有对应物——这个规模远超一个小版本号能解释的范围。另外仓库侧还有清洗痕迹：随 App 分发的插件在仓库里只剩「种子声明」没有源码，且仓库版本的插件做过品牌名清理。也就是说，<strong>开源仓库是发布前筛选过的切片，用它无法独立审计当初偷传功能的实现</strong>。</p>
+
+<pre class="mermaid">
+mindmap
+  root((未开源功能))
+    机器人平台
+      飞书
+      微信
+      Telegram
+      Webhook
+    积分中心
+    手机远程控制
+    多智能体权限模式
+    电脑操作助手 CUA
+</pre>
+
+<h2>4 · 大家最关心的：现在还会传代码吗</h2>
+
+<pre class="mermaid">
+timeline
+    title ZCode 事件 2026 年 9 月
+    9月18日 : 曝光偷传代码 : 默认开启的代码库索引上传全量仓库与 Git 历史
+    9月19日 : 官方道歉 : 承诺修复、开源、第三方审查
+    9月20日 : 新版构建 : 偷传功能移除
+    9月21日 : 代码开源 : 精简版，且落后一个小版本
+</pre>
+
+<p>两层验证，结论一致。</p>
+
+<h3>第一层：静态分析</h3>
+<p>在解包产物的全部界面文案、主程序、后台进程和 14MB 的 CLI 运行时里，搜「代码库索引」「RepoWiki」「codeIndex」等功能标识——<strong>零命中</strong>。搜索外部 API 路径，只找到遥测、OAuth 和文档地址，没有任何代码或索引上传端点。</p>
+
+<h3>第二层：真机抓包</h3>
+<p>让 App 在本机实际运行 3.5 分钟（网络层日志 + 每 8 秒一轮的连接采样，共 24 轮）：</p>
+
+<div class="tw"><table>
+  <tr><th>实际目的地</th><th>次数</th><th>用途</th></tr>
+  <tr><td><code>zcode.z.ai/api/v1/client/configs</code></td><td>16</td><td>拉取远程配置</td></tr>
+  <tr><td><code>zcode.z.ai/api/v1/releases/electron/manifest</code></td><td>4</td><td>检查软件更新</td></tr>
+  <tr><td><code>zcode.z.ai/api/v1/event/report</code></td><td>4</td><td>遥测使用统计</td></tr>
+</table></div>
+
+<p>24 轮采样里没有发现任何常驻回传连接——如果存在持续上传通道，一定会被采到。<strong>结论：当前版本在运行时行为层面，也验证了偷传功能确实不在了。</strong></p>
+
+<p><strong>但要说清局限：</strong>这是空闲态窗口，没覆盖登录后跑 Agent 对话的场景（那会产生正常的模型 API 流量）；HTTPS 载荷未解密，判定依据是「目标端点集合」而非报文内容；要 100% 封死还需要代理级全量抓包。另外，「仓库是清洗过的切片」这一点意味着：第三方无法用开源代码独立复核当初偷传功能到底是怎么实现的——这仍要靠官方承诺的第三方审查。</p>
+
+<pre class="mermaid">
+flowchart LR
+    APP["ZCode App 当前版"]
+    CFG["配置服务器"]
+    UPD["更新服务器"]
+    TEL["遥测服务器"]
+    CODE["你的代码仓库"]
+    APP -->|拉配置| CFG
+    APP -->|查更新| UPD
+    APP -->|遥测| TEL
+    APP -.->|实测零上传| CODE
+    style CODE fill:#ffebee,stroke:#c62828
+</pre>
+
+<h2>5 · 这个结论怎么得出的</h2>
+
+<pre class="mermaid">
+flowchart LR
+    A["安装包完整解包"] --> B["16 路并行逐模块审计"]
+    B --> C["22 个疑点逐条复核"]
+    C --> D["真机抓包实测"]
+    style A fill:#eceff1,stroke:#455a64
+    style B fill:#eceff1,stroke:#455a64
+    style C fill:#eceff1,stroke:#455a64
+    style D fill:#eceff1,stroke:#455a64
+</pre>
+
+<p>拆包后用 16 路并行审计逐模块对照（覆盖全部 14 个源码包），产生 22 个疑点，每个疑点再派独立复核去双方文件里重查证据：<strong>17 个确认、1 个被推翻、其余因限流待补</strong>。每条结论都保留了具体文件路径和命中片段，理论上可以逐条复查。</p>
+
+<h2>6 · 写在最后</h2>
+<p>对这次事件本身，我的看法是：<strong>响应速度和开源兑现值得肯定，但「开源」不等于「可审计」</strong>。公开一份清洗过、滞后于线上产品的切片，能证明诚意，不能证明线上版本的安全。对用户真正有价值的下一步，是官方承诺的第三方审查报告，以及构建过程可复现（让大家能自己从源码构建出和官方一致的 App）。</p>
+
+<p>至于普通用户要不要继续用：当前版本的两层验证都干净；如果你敏感于遥测，它至少是明面上的、小体量的。但请保持一个习惯——<strong>对任何 AI 编程工具，把它当成一个「会读你全部代码的外部服务」来对待，再决定给它什么权限。</strong></p>
+
+<hr>
+<p class="meta">分析工具：自建 16 路并行审计流水线 + Electron net-log；本文图表由 Mermaid 渲染。仓库侧对照矩阵（16 区域全量）与技术版流程图见个人工作区归档。</p>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "neutral", fontFamily: "-apple-system, PingFang SC, sans-serif" });
+</script>
+</body>
+</html>
