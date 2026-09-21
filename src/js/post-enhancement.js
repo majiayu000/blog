@@ -44,7 +44,7 @@
 
   function initializeCodeCopy() {
     for (const pre of document.querySelectorAll("pre")) {
-      if (pre.closest(".ss-afterword") || pre.dataset.copyEnhanced === "true") continue;
+      if (pre.closest(".ss-afterword") || pre.classList.contains("mermaid") || pre.dataset.copyEnhanced === "true") continue;
 
       const code = pre.querySelector("code");
       const source = code?.textContent || pre.textContent;
