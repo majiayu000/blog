@@ -49,7 +49,7 @@
 <p class="meta">分析对象：Claude Code CLI v2.1.278（Bun 原生二进制内嵌 JS bundle，构建时间 2026-09-19T01:12:36Z，GIT_SHA <code>809c9806…</code>）。证据格式 <code>region-XXX:行号</code>，对应从二进制刻出的切片；<code>d.ts</code> 指 npm 包附带的 <code>sdk-tools.d.ts</code>。标注 [推断] 的为分析者推断，其余为代码可见事实。</p>
 
 <div class="disclaimer">
-本文是对分发包的静态逆向分析，不是官方文档的转述，与 Anthropic 无关；Claude Code 是 Anthropic 的产品。全部结论基于本机构取的 bundle 切片，每条关键断言附 <code>region:行号</code> 证据，欢迎按第 13 节索引逐条复核。引用源码片段每处不超过 3 行，机制描述均为分析者自己的转述。
+本文是对分发包的静态逆向分析，不是官方文档的转述，与 Anthropic 无关；Claude Code 是 Anthropic 的产品。全部结论基于本机构取的 bundle 切片，每条关键断言附 <code>region:行号</code> 证据，欢迎按第 14 节索引逐条复核。引用源码片段每处不超过 3 行，机制描述均为分析者自己的转述。
 </div>
 
 <nav class="toc">
@@ -58,6 +58,7 @@
 <li><a href="#summary">摘要</a></li>
 <li><a href="#method">分析对象与方法</a></li>
 <li><a href="#arch">总体架构</a></li>
+<li><a href="#runtime">运行时叙事：这套东西是怎么跑起来的</a></li>
 <li><a href="#ch1">第 1 章 Agent 工具核心：子 agent 的生成与执行</a></li>
 <li><a href="#ch2">第 2 章 异步后台执行：注册表、命令队列与看门狗</a></li>
 <li><a href="#ch3">第 3 章 团队与通信：信箱、teammate 与跨会话</a></li>
@@ -73,7 +74,7 @@
 
 <h2 id="summary">1. 摘要</h2>
 
-<p><strong>核心结论</strong>：Claude Code 的"多 agent"不是一套统一框架，而是四层机制的叠加——Agent 工具负责生成子 agent（同步/异步/fork 等形态）；任务注册表 + 命令队列构成异步回流骨架；teammate 团队用磁盘信箱文件实现协议通信；Workflow 引擎在 Node vm 里跑确定性 JS 脚本做批量编排。所有形态的 agent（subagent、teammate、workflow 的 agent()、fork）最终都走同一个查询执行生成器 <code>cw</code>（<code>region-110-185M.js:95</code>），共享同一套权限、hook 与遥测管线；彼此之间上下文物理隔离、不共享内存，只靠消息通道（tool_result、task-notification、mailbox、attachment）交换信息。</p>
+<p><strong>核心结论</strong>：Claude Code 的"多 agent"不是一套统一框架，而是四层机制的叠加——Agent 工具负责生成子 agent（同步/异步/fork 等形态）；任务注册表 + 命令队列构成异步回流骨架；teammate 团队用磁盘信箱文件实现协议通信；Workflow 引擎在 Node vm 里跑确定性 JS 脚本做批量编排。所有形态的 agent（subagent、teammate、workflow 的 agent()、fork）最终都走同一个查询执行生成器 <code>cw</code>（<code>region-110-185M.js:95</code>），共享同一套权限、hook 与遥测管线；彼此之间上下文物理隔离、不共享内存，只靠消息通道（tool_result、task-notification、mailbox、attachment）交换信息。第 4 节以一次完整走查演示这四层如何接续运行。</p>
 
 <p>关键机制清单：</p>
 <ul>
@@ -98,7 +99,7 @@
 <li><strong>交叉基准</strong>：npm 包附带的 <code>sdk-tools.d.ts</code>（文件头自述由 json-schema-to-typescript 自动生成，<code>sdk-tools.d.ts:3-4</code>），用于核对"官方声明"与"实现事实"的差异。</li>
 </ol>
 
-<p><strong>诚实声明</strong>：这是对分发包的静态分析。部分常量与函数体位于未被刻出的懒加载 chunk 中，本文凡此均标注 [推断] 或列入第 12 节未解清单；结论按"代码可见事实 &gt; 多点交叉推断 &gt; 单点推断"分级呈现。</p>
+<p><strong>诚实声明</strong>：这是对分发包的静态分析。部分常量与函数体位于未被刻出的懒加载 chunk 中，本文凡此均标注 [推断] 或列入第 13 节未解清单；结论按"代码可见事实 &gt; 多点交叉推断 &gt; 单点推断"分级呈现。</p>
 
 <h2 id="arch">3. 总体架构</h2>
 
@@ -146,9 +147,83 @@
 <li><strong>上下文物理隔离</strong>：子 agent 结束统一清空消息数组与 readFileState，后台 agent 不共享 app state（<code>shareSetAppState:!g</code>），中间对话仅存私有 sidechain 转录（<code>region-110:95</code>、<code>region-87:4251</code>）。</li>
 </ul>
 
-<h2 id="ch1">4. 第 1 章 Agent 工具核心：子 agent 的生成与执行</h2>
+<h2 id="runtime">4. 运行时叙事：这套东西是怎么跑起来的</h2>
 
-<h3>4.1 输入 schema：三层合并 + 运行时裁剪</h3>
+<p>前三节看的是静态结构：四个子系统、各自的机制与协议。这一节把它们串成一条时间线——从一个用户请求出发，看数据在哪一刻流到哪、谁在等谁、什么时刻谁被唤醒。走查是示意场景（并行数量为演示而设），但每一步机制都有代码依据，引用沿用全文编号。</p>
+
+<h3>4.1 主线：主会话是一台单线程事件循环</h3>
+
+<p>先立住一个坐标：整个系统只有一条主线。主会话查询引擎（REPL / SDK 泵）把一切外部事件收进同一个命令队列 commandQueue——用户输入是 prompt 命令，monitor 的 stdout 是 poll-event，后台任务完成是 task-notification，定时任务到点交出声明的 prompt——各带优先级，出队顺序 <code>now&lt;next&lt;later</code>；出队后统一包装成 user-role 消息，发起下一轮模型请求（<code>region-87:175/176</code>、<code>region-220</code>）。也就是说，模型每一轮"看到的世界"，就是这条队列按序吐出的事件；后台系统再热闹，不经过这条队列就到不了模型眼前。主对话自己同时是 team lead——teammate 只认 <code>from==="team-lead"</code> 的应答（<code>region-230:11</code>）。</p>
+
+<h3>4.2 一次完整走查：从一个请求到一支 agent 舰队</h3>
+
+<p>设用户输入"调研 X 并写份报告"。时间线如下：</p>
+
+<pre><code>t0  用户输入 ──► commandQueue(prompt, next) ──► 出队 ──► 模型请求
+t1  模型回复工具调用：6×Agent(并行) + 1×Agent(run_in_background) + 1×Workflow
+t2  同步侧：6 个子 agent 进 cw 执行器（isConcurrencySafe 归组，块内 ≤10，
+    墙钟 = 最慢者）；每个都是独立上下文，互相看不见
+    异步侧：后台 agent 在注册表登记后立即返回 task-id；Workflow 工具
+    (backgrounding:"never") 转成 local_workflow 任务，立即返回 runId
+t3  同步 tool_result 回齐（各带 agentId 句柄）──► 模型向用户汇报：
+    "结论如下；另有任务在后台"
+t4  后台并行推进：子 agent 各跑各的；workflow 脚本在 vm 里经 pipeline
+    涌出一个个 agent()（仍是同一条 cw 管线），journal 逐条落盘
+t5  某后台 agent 完成 ──► 回调只做"登记+装配" ──► task-notification
+    入队，优先级 later（不打断任何人）
+t6  主循环空闲（模型这轮说完）──► 出队 later ──► 包装成
+    [SYSTEM NOTIFICATION - NOT USER INPUT] 的 user-role 消息 ──►
+    下一轮模型请求：这就是 Claude Code"自己接着干活"的时刻
+t7  用户中途插话 ──► prompt 入队 next &gt; later，通知重排让位，先答用户
+t8  全部 settle ──► Stop hook 读 background_tasks/session_crons，
+    区分"真结束"与"暂停等后台"</code></pre>
+
+<p>对应的代码锚点：t2 的归组并行（<code>region-112:14</code>、<code>region-110:14</code>）与立即返回（<code>region-87:2032</code>、<code>region-228:20</code>）；t3 的句柄（<code>region-112:29</code>）；t4 的 pipeline 涌出与 journal（<code>region-150:78/69/41</code>）；t5 的完成回调语义（<code>region-87:3818</code>）；t6 的通知包装（<code>region-75:159/20</code>）；t7 的插队（<code>region-87:175/176</code>、<code>region-116:11</code>）；t8 的 Stop hook 枚举字段（<code>region-58:27</code>）。</p>
+
+<h3>4.3 一个子 agent 的一生</h3>
+
+<ul>
+<li><strong>出生前</strong>：过校验闸——spawn 深度、并发上限（默认 20）、budget、spawner 是否停止中、subagent_type 解析 + deny 规则；任一不过直接拒绝，不产生实体（<code>region-112:11/33</code>、<code>region-87:1287</code>）。</li>
+<li><strong>运行中</strong>：独立上下文，私有 sidechain 转录；每 turn 过共享执行器受 hooks 拦截；fork 型共享父 prompt cache（<code>region-110:95</code>、<code>region-87:3512</code>）。</li>
+<li><strong>同步善终</strong>：最终报告经消毒扫描 + handback 三态，以 tool_result 回主线，带继续对话句柄（<code>region-110:78</code>、<code>region-112:29</code>）。</li>
+<li><strong>异步善终</strong>：注册表置态 → 30 秒停靠窗（parked，keepalive 引用可续命）→ 驱逐；结果走 task-notification（<code>region-87:3804/3799</code>）。</li>
+<li><strong>横死</strong>：TaskStop 按 10 类任务分发表 kill，沿树连带终止；kill 三档升级（10s SIGKILL / 30s 记遥测），兜底是 session restart（<code>region-116:47</code>、<code>region-87:20</code>）。内存压力回收要一串保守条件同时满足（<code>region-87:3818</code>）。</li>
+<li><strong>死后</strong>：同步或异步的结果都带 agentId/task-id 句柄，SendMessage 可续聊；但被用户手动停止的 agent 明确不复活（<code>agent-stopped-by-user</code>，<code>region-223:74</code> 附近），被驱逐的 teammate 才走完整复活流程（<code>region-223:12</code>）。</li>
+</ul>
+
+<h3>4.4 信息怎么流动：数据归属与通道</h3>
+
+<p>"并发但不共享内存"落到数据上是一张归属表——每类数据有唯一属主，跨属主只有消息通道：</p>
+
+<table>
+<tr><th>数据</th><th>属主</th><th>存放</th><th>跨属主通道</th></tr>
+<tr><td>主会话 transcript</td><td>主对话</td><td>会话转录</td><td>队列出队 → user-role 消息（模型唯一输入口）</td></tr>
+<tr><td>子 agent 中间对话</td><td>子 agent 私有</td><td>sidechain 转录；结束即清空消息数组与 readFileState（<code>region-110:95</code>、<code>region-87:4251</code>）</td><td>只回传最终报告（消毒 + handback 三态，<code>region-110:78</code>）</td></tr>
+<tr><td>后台任务结果</td><td>任务注册表（内存）</td><td>注册表 + 30s 停靠窗（<code>region-87:2032/3799</code>）</td><td>task-notification → user-role（<code>region-87:3804</code>、<code>region-75:159</code>）</td></tr>
+<tr><td>workflow 中间结果</td><td>脚本运行时</td><td>journal.jsonl（<code>region-150:41</code>）</td><td>structured_output attachment 直达脚本变量（<code>region-150:69</code>）</td></tr>
+<tr><td>teammate 消息</td><td>团队成员</td><td>磁盘信箱 <code>inboxes/&lt;成员&gt;.json</code>（<code>region-83:11</code>）</td><td>文件锁 + 原子写 + 500ms 轮询（<code>region-230:11</code>）</td></tr>
+<tr><td>monitor 事件</td><td>后台 monitor</td><td>—</td><td>poll-event 通道，显式排除在 task-notification 外（<code>region-87:3818</code>）</td></tr>
+<tr><td>定时任务</td><td>会话</td><td>内存；durable 写 <code>.claude/scheduled_tasks.json</code>（<code>sdk-tools.d.ts:2867</code>）</td><td>到点把声明的 prompt 交给主循环</td></tr>
+<tr><td>跨会话消息</td><td>对端会话</td><td>—</td><td>UDS / bridge → <code>&lt;cross-session-message&gt;</code> 包装（<code>region-223:27</code>、<code>region-58:27</code>）</td></tr>
+</table>
+
+<p>代价也在这张表里：因为不共享内存，每条通道都得造一套协议——tool_result、task-notification、信箱协议帧、attachment、poll-event。后面各章讲的其实就是这些协议的逐一拆解。</p>
+
+<h3>4.5 四种 agent 形态的分工</h3>
+
+<table>
+<tr><th></th><th>同步 subagent</th><th>异步 subagent</th><th>teammate</th><th>workflow agent()</th></tr>
+<tr><td>启动</td><td>Agent 工具，主循环等结果</td><td>Agent 工具 <code>run_in_background:true</code>；fork 门开启时一切 spawn 强制异步、该字段从 schema 移除（<code>region-112:11</code>）</td><td>进程内注册（in_process_teammate，<code>region-87:2032</code>）</td><td>脚本内 agent() 调用</td></tr>
+<tr><td>结果回传</td><td>tool_result + 句柄（<code>region-112:29</code>）</td><td>task-notification（<code>region-87:3804</code>）</td><td>信箱消息 / 协议帧</td><td>脚本变量（attachment，<code>region-150:69</code>）</td></tr>
+<tr><td>生命周期</td><td>随调用，回传即止</td><td>完成后停靠 30s 再驱逐（<code>region-87:3799</code>）</td><td>常驻轮询，idle 通知，可复活（<code>region-223:12</code>）</td><td>调用期；stall 180s×5（<code>region-150:63</code>）</td></tr>
+<tr><td>失败语义</td><td>校验拒绝 / 异常上报</td><td>TaskStop 树式终止（<code>region-116:47</code>）</td><td>shutdown 四帧协议（<code>region-223:53</code>）</td><td>journal respawn / 预算终止（<code>region-150:65</code>）</td></tr>
+</table>
+
+<p>一句话收束：所有"多"最终都汇到"一"——一条命令队列、一个执行生成器 <code>cw</code>、一套权限与 hook 管线；多 agent 形态之间的全部差异，只在"结果从哪条通道回来、生命周期归谁管"。</p>
+
+<h2 id="ch1">5. 第 1 章 Agent 工具核心：子 agent 的生成与执行</h2>
+
+<h3>5.1 输入 schema：三层合并 + 运行时裁剪</h3>
 
 <p>Agent 输入 schema 由三层 zod 合并：基础层 <code>ro</code>（description/prompt/subagent_type/model/run_in_background）→ <code>so</code> 加 name/team_name(废弃)/mode(废弃) → extend 出 isolation/cwd（<code>region-112:11</code>）。工具实际暴露的 <code>inputSchema</code> 是运行时 getter：</p>
 
@@ -158,7 +233,7 @@ return a.CLAUDE_CODE_SUBAGENT_MODEL_FORCE?e.omit({model:!0}):e</code></pre>
 
 <p>即 <code>cwd</code> 恒被剥离；SDK/受限模式或 fork 门 <code>C8()</code> 开启时移除 <code>run_in_background</code>；<code>CLAUDE_CODE_SUBAGENT_MODEL_FORCE</code> 时移除 <code>model</code>。d.ts 保留全部字段，是它的超集（<code>sdk-tools.d.ts:750-787</code>）。</p>
 
-<h3>4.2 fork：上下文克隆型子 agent</h3>
+<h3>5.2 fork：上下文克隆型子 agent</h3>
 
 <p>fork 是内置 agent：<code>tools:["*"], maxTurns:200, model:"inherit", permissionMode:"bubble", getSystemPrompt:()=&gt;""</code>（<code>region-87:650</code>）。开关链 <code>Opr()</code> 默认返回 <code>"default"</code>（即开启），仅 <code>CLAUDE_CODE_FORK_SUBAGENT===!1</code>、<code>Pq()</code> 或非交互 <code>Ce()</code> 时关闭（同段）。</p>
 
@@ -170,17 +245,17 @@ return a.CLAUDE_CODE_SUBAGENT_MODEL_FORCE?e.omit({model:!0}):e</code></pre>
 <li><strong>强制异步</strong>：<code>forceAsync=C8()&amp;&amp;!we</code>——fork 门开启时一切子 agent 强制异步，<code>run_in_background:false</code> 也无效，且该参数已从 schema 移除（<code>zn</code>，<code>region-112:11</code>）。plan/dontAsk 模式、remote 隔离、fork 内再 fork 均被拒（<code>region-112:33</code>）。</li>
 </ul>
 
-<h3>4.3 类型解析与上限</h3>
+<h3>5.3 类型解析与上限</h3>
 
 <p>subagent_type 支持模糊匹配：<code>kZ</code> 做 NFKC 归一化 + 小写 + 去空白/连字符/下划线，多命中报 ambiguous 并列出全部匹配，未命中报 not found 并列出可用 agent（<code>region-87:179</code>、<code>region-112:11</code>）。省略时默认 <code>general-purpose</code>。</p>
 
 <p>并发与深度各有硬闸：并发上限 <code>mgn()</code> 读 <code>CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS</code>，回退默认 20，超限拒绝并提示让对方调大该 env（<code>region-87:1287</code>、<code>region-112:33</code>）；深度超限则直接把 Agent 工具从子 agent 工具池剔除，形成双保险（<code>region-110:78/95</code>）。预算耗尽、spawner 停止中同样是拒绝路径（<code>recordRefused("budget")</code> 等，<code>region-112:11</code>）。</p>
 
-<h3>4.4 并行不是 Agent 特权</h3>
+<h3>5.4 并行不是 Agent 特权</h3>
 
 <p>单消息多 Agent 并行是通用机制：Agent 工具自声明 <code>isConcurrencySafe()=true</code>，查询引擎把相邻的并发安全 tool_use 归组并行，块内上限 <code>sa()=CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY??10</code>（<code>region-112:14</code>、<code>region-110:14</code>）。Agent 同时声明 <code>isReadOnly(){return!0}</code>——spawn 本身对分类器是只读操作，副作用记在子 agent 头上（<code>region-112:14</code>）。</p>
 
-<h3>4.5 结果回传：消毒、三态 handback 与通知</h3>
+<h3>5.5 结果回传：消毒、三态 handback 与通知</h3>
 
 <p>同步子 agent 的最终报告由 <code>ban()</code> 构建：取最后含文本的 assistant 消息，经 <code>Or()</code> 消毒扫描（发现即打 <code>tengu_subagent_output_flagged</code>），handback 有 <code>send/flagged/withheld</code> 三态（withheld 不投递）；输出 schema 还含 <code>harnessNoteCount</code> 等溯源字段（<code>region-110:78</code>）。结果以 tool_result 形式返回，且<strong>同步结果也带继续对话的句柄</strong>——尾部追加 <code>agentId: … (use SendMessage with to: …)</code> 句柄与 usage 统计，句柄模板里还带 "summary: &lt;5-10 word recap&gt;" 的续聊提示（<code>region-112:29</code>）。</p>
 
@@ -188,7 +263,7 @@ return a.CLAUDE_CODE_SUBAGENT_MODEL_FORCE?e.omit({model:!0}):e</code></pre>
 
 <p>模型解析链优先级为：tool 参数 model → agent 定义 frontmatter → env <code>CLAUDE_CODE_SUBAGENT_MODEL</code> → 父继承（fork 强制 inherit，<code>region-110:19</code>）。内置 Explore 有 opus 封顶特判：父模型家族不在 haiku/sonnet/opus 时返回 <code>{inheritCap:"opus"}</code>，可用 <code>CLAUDE_CODE_DISABLE_EXPLORE_INHERIT_CAP</code> 关闭（<code>region-87:106</code>）。effort 则不经过工具参数，是 frontmatter 的静态属性，随 permissionLayers 注入每个 turn（<code>region-110:95/90</code>）。</p>
 
-<h3>4.6 StructuredOutput：软强制链</h3>
+<h3>5.6 StructuredOutput：软强制链</h3>
 
 <p>带 schema 的子 agent 靠一条"工具 + nudge + 旁路"链约束，而非硬门：</p>
 
@@ -199,54 +274,54 @@ return a.CLAUDE_CODE_SUBAGENT_MODEL_FORCE?e.omit({model:!0}):e</code></pre>
 <li>workflow 的 agent() runner 是消费方：捕获 attachment 后写入结果变量并 continue，配合重试上限 <code>MAX_STRUCTURED_OUTPUT_RETRIES</code>（<code>region-150:69</code>）。</li>
 </ol>
 
-<h2 id="ch2">5. 第 2 章 异步后台执行：注册表、命令队列与看门狗</h2>
+<h2 id="ch2">6. 第 2 章 异步后台执行：注册表、命令队列与看门狗</h2>
 
-<h3>5.1 双件套骨架</h3>
+<h3>6.1 双件套骨架</h3>
 
 <p>异步子系统由两个数据结构撑起：任务注册表（按 taskId 保存 10 类任务，<code>region-87:2032</code>）和命令队列（主会话收件箱，元素为 <code>{mode, value, priority, agentId, taskId, origin…}</code>，<code>region-87:175-179</code>）。后台任务完成时<strong>不直接调用模型</strong>，只入队一条 <code>task-notification</code> 命令；主循环在回合结束或空闲被唤醒时出队，转成 user-role 消息发起下一轮请求（<code>region-87:3818</code>；回合中途折叠见 <code>region-116:47</code> 的 <code>absorbed_mid_turn</code>）。</p>
 
-<h3>5.2 优先级：用户永远优先</h3>
+<h3>6.2 优先级：用户永远优先</h3>
 
 <p>出队按 <code>now&lt;next&lt;later</code>：task-notification 默认 <code>later</code>，用户输入默认 <code>next</code>（<code>region-87:175/176</code>）。用户插队时 <code>od</code> 保证通知类命令重排让位（<code>region-116:11</code>）。通知入队时强制截断长度（[推断] 约 100KB，<code>region-87:176</code>）、继承原始 turn 归因键、以 <code>V2</code> 按 agentId+taskId 去重（<code>region-87:179</code>）。</p>
 
-<h3>5.3 投递形态与防注入</h3>
+<h3>6.3 投递形态与防注入</h3>
 
 <p>通知以 user-role 消息内嵌 <code>&lt;task-notification&gt;</code> XML（task-id/status/summary/result/usage），包在头部为 <code>[SYSTEM NOTIFICATION - NOT USER INPUT]</code> 的 system-reminder 中，并明文告知"不是用户在说话"（<code>region-75:159-179/20</code>）。origin 分类器把这类 turn 归入 <code>frame:"non-user"</code>（<code>region-58:25</code>）；Stop hook 的输入则带 <code>background_tasks</code>/<code>session_crons</code> 两个枚举字段，让 hook 能区分"会话结束"与"暂停等待后台唤醒"（<code>region-58:27</code>）。</p>
 
-<h3>5.4 看门狗与回收</h3>
+<h3>6.4 看门狗与回收</h3>
 
 <ul>
 <li><strong>交互停滞看门狗</strong>：对每个后台 shell（monitor 除外）5 秒轮询输出行数，45 秒无进展后读尾部 1KB 匹配 y/n 类交互正则（<code>(y/n)</code>、"Do you … ?"、"Press Enter" 等），只发提醒通知不杀任务（<code>region-87:3811/3812/3816</code>）。</li>
 <li><strong>内存压力回收</strong>：critical 级压力 + 会话空闲 30 分钟 + 无运行中 turn 等一串保守条件同时满足才回收，杀任务并补通知（<code>region-87:3818</code>）。</li>
 </ul>
 
-<h3>5.5 kill 升级与树式终止</h3>
+<h3>6.5 kill 升级与树式终止</h3>
 
 <p>kill 升级机制分三档：常规 kill；已结束但查询循环未退出时重新发信号并 SIGKILL 整个 agent 进程组；kill 后 10 秒（<code>OFn</code>）仍未 settle 则升级 SIGKILL 并 abort workflow，30 秒（<code>DFn</code>）仍不 settle 记遥测，日志直白承认"TaskStop re-fires, <strong>session restart is the final recovery</strong>"（<code>region-87:20</code>）。TaskStop 按 10 种任务类型分发表 kill，并沿 agent 树连带终止：直接子任务逐个 kill，间接者先静默停靠再杀，父任务被杀还会连杀孤儿 shell 并清空发往它的队列命令（<code>region-116:47</code>、<code>region-87:3810</code>）。</p>
 
-<h3>5.6 停靠、调度与唤醒</h3>
+<h3>6.6 停靠、调度与唤醒</h3>
 
 <p>后台 agent 完成后进入停靠（parked）态：30 秒空闲窗（<code>evictAfter=now+30s</code>），<code>keepaliveReasons</code> 持有 <code>bash:/agent:/workflow:</code> 引用时不驱逐；同 task-id 可多次通知且结果可能是 interim（<code>region-87:3804/3799/3808</code>）。</p>
 
 <p>调度双轨：CronCreate 是定时器（cron 表达式 + prompt），recurring 默认 true 且 7 天自动过期，durable=true 写 <code>.claude/scheduled_tasks.json</code> 跨重启存活、默认仅会话内存态随会话消亡（<code>sdk-tools.d.ts:2867</code>）；ScheduleWakeup 是动态自调度，<code>delaySeconds</code> 钳制到 [60,3600] 秒，<code>stop:true</code> 取消本会话 pending 动态唤醒但不动 recurring cron，成功后由 harness 在唤醒或通知到达时重新调起模型（<code>region-116:59</code>）。monitor 类型被显式排除在 task-notification 之外，其 stdout 事件走 poll-event 通道（<code>region-87:3818</code>、<code>region-87:176</code>）。</p>
 
-<h2 id="ch3">6. 第 3 章 团队与通信：信箱、teammate 与跨会话</h2>
+<h2 id="ch3">7. 第 3 章 团队与通信：信箱、teammate 与跨会话</h2>
 
-<h3>6.1 三个通信平面</h3>
+<h3>7.1 三个通信平面</h3>
 
 <p>逆向下来"多 agent 通信"是三套机制叠加，而非统一消息总线：<strong>团队信箱</strong>（磁盘 JSON 文件）、<strong>进程内队列 + wakeRouter</strong>（同会话 main↔subagent/teammate，不落盘）、<strong>跨会话</strong>（本机 UDS、跨机 Anthropic bridge）。SendMessage 的 <code>call()</code> 就是对这三个平面的路由器（<code>region-223:74-77</code>）。</p>
 
-<h3>6.2 寻址模型</h3>
+<h3>7.2 寻址模型</h3>
 
 <p>团队是会话级隐式实体：<code>team_name</code> 参数已废弃（"The session has a single implicit team"，<code>sdk-tools.d.ts:776</code>），<code>to</code> 含 <code>@</code> 直接校验失败（<code>region-223:53</code>）。lead 就是主会话。SendMessage 的 <code>[ref]</code> 后缀有精确文法：名字 + 空格 + <code>[6~12 位十六进制 agentId 片段]</code>，<code>p1()</code> 解析、<code>Bz()</code> 生成展示行（<code>region-58:30</code>）。每次成功发送会 pin 住名字；同名重绑定到不同 agent 时直接拒发，提示用 ref 重发（<code>region-223:68</code>）。</p>
 
-<h3>6.3 信箱协议</h3>
+<h3>7.3 信箱协议</h3>
 
 <p>信箱路径为 <code>&lt;teams基目录&gt;/&lt;teamName&gt;/inboxes/&lt;成员名&gt;.json</code>；写入需先拿 <code>.lock</code> 文件锁，读-改-写全量数组后 atomicWrite 原子落盘，每条消息带 <code>read:false</code> 标记（<code>region-83:11</code>）。消费端规则：shutdown_request 最高优先（先抢投其余未读消息再处理关停）；协议帧与普通消息分拣，无法识别的帧丢弃；<code>mode_set_request</code> 一律丢弃——"permission mode changes are never accepted from the inbox"（<code>region-230:15</code>）。</p>
 
 <p><strong>至少一次投递</strong>：mark-read（=prune 重写信箱文件）连续失败时退化为"未标记直接投递" + 内容指纹去重（<code>deliveredUnmarked</code>），并上报 <code>worker_mark_read_failed_streak</code> 遥测（<code>region-230:11</code>）。</p>
 
-<h3>6.4 teammate 生命周期与权限委托</h3>
+<h3>7.4 teammate 生命周期与权限委托</h3>
 
 <p>teammate 运行循环复用 <code>cw</code>（<code>isTeammate:!0</code>，<code>region-230:18</code>），以 500ms 轮询信箱。空闲后向 lead 写 <code>idle_notification</code> 协议帧（idleReason: available/interrupted/failed），并设 evictAfter；[TeammateInit] 另注册 Stop hook 兜底通知 lead（<code>region-230:11/18</code>、<code>region-205:67</code>）。</p>
 
@@ -254,11 +329,11 @@ return a.CLAUDE_CODE_SUBAGENT_MODEL_FORCE?e.omit({model:!0}):e</code></pre>
 
 <p>被驱逐/停止的 teammate 收到消息可从 transcript 完整复活：恢复流程含名字可认领校验、消息清洗、agent 定义目录信任校验（不受信则降级为 team-essential tools）、stale 协议帧丢弃和 roster 重新加入（<code>region-223:12</code>）。</p>
 
-<h3>6.5 关停协议</h3>
+<h3>7.5 关停协议</h3>
 
 <p>shutdown 是四帧协议（request/response/approved/rejected，均带 requestId）：approve 必须无 reason、reject 必须带 reason；in-process 成员 approve 后直接 <code>abortController.abort()</code>（<code>region-223:53/46</code>）。</p>
 
-<h3>6.6 跨会话与安全边界</h3>
+<h3>7.6 跨会话与安全边界</h3>
 
 <p>跨会话消息有三条 ingress lane（bridge=Anthropic 中继 / stdin / socket=本机 UDS），<code>from</code> 信封地址清洗控制字符，接收端统一包装为 <code>&lt;cross-session-message from="..."&gt;</code> 的 user-role 消息（<code>region-58:27</code>、<code>region-223:27</code>）。</p>
 
@@ -268,13 +343,13 @@ return a.CLAUDE_CODE_SUBAGENT_MODEL_FORCE?e.omit({model:!0}):e</code></pre>
 
 <p>进程内队列由 wakeRouter 泵投递：60s inFlight 保护、agent 已停即丢弃、非瞬态连续失败 5 次丢弃，其余按 <code>min(60s, 2s*2^(n-1))</code> 指数退避加抖动重试（<code>region-205:87</code>）。</p>
 
-<h2 id="ch4">7. 第 4 章 Workflow 编排引擎：确定性脚本与断点续跑</h2>
+<h2 id="ch4">8. 第 4 章 Workflow 编排引擎：确定性脚本与断点续跑</h2>
 
-<h3>7.1 门控与输入契约</h3>
+<h3>8.1 门控与输入契约</h3>
 
 <p>Workflow 触发是显式白名单：用户明说 "use a workflow"/"ultracode" 等才允许，不是模型自主决定（<code>region-218:11</code>）。输入校验比 d.ts 更严：<code>script</code> 有长度上限加控制字符 refine（动机是"审批对话框不可隐藏字符"），<code>resumeFromRunId</code> 强制 <code>/^wf_[a-z0-9-]{6,}$/</code>，实现还读取 d.ts 未声明的 <code>remote</code> 字段参与互斥校验（<code>region-228:16/20</code>）。工具对象 <code>backgrounding:"never"</code>——它自己就转成后台任务立即返回（<code>region-228:20</code>）。</p>
 
-<h3>7.2 编译链与确定性强制</h3>
+<h3>8.2 编译链与确定性强制</h3>
 
 <p>脚本编译三层加工：meta 字面量契约（<code>export const meta</code> 必须是 PURE LITERAL）→ acorn 解析 + AST 改写（保留前缀 <code>__wRg$</code> 的标识符拒绝用户声明，禁 with/import()，把 await 包成 VM↔宿主 Promise 桥）→ <code>vm.Script</code> 编译（<code>region-150:34-41</code>）。VM context 以 <code>{codeGeneration:{strings:!1,wasm:!1}}</code> 创建，禁 eval 与 WASM（<code>region-150:78</code>）。</p>
 
@@ -285,7 +360,7 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 
 <p><code>Date.now</code>/<code>Math.random</code>/裸 <code>new Date()</code> 抛错，<code>new Date(参数)</code> 可用；连 <code>(new Date(x)).constructor</code> 回到真 Date 的后门都被封死。错误文案明示动机："breaks resume. Stamp results after the workflow returns, or pass timestamps via args."（<code>region-150:11-25</code>）。提交前还有静态扫描拒绝含这些调用的脚本（<code>region-228:20</code>）。</p>
 
-<h3>7.3 并发原语：pipeline 无栅栏、parallel 屏障</h3>
+<h3>8.3 并发原语：pipeline 无栅栏、parallel 屏障</h3>
 
 <ul>
 <li><strong>pipeline() 是无栅栏流水线</strong>：所有 item 并发进入 stage1、每项独立串行穿过后继 stage，stage 回调收到 <code>(prevResult, originalItem, index)</code>，prev 为 null 即短路该项后续 stage。文档精确表述：墙钟时间 = 最慢单项链，而非各 stage 最慢者之和（<code>region-150:78</code>、<code>region-218:74</code>）。</li>
@@ -294,7 +369,7 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 
 <p>并发与总量上限：每工作流并发 = <code>min(16, max(2, availableParallelism()-2))</code>（可用 <code>CLAUDE_CODE_WORKFLOW_MAX_CONCURRENT_AGENTS</code> 覆盖），agent 生命周期总数硬帽 1000（<code>WorkflowAgentCapError</code>），remote 通道另有 50 并发闸（<code>region-150:43</code>）。并发闸只在 agent() 层，parallel/pipeline 本身不限流。</p>
 
-<h3>7.4 agent()：stall 检测、预算与 prompt-cache 预热</h3>
+<h3>8.4 agent()：stall 检测、预算与 prompt-cache 预热</h3>
 
 <p>agent 级 stall 检测默认 180 秒（<code>Jr=180000</code>，无进度即 abort "stalled"），最多重试 5 次（<code>Co=5</code>），全部失败抛 "agent stalled on all N attempts"；限流判定后 sleep 45s 重试（<code>region-150:63/72</code>）。还有一个值得注意的优化：<strong>prompt-cache 预热门</strong>——同前缀的兄弟 agent 等第一个响应（默认等待帽 5s），使共享前缀进入 prompt cache，后续 agent 直接命中，日志明言 "held Nms for a same-prefix sibling's first response (prompt-cache warm-up)"（<code>region-150:72</code>）。</p>
 
@@ -302,7 +377,7 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 
 <p>schema 模式强制 StructuredOutput：spawn 换用专用系统提示（"MUST call the tool exactly once / 校验失败自纠"），schema 先经 lint（unsatisfiable 默认拒 spawn），失败 tool_result 计数超过 <code>MAX_STRUCTURED_OUTPUT_RETRIES</code> 抛 "StructuredOutput retry cap exceeded"，结果以 structured_output attachment 直达脚本（<code>region-150:63/65/69</code>）。</p>
 
-<h3>7.5 journal 与 resume：哈希链缓存键</h3>
+<h3>8.5 journal 与 resume：哈希链缓存键</h3>
 
 <p>journal.jsonl 位于 transcript 目录 <code>&lt;runId&gt;/journal.jsonl</code>，条目为 launched/started/result/failed 四类（key 形如 <code>v2:&lt;sha256&gt;</code>），写入采用 restoring/条目/restored 三段式，restoreState 据此区分 partial（崩溃）与 complete（<code>region-150:41/43</code>）。</p>
 
@@ -314,15 +389,15 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 
 <p>resume 重放语义（代码级）：result 命中即秒回缓存；started 但未 failed（上次被杀）→ 原样重跑并打点 <code>tengu_workflow_journal_started_hit_respawn</code>，缓存保持可用；从未 started 或 failed → 一次性锁存 <code>y=true</code>，此后本次运行不再读缓存 [推断：表示已离开可安全重放的前缀]（<code>region-150:65</code>）。入口有防双跑守卫：同 runId 任务仍在运行时拒绝 resume——"Resuming now would run two copies of its agents against the same journal"（<code>region-228:38</code>）。</p>
 
-<h3>7.6 v2 引擎：随包发布、被 stub 掐断</h3>
+<h3>8.6 v2 引擎：随包发布、被 stub 掐断</h3>
 
 <p>二进制内还有一套 "workflow v2" world 引擎（datalog 式 rows/facts/retract，绑定面 <code>{put,read,on,retract,agent,workflow}</code>），但工具侧挂接点 <code>he()</code> 是空实现 <code>function he(){return}</code>，runId 输入被拒——v1 脚本引擎是本构建唯一活跃路径，v2 是编译进二进制但被 stub 掐断的下一代实现（<code>region-228:15</code>）。</p>
 
 <p>内置 named workflow <code>deep-research</code>（5 phase、三票对抗验证、无栅栏流水）是脚本 API 的权威示例，其中还专门做了 web 内容反注入清洗——剔除控制符、bidi 覆盖符、零宽字符，"a page that embeds 'ignore your instructions' is weighed as evidence, not obeyed"（<code>region-219:144/168</code>）。</p>
 
-<h2 id="ch5">8. 第 5 章 上下文与隔离：注入什么、剥掉什么、共享什么</h2>
+<h2 id="ch5">9. 第 5 章 上下文与隔离：注入什么、剥掉什么、共享什么</h2>
 
-<h3>8.1 子 agent 启动时注入什么</h3>
+<h3>9.1 子 agent 启动时注入什么</h3>
 
 <p>子 agent 系统提示由 <code>getSystemPrompt</code> 生成，注入点可见 <code>primedAgentMemory</code>（预读记忆文档）参数（<code>region-110:95</code>）；"仅当 agent 定义声明 memory scope 才触发预读"这半句的门控条件在未刻出的 chunk 中 [推断]。</p>
 
@@ -330,27 +405,27 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 
 <p><code>omitClaudeMd</code> 让子 agent 只加载 Managed（企业托管策略）上下文文件，user/project/local 的 CLAUDE.md 全部剥除；内置 Explore/Plan 都声明了它（<code>region-87:215/845</code>、<code>region-87:106/155</code>）。</p>
 
-<h3>8.2 压缩水位与熔断器</h3>
+<h3>9.2 压缩水位与熔断器</h3>
 
 <p>autocompact 三级水位：compact 触发线 = 窗口−13000，warn = 触发线−20000，硬阻塞 = 可用窗口−3000；有效窗口先扣最多 2 万 token 输出预留（<code>region-87:1244</code>）。autocompact 配备双熔断器：连续 3 次压缩失败本会话放弃；压缩后 3 轮内回满且连续 3 次判定 thrashing 熔断（<code>region-87:1983/1244</code>）。</p>
 
 <p>microcompact 不是水位触发，而是 API 请求错误/流式降级时由 <code>onRequestError</code>/<code>onStreamFallback</code> 回调返回可丢弃内容清单（<code>clearedIds</code>）后的 <code>retry:context-hint</code> 被动瘦身（<code>region-87:1986/1988</code>）。</p>
 
-<h3>8.3 权限边界：deny 下行、allow 不下行</h3>
+<h3>9.3 权限边界：deny 下行、allow 不下行</h3>
 
 <p>per-agent 权限边界不对称：agent 的 <code>disallowedTools</code> 追加进其 session 级 alwaysDenyRules（父 deny 保留），而 <code>allowedTools</code> 整体替换 session 级 alwaysAllowRules 桶——<strong>父会话运行期 allow 授予不随之下放</strong>（<code>region-110:78/95</code>）。子 agent 声明 <code>bypassPermissions</code> 不会被采信：父会话非 bypass、策略禁用或会话受限时保持父模式并告警（<code>region-110:95</code>）。团队中计划批准权收敛到 lead（<code>region-223:52</code>）。</p>
 
-<h3>8.4 worktree 生命周期</h3>
+<h3>9.4 worktree 生命周期</h3>
 
 <p>worktree 有完整注册快照与收窄的清理权：<code>ExitWorktree</code> 只动本会话创建/进入的 worktree（<code>enteredExisting</code> 拒绝 remove），跨会话清理由 <code>claude rm --discard-unpushed</code> + liveness lock 承担——被运行中会话持有的 worktree 显示 "stop or delete that session first"（<code>region-87:4273</code>、<code>region-116:335-361</code>、<code>region-102:24</code>）。</p>
 
-<h3>8.5 上下文不共享的代码落点</h3>
+<h3>9.5 上下文不共享的代码落点</h3>
 
 <p>多 agent 上下文不共享落在代码上：子 agent 结束统一清空消息数组与 readFileState，后台 agent 不共享 app state（<code>shareSetAppState:!g</code>），中间对话仅存其私有 sidechain 转录（<code>region-110:95</code>、<code>region-87:4251</code>）。fork 是唯一的"共享"通道且经净化（悬空 tool_use 整条剔除，<code>region-110:95</code>）；嵌套 CLAUDE.md 记忆默认不回传，仅 <code>CLAUDE_CODE_COORDINATOR_PROPAGATE_NESTED_MEMORY</code> 开启时经去重回父补载（<code>region-110:95</code>）。</p>
 
-<h2 id="ch6">9. 第 6 章 对外契约：d.ts、frontmatter 与 hooks 控制面</h2>
+<h2 id="ch6">10. 第 6 章 对外契约：d.ts、frontmatter 与 hooks 控制面</h2>
 
-<h3>9.1 单一 schema 源与镜像关系</h3>
+<h3>10.1 单一 schema 源与镜像关系</h3>
 
 <p><code>sdk-tools.d.ts</code> 是 zod 单一源的自动生成镜像（文件头自述 json-schema-to-typescript 生成），<code>AgentInput.model</code> 的 docstring 与 bundle 中 zod describe 文本逐字一致（<code>sdk-tools.d.ts:764</code>、<code>region-112:11</code>）。因此差异点是少数刻意行为：</p>
 
@@ -359,7 +434,7 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 <li>SendMessage/ListAgents/FetchInbox 等多 agent 通信工具完全不在 d.ts 的 ToolInputSchemas union（40+ 成员）中——多 agent 通信是 CLI 内部能力，不属于 SDK 对外承诺的工具契约（<code>sdk-tools.d.ts:11</code>）。</li>
 </ul>
 
-<h3>9.2 agent 定义文件的校验链</h3>
+<h3>10.2 agent 定义文件的校验链</h3>
 
 <p><code>.claude/agents/*.md</code> frontmatter 有完整校验链 <code>E7r</code>：name 禁 <code>-</code> 前缀与 <code>:</code>（插件命名空间保留）、description 必填、memory/isolation/maxTurns/effort/permissionMode 逐项校验；失败文件跳过并上报 <code>tengu_agent_parse_error</code>（<code>region-87:1674</code>）。agent frontmatter 的 hooks 块非法（或 PreToolUse/PermissionRequest 写在 hooks 外顶层）会让整个 agent 拒绝加载（unloadableGuard）；合法 hooks 随后在 runAgent 中注册进 sessionHooksRegistry，仅该 agent 运行期间生效（<code>region-87:1674</code>、<code>region-110:95</code>）。</p>
 
@@ -367,17 +442,17 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 
 <p>未识别的 frontmatter 键不报错，而是经 strict zod safeParse 比对后上报 <code>tengu_frontmatter_shadow_unknown_key</code>/<code>_mismatch</code> 遥测——Anthropic 在静默收集用户自造字段（<code>region-87:215</code>）。</p>
 
-<h3>9.3 hooks：模型之外的第二控制面</h3>
+<h3>10.3 hooks：模型之外的第二控制面</h3>
 
 <p>settings 级 hooks 能拦截子 agent 的工具调用：子 agent 工具经共享执行器以 <code>requireCanUseTool:!0</code> 运行（<code>region-110:17</code>，另见 <code>region-106:23</code>），PreToolUse 聚合器支持 deny/ask/allow、改写 <code>updatedInput</code>、注入 <code>additionalContext</code>，优先级 <code>deny(3)&gt;ask(2)&gt;allow(1)</code>（<code>region-87:254</code>）。</p>
 
 <p>hook 按 <code>tool_input.subagent_type</code> 名字匹配存在官方提示文本自认的风险："a hook that means to allow web fetching can exempt tool_input.subagent_type == 'web-fetch' — a name match, which a project, user, or plugin agent defined under that same name would also pass with whatever tools it declares"（<code>region-87:1356</code>）。</p>
 
-<h3>9.4 两层工具面</h3>
+<h3>10.4 两层工具面</h3>
 
 <p>工具面分两层：<code>shouldDefer:!0</code> 或 MCP 工具进入 deferred 层、必须经 ToolSearch 加载后才能用；核心工具（含 Agent 工具）被强制常驻（<code>region-75:20</code>）。这就是 SendMessage 功能完整却"看不见"的原因——它在 deferred 层等检索。</p>
 
-<h2 id="lifecycle">10. 专题 A：一次 Agent 调用的完整生命周期</h2>
+<h2 id="lifecycle">11. 专题 A：一次 Agent 调用的完整生命周期</h2>
 
 <p>从工具调用到结果回传的九步时序（每步均有代码证据）：</p>
 
@@ -393,9 +468,9 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 <li><strong>续聊</strong>：无论同步异步，结果都带 <code>agentId</code>/<code>task-id</code> 句柄，SendMessage 可继续对话。发消息给已停止的 agent 会尝试从 transcript 恢复，但<strong>被用户手动停止的 agent 明确不恢复</strong>（<code>agent-stopped-by-user</code> → "was stopped by the user and was not resumed"，<code>region-223:74</code> 附近）；只有被驱逐的 teammate 走完整复活流程（<code>region-223:12</code>）。</li>
 </ol>
 
-<h2 id="highlights">11. 专题 B/C：设计亮点与文档差异</h2>
+<h2 id="highlights">12. 专题 B/C：设计亮点与文档差异</h2>
 
-<h3>11.1 设计亮点点评</h3>
+<h3>12.1 设计亮点点评</h3>
 
 <ul>
 <li><strong>无栅栏流水线</strong>：pipeline() 的"每项独立穿链、无阶段栅栏"设计把墙钟时间从"各 stage 最慢者之和"压到"最慢单项链"，比 map-reduce 式屏障更符合 LLM 工作负载的长尾分布；parallel() 被文档主动降级为"仅在确需全量结果时使用"（<code>region-150:78</code>、<code>region-218:74/95</code>）。</li>
@@ -406,12 +481,12 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 <li><strong>性能工程</strong>：fork 共享 prompt cache、workflow 兄弟 agent 预热门、通知 <code>later</code> 优先级——延迟优化都建在"共享前缀"和"用户优先"两个原则上（<code>region-87:3512</code>、<code>region-150:72</code>、<code>region-87:175</code>）。</li>
 </ul>
 
-<h3>11.2 与官方公开文档/类型声明的差异</h3>
+<h3>12.2 与官方公开文档/类型声明的差异</h3>
 
 <table>
 <tr><th>差异点</th><th>声明面（d.ts/文档）</th><th>实现面（bundle）</th></tr>
 <tr><td>Agent <code>cwd</code> 字段</td><td>不存在</td><td>内部 schema 有（与 worktree 互斥），对外剥离（<code>region-112:11</code>）</td></tr>
-<tr><td><code>run_in_background</code></td><td>保留字段，"Agents run in the background by default"</td><td>fork 门 <code>C8()</code> 默认开启时整个字段从 schema 移除且强制异步（<code>region-112:11</code>；属版本行为差异，见第 12 节）</td></tr>
+<tr><td><code>run_in_background</code></td><td>保留字段，"Agents run in the background by default"</td><td>fork 门 <code>C8()</code> 默认开启时整个字段从 schema 移除且强制异步（<code>region-112:11</code>；属版本行为差异，见第 13 节）</td></tr>
 <tr><td>多 agent 通信工具</td><td>ToolInputSchemas 无 SendMessage/ListAgents/FetchInbox</td><td>bundle 中完整一等工具，仅在 deferred 层（<code>sdk-tools.d.ts:11</code>、<code>region-75:20</code>）</td></tr>
 <tr><td>Workflow <code>remote</code> 字段</td><td>d.ts 未声明</td><td>校验层实际读取并参与互斥（<code>region-228:20</code>）</td></tr>
 <tr><td><code>resumeFromRunId</code> 格式</td><td>仅描述语义</td><td>bundle 强制 <code>/^wf_[a-z0-9-]{6,}$/</code>（<code>region-228:16</code>）</td></tr>
@@ -419,7 +494,7 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 <tr><td>hook 名字匹配</td><td>未提风险</td><td>官方提示文本自认可被同名 agent 顶替（<code>region-87:1356</code>）</td></tr>
 </table>
 
-<h2 id="limits">12. 局限与未解之谜</h2>
+<h2 id="limits">13. 局限与未解之谜</h2>
 
 <p>本报告的边界：静态分析无法覆盖懒加载 chunk、运行时分支与真实执行行为。主要未解点按子系统归纳（完整清单见各子系统深挖记录）：</p>
 
@@ -432,7 +507,7 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 <li><strong>契约</strong>：Agent schema describe 常量 <code>U9r</code>/<code>$9r</code>、<code>Tt</code> 工厂本体、hooks 双链合并顺序。</li>
 </ul>
 
-<h2 id="evidence">13. 附录：证据索引</h2>
+<h2 id="evidence">14. 附录：证据索引</h2>
 
 <table>
 <tr><th>结论</th><th>证据</th></tr>
@@ -514,6 +589,6 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 </table>
 
 <hr>
-<p class="meta">本报告基于分发包静态逆向，所有断言附代码位置，欢迎按本索引逐条复核。推断项均已标注，未解问题集中于第 12 节。</p>
+<p class="meta">本报告基于分发包静态逆向，所有断言附代码位置，欢迎按本索引逐条复核。推断项均已标注，未解问题集中于第 13 节。</p>
 </body>
 </html>
