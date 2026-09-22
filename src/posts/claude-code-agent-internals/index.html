@@ -556,6 +556,8 @@ return a.CLAUDE_CODE_SUBAGENT_MODEL_FORCE?e.omit({model:!0}):e</code></pre>
 
 <h2 id="ch2">6. 第 2 章 异步后台执行：注册表、命令队列与看门狗</h2>
 
+<p>先用一段话把整条链路说透——异步的本质是<strong>「拿号牌 → 发通知 → 单一汇合点」</strong>：发起时只登记注册表、立刻拿回 agentId 号牌，主会话一毫秒都不等；后台跑完不直通模型，而是变一条 task-notification 按 <code>later</code> 优先级汇入命令队列——队列里它永远排在你的插话和模型续接后面；主循环空闲时，通知被包装成系统消息投喂下一轮。图 2 中橙色虚线回路就是这条链。下面各小节拆开讲每个环节；6.7 讲反方向的操作题：「跑了一半想喊停」怎么办。</p>
+
 <h3>6.1 双件套骨架</h3>
 
 <p>异步子系统由两个数据结构撑起：任务注册表（按 taskId 保存 10 类任务，<code>region-87:2032</code>）和命令队列（主会话收件箱，元素为 <code>{mode, value, priority, agentId, taskId, origin…}</code>，<code>region-87:175-179</code>）。后台任务完成时<strong>不直接调用模型</strong>，只入队一条 <code>task-notification</code> 命令；主循环在回合结束或空闲被唤醒时出队，转成 user-role 消息发起下一轮请求（<code>region-87:3818</code>；回合中途折叠见 <code>region-116:47</code> 的 <code>absorbed_mid_turn</code>）。</p>
@@ -584,6 +586,122 @@ return a.CLAUDE_CODE_SUBAGENT_MODEL_FORCE?e.omit({model:!0}):e</code></pre>
 <p>后台 agent 完成后进入停靠（parked）态：30 秒空闲窗（<code>evictAfter=now+30s</code>），<code>keepaliveReasons</code> 持有 <code>bash:/agent:/workflow:</code> 引用时不驱逐；同 task-id 可多次通知且结果可能是 interim（<code>region-87:3804/3799/3808</code>）。</p>
 
 <p>调度双轨：CronCreate 是定时器（cron 表达式 + prompt），recurring 默认 true 且 7 天自动过期，durable=true 写 <code>.claude/scheduled_tasks.json</code> 跨重启存活、默认仅会话内存态随会话消亡（<code>sdk-tools.d.ts:2867</code>）；ScheduleWakeup 是动态自调度，<code>delaySeconds</code> 钳制到 [60,3600] 秒，<code>stop:true</code> 取消本会话 pending 动态唤醒但不动 recurring cron，成功后由 harness 在唤醒或通知到达时重新调起模型（<code>region-116:59</code>）。monitor 类型被显式排除在 task-notification 之外，其 stdout 事件走 poll-event 通道（<code>region-87:3818</code>、<code>region-87:176</code>）。</p>
+
+<h3>6.7 场景串讲：跑了一半发现不对，能一句话停掉吗</h3>
+
+<p>能，而且这是把本章所有机制串起来用的最佳场景。分两种情况（图 4）：</p>
+
+<p><strong>后台跑（最常见）</strong>：workflow 以 run_in_background 执行时主循环空闲，直接打字即可。你的插话以 <code>now</code> 优先级入队（6.2），永远排在后台完成通知（<code>later</code>）前面。模型读到后调用 TaskStop——按任务名或 id 分发 kill，无需精确编号（句柄就在它的上下文里），kill 沿 agent 树连带终止（6.5）。停掉也不是推倒重来：workflow 引擎每步都往 journal 落盘（8.5），resume 按 (prompt, opts) 的 sha256 哈希链做缓存键——改掉错误参数重新发起后，没变的步骤直接命中缓存瞬间重放，只有出错那步之后才真正重跑。</p>
+
+<p><strong>同步阻塞中</strong>：主回合没结束，打字也轮不上处理。先按 Esc 打断——在跑的同步子 agent 收到 stopped-by-user（第 11 节第 9 步）——回合结束后你的插话才被处理，之后汇入同一条 TaskStop 终止链。</p>
+
+<p>两个前提：以上是 v2.1.278 的逆向结论，版本会变；若会话已被 compact、任务句柄掉出上下文，就需要说得具体一点（指名道姓地停）。</p>
+
+<figure class="fig">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 760" role="img" font-family="-apple-system,'PingFang SC','Noto Sans SC',sans-serif">
+  <defs>
+    <marker id="arw4" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0e7490"/></marker>
+    <marker id="arw4a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b45309"/></marker>
+    <marker id="arw4s" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+    <marker id="arw4r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b91c1c"/></marker>
+    <marker id="arw4v" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6d28d9"/></marker>
+  </defs>
+
+  <!-- 用户 -->
+  <rect x="360" y="30" width="240" height="50" rx="9" fill="#eaf7ef" stroke="#15803d" stroke-width="1.5"/>
+  <text x="480" y="52" text-anchor="middle" font-size="13.5" font-weight="600" fill="#15803d">用户发现问题</text>
+  <text x="480" y="70" text-anchor="middle" font-size="10.5" fill="#475569">「停掉 workflow，参数用错了」</text>
+
+  <path d="M480,80 V104" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw4)"/>
+
+  <polygon points="480,110 640,160 480,210 320,160" fill="#fdf6ec" stroke="#b45309" stroke-width="1.8"/>
+  <text x="480" y="156" text-anchor="middle" font-size="13" font-weight="700" fill="#b45309">workflow 在哪种</text>
+  <text x="480" y="173" text-anchor="middle" font-size="13" font-weight="700" fill="#b45309">模式？</text>
+
+  <!-- 左：后台跑 -->
+  <path d="M320,160 H170 V224" fill="none" stroke="#b45309" stroke-width="1.8" marker-end="url(#arw4a)"/>
+  <text x="245" y="150" text-anchor="middle" font-size="11" fill="#b45309" paint-order="stroke" stroke="#ffffff" stroke-width="4">后台跑</text>
+
+  <rect x="60" y="230" width="220" height="56" rx="11" fill="#fbf3e8" stroke="#b45309" stroke-width="1.8"/>
+  <text x="170" y="253" text-anchor="middle" font-size="14" font-weight="700" fill="#b45309">插话入队（now）</text>
+  <text x="170" y="273" text-anchor="middle" font-size="10.5" fill="#475569">永远排在后台通知前面</text>
+
+  <path d="M170,286 V324" fill="none" stroke="#b45309" stroke-width="1.8" marker-end="url(#arw4a)"/>
+
+  <rect x="60" y="330" width="220" height="56" rx="11" fill="#fbf3e8" stroke="#b45309" stroke-width="1.8"/>
+  <text x="170" y="353" text-anchor="middle" font-size="13.5" font-weight="700" fill="#b45309">模型读到 → TaskStop</text>
+  <text x="170" y="373" text-anchor="middle" font-size="10.5" fill="#475569">按名或 id，无需精确编号</text>
+
+  <path d="M170,386 V424" fill="none" stroke="#b91c1c" stroke-width="1.8" marker-end="url(#arw4r)"/>
+
+  <rect x="60" y="430" width="220" height="72" rx="11" fill="#fdeaea" stroke="#b91c1c" stroke-width="1.8"/>
+  <text x="170" y="454" text-anchor="middle" font-size="14" font-weight="700" fill="#b91c1c">终止三档</text>
+  <text x="170" y="474" text-anchor="middle" font-size="10.5" fill="#475569">优雅 kill → 重发信号 +</text>
+  <text x="170" y="491" text-anchor="middle" font-size="10.5" fill="#475569">SIGKILL 进程组 → abort workflow</text>
+
+  <path d="M170,502 V540" fill="none" stroke="#b91c1c" stroke-width="1.8" marker-end="url(#arw4r)"/>
+
+  <rect x="60" y="546" width="220" height="56" rx="11" fill="#ffffff" stroke="#b91c1c" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="170" y="569" text-anchor="middle" font-size="13" font-weight="700" fill="#b91c1c">尸检 note 入对话</text>
+  <text x="170" y="589" text-anchor="middle" font-size="10.5" fill="#475569">谁停的、怎么停的可查</text>
+
+  <path d="M170,602 V634" fill="none" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#arw4v)"/>
+
+  <!-- 右：同步阻塞 -->
+  <path d="M640,160 H790 V224" fill="none" stroke="#475569" stroke-width="1.8" marker-end="url(#arw4s)"/>
+  <text x="715" y="150" text-anchor="middle" font-size="11" fill="#475569" paint-order="stroke" stroke="#ffffff" stroke-width="4">同步阻塞中</text>
+
+  <rect x="680" y="230" width="220" height="56" rx="11" fill="#eef2f6" stroke="#475569" stroke-width="1.8"/>
+  <text x="790" y="253" text-anchor="middle" font-size="13.5" font-weight="700" fill="#334155">你的话先进队列排队</text>
+  <text x="790" y="273" text-anchor="middle" font-size="10.5" fill="#475569">主回合没结束，轮不到处理</text>
+
+  <path d="M790,286 V324" fill="none" stroke="#475569" stroke-width="1.8" marker-end="url(#arw4s)"/>
+
+  <rect x="680" y="330" width="220" height="56" rx="11" fill="#eef2f6" stroke="#475569" stroke-width="1.8"/>
+  <text x="790" y="353" text-anchor="middle" font-size="13.5" font-weight="700" fill="#334155">按 Esc 打断回合</text>
+  <text x="790" y="373" text-anchor="middle" font-size="10.5" fill="#475569">子 agent 收到 stopped-by-user</text>
+
+  <path d="M790,386 V424" fill="none" stroke="#475569" stroke-width="1.8" marker-end="url(#arw4s)"/>
+
+  <rect x="680" y="430" width="220" height="72" rx="11" fill="#eef2f6" stroke="#475569" stroke-width="1.8"/>
+  <text x="790" y="454" text-anchor="middle" font-size="13.5" font-weight="700" fill="#334155">回合结束，插话被处理</text>
+  <text x="790" y="474" text-anchor="middle" font-size="10.5" fill="#475569">之后汇入同一条</text>
+  <text x="790" y="491" text-anchor="middle" font-size="10.5" fill="#475569">TaskStop 终止链</text>
+
+  <path d="M790,502 V616 H250 V634" fill="none" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#arw4v)"/>
+  <text x="520" y="610" text-anchor="middle" font-size="10.5" fill="#64748b" paint-order="stroke" stroke="#ffffff" stroke-width="4">殊途同归 → 重新发起</text>
+
+  <!-- 底：断点重放 -->
+  <rect x="60" y="640" width="240" height="56" rx="11" fill="#f3effa" stroke="#6d28d9" stroke-width="1.8"/>
+  <text x="180" y="663" text-anchor="middle" font-size="14" font-weight="700" fill="#6d28d9">重新发起 workflow</text>
+  <text x="180" y="683" text-anchor="middle" font-size="10.5" fill="#475569">改掉错误参数</text>
+
+  <path d="M300,668 H354" fill="none" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#arw4v)"/>
+
+  <rect x="360" y="640" width="240" height="56" rx="11" fill="#f3effa" stroke="#6d28d9" stroke-width="1.8"/>
+  <text x="480" y="663" text-anchor="middle" font-size="14" font-weight="700" fill="#6d28d9">journal 哈希链比对</text>
+  <text x="480" y="683" text-anchor="middle" font-size="10.5" fill="#475569">(prompt, opts) 逐步求 sha256</text>
+
+  <path d="M600,668 H654" fill="none" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#arw4v)"/>
+
+  <rect x="660" y="640" width="240" height="56" rx="11" fill="#f3effa" stroke="#6d28d9" stroke-width="1.8"/>
+  <text x="780" y="663" text-anchor="middle" font-size="13.5" font-weight="700" fill="#6d28d9">从出错点继续跑</text>
+  <text x="780" y="683" text-anchor="middle" font-size="10.5" fill="#475569">未变步骤缓存命中，瞬间重放</text>
+
+  <!-- 图例 -->
+  <rect x="60" y="724" width="20" height="12" rx="3" fill="#eaf7ef" stroke="#15803d"/>
+  <text x="87" y="734" font-size="12" fill="#475569">用户入口</text>
+  <rect x="190" y="724" width="20" height="12" rx="3" fill="#fbf3e8" stroke="#b45309"/>
+  <text x="217" y="734" font-size="12" fill="#475569">后台插话路径</text>
+  <rect x="350" y="724" width="20" height="12" rx="3" fill="#eef2f6" stroke="#475569"/>
+  <text x="377" y="734" font-size="12" fill="#475569">同步打断路径</text>
+  <rect x="510" y="724" width="20" height="12" rx="3" fill="#fdeaea" stroke="#b91c1c"/>
+  <text x="537" y="734" font-size="12" fill="#475569">终止与尸检</text>
+  <rect x="670" y="724" width="20" height="12" rx="3" fill="#f3effa" stroke="#6d28d9"/>
+  <text x="697" y="734" font-size="12" fill="#475569">断点重放</text>
+</svg>
+<figcaption class="figcap">图 4 · 一句话停掉 workflow：后台直停与 Esc 打断两条路径，终止后经 journal 哈希链断点重放</figcaption>
+</figure>
 
 <h2 id="ch3">7. 第 3 章 团队与通信：信箱、teammate 与跨会话</h2>
 
