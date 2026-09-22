@@ -941,6 +941,12 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 
 <p>多 agent 上下文不共享落在代码上：子 agent 结束统一清空消息数组与 readFileState，后台 agent 不共享 app state（<code>shareSetAppState:!g</code>），中间对话仅存其私有 sidechain 转录（<code>region-110:95</code>、<code>region-87:4251</code>）。fork 是唯一的"共享"通道且经净化（悬空 tool_use 整条剔除，<code>region-110:95</code>）；嵌套 CLAUDE.md 记忆默认不回传，仅 <code>CLAUDE_CODE_COORDINATOR_PROPAGATE_NESTED_MEMORY</code> 开启时经去重回父补载（<code>region-110:95</code>）。</p>
 
+<h3>9.6 模型与上下文水位：别名层、熔断层与记账（补遗）</h3>
+
+<p>解析链骨架（tool 参数 → frontmatter → env → 父继承）已在第 11 节走查，本轮补齐三层：<strong>别名层</strong>——<code>fable/opusplan/sonnet/haiku/opus/best</code> 等别名在 <code>Rt()</code> 处解析为完整模型 ID，请求带 [1m] 时按模型能力追加长窗后缀（<code>region-58:114</code>）；<strong>熔断层</strong>——解析结果与主模型同家族则直接步降复用主模型 ID，不在 availableModels 白名单则降级到 env/inherit 并上报 family_step_down 遥测（<code>region-110:19</code>）；<strong>水位层</strong>——autocompact 用的是绝对 token 偏移而非百分比：compact 阈值 = 有效窗口 − 13000，warn 再 − 20000，blocked = 窗口 − 3000（<code>region-87:1244</code>）。压缩还有两道 3 次熔断：autocompact 连续失败 3 次本会话跳过后续尝试，压缩后 3 轮内又快速涨满则触发 rapid-refill breaker（<code>region-87:1983</code>）；且可在阈值前 20% 窗口预计算武装（<code>Jde=0.2</code>，同 <code>region-87:1244</code>）。</p>
+
+<p>共享与记账：<code>cw</code> 为每个子 agent 独立传 autocompact 入参（<code>mainLoopModel</code>/<code>autoCompactWindow</code>，<code>region-110:95</code>）；fork 不复制上下文而是引用父 transcript——transcript 条目类型 <code>fork-context-ref</code>（merge 策略 accumulate，<code>region-87:4258</code>）；请求级 prompt cache TTL 独立可配，键是 frontmatter 的嵌套 <code>experimental.cacheTtl</code>（"5m"/"1h"，无扁平 <code>subagentPromptCacheTtl</code> 设置时生效，<code>region-87:215</code>）；预算记账未见「共享池」——maxBudgetUsd 随 options 传入子 agent 并作为 API <code>max_budget_usd</code> 发送，配 <code>budget_usd{used,total,remaining}</code> 遥测（<code>region-87:3709</code>）。</p>
+
 <h2 id="ch6">10. 第 6 章 对外契约：d.ts、frontmatter 与 hooks 控制面</h2>
 
 <h3>10.1 单一 schema 源与镜像关系</h3>
