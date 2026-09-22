@@ -554,6 +554,10 @@ return a.CLAUDE_CODE_SUBAGENT_MODEL_FORCE?e.omit({model:!0}):e</code></pre>
 <li>workflow 的 agent() runner 是消费方：捕获 attachment 后写入结果变量并 continue，配合重试上限 <code>MAX_STRUCTURED_OUTPUT_RETRIES</code>（<code>region-150:69</code>）。</li>
 </ol>
 
+<h3>5.7 错误与重试：外层十次退避、watchdog 与 fallback 降级</h3>
+
+<p>子 agent 与主会话共用同一套 CLI 级重试循环：SDK 客户端以 <code>maxRetries:0</code> 创建（重试权上收），由外层生成器自己重试——默认 10 次（<code>region-87:1986</code>）。退避算法本体在被 strip 的 chunk（chunk-ggre1bjp，未刻出）里，只可见签名 <code>gz(attempt, retryAfter, cap)</code> 与行为面：尊重 <code>retry-after</code> 头。持续 429/529 时进入 watchdog 长等待：单步退避上限 5 分钟、绝对上限 6 小时（<code>Ven=21600000</code>），睡眠切成 ≤30s 的片并支持 <code>subscribeRetryWake</code> 唤醒——等待中的重试是可中断的（<code>region-87:1986</code>）。连续 3 次 529 overloaded 触发降级：配置了 fallbackModel 则抛 <code>FallbackTriggeredError</code> 换模型重放。</p>
+
 <h2 id="ch2">6. 第 2 章 异步后台执行：注册表、命令队列与看门狗</h2>
 
 <p>先用一段话把整条链路说透——异步的本质是<strong>「拿号牌 → 发通知 → 单一汇合点」</strong>：发起时只登记注册表、立刻拿回 agentId 号牌，主会话一毫秒都不等；后台跑完不直通模型，而是变一条 task-notification 按 <code>later</code> 优先级汇入命令队列——队列里它永远排在你的插话和模型续接后面；主循环空闲时，通知被包装成系统消息投喂下一轮。图 2 中橙色虚线回路就是这条链。下面各小节拆开讲每个环节；6.7 讲反方向的操作题：「跑了一半想喊停」怎么办。</p>
@@ -561,6 +565,22 @@ return a.CLAUDE_CODE_SUBAGENT_MODEL_FORCE?e.omit({model:!0}):e</code></pre>
 <h3>6.1 双件套骨架</h3>
 
 <p>异步子系统由两个数据结构撑起：任务注册表（按 taskId 保存 10 类任务，<code>region-87:2032</code>）和命令队列（主会话收件箱，元素为 <code>{mode, value, priority, agentId, taskId, origin…}</code>，<code>region-87:175-179</code>）。后台任务完成时<strong>不直接调用模型</strong>，只入队一条 <code>task-notification</code> 命令；主循环在回合结束或空闲被唤醒时出队，转成 user-role 消息发起下一轮请求（<code>region-87:3818</code>；回合中途折叠见 <code>region-116:47</code> 的 <code>absorbed_mid_turn</code>）。</p>
+
+<p><strong>10 类任务全景</strong>：一个遥测 switch 把注册表的任务类型一次性枚举完整——<code>local_bash、local_agent、monitor_mcp、mcp_task、local_workflow、in_process_teammate、remote_agent、dream、monitor_ws、auto_mode_scan</code>（<code>region-87:2032</code>）。各类完成后的去向并不一致：</p>
+
+<table>
+<tr><th>类型</th><th>完成 → 去向</th><th>要点</th></tr>
+<tr><td>local_bash / local_agent</td><td>task-notification</td><td>标准链路；存活判定只认 running/pending</td></tr>
+<tr><td>local_workflow</td><td>task-notification</td><td>runId 形如 <code>wf_*</code>，启动即返回 <code>async_launched</code>（<code>region-228:20</code>）</td></tr>
+<tr><td>monitor_mcp / monitor_ws</td><td>poll-event 队列（带 wake 布尔）</td><td>与 task-notification 并列的第二种队列模式，白名单仅此两类（<code>region-87:175</code>）</td></tr>
+<tr><td>mcp_task</td><td>task-notification</td><td>上游 MCP 服务器任务</td></tr>
+<tr><td>in_process_teammate</td><td><strong>不发通知</strong></td><td>关停直接置 <code>completed+notified</code> 落库，空闲信号走信箱（<code>region-205:218</code>）</td></tr>
+<tr><td>remote_agent</td><td>task-notification 四态</td><td>completed/failed/blocked/killed（<code>region-87:3240</code>）</td></tr>
+<tr><td>dream</td><td>无用户可见通知</td><td>后台记忆整合（skipTranscript），产出写 <code>pendingMemoryUpdates</code>（<code>region-103:84</code>）</td></tr>
+<tr><td>auto_mode_scan</td><td>—</td><td>仅见于枚举/分发表，语义未解（第 13 节）</td></tr>
+</table>
+
+<p>可见性也有边界：TaskList 只暴露 5 类（local_bash、monitor_mcp、monitor_ws、local_agent、local_workflow，<code>region-116:531</code>）；TaskStop 的错误契约含 <code>not_owner</code>（他人任务不可停）、<code>not_running</code>、<code>unsupported_type</code>，kill 按类型分派到 7 个静态 handler + 2 个懒加载 handler，in_process_teammate 例外地不走具名 handler 而是直接 abort 其独立 controller（<code>region-116:47</code>、<code>region-223:52</code>）。</p>
 
 <h3>6.2 优先级：用户永远优先</h3>
 
@@ -703,6 +723,104 @@ return a.CLAUDE_CODE_SUBAGENT_MODEL_FORCE?e.omit({model:!0}):e</code></pre>
 <figcaption class="figcap">图 4 · 一句话停掉 workflow：后台直停与 Esc 打断两条路径，终止后经 journal 哈希链断点重放</figcaption>
 </figure>
 
+<h3>6.8 打断的解剖学：从一次 Esc 到进程组 SIGKILL</h3>
+
+<p>把 6.5–6.7 的终止机制收拢成一张全景：打断的源头是 abort reason，传播路径按目标各不相同（图 5）。</p>
+
+<ul>
+<li><strong>源头</strong>：Esc/取消按会话类型产生 <code>user-cancel</code>（本地）或 <code>remote-cancel</code>（远程），对当前回合的 AbortController 调 abort 并触发 <code>engine.interrupt</code>；回合包装器另持有 <code>turn-abort</code> reason（<code>region-205:207</code>）。reason 词汇表从各比较点可反推出 8 个值：user-cancel / turn-abort / background / interrupt / remote-cancel / end_conversation / user-skip / shutdown［推断，未见构造处全集］。</li>
+<li><strong>同步子 agent 死、后台 agent 活</strong>：同步子 agent 直接继承父回合的 abortController——Esc 经共享 signal 即刻打断它；后台 agent 则 <code>new</code> 一个独立 AbortController，与主回合解耦（<code>region-110:95</code>）。这就是「主回合被打断、后台继续跑」在 agent 层的机制根源。</li>
+<li><strong>被打断的工具收到合成 tool_result</strong>，按 reason 分级：turn-abort → <code>toolDenialKind:'interrupted'</code>；background → 'cancelled'；其余 → 'user-rejected'（<code>region-116:47</code>、<code>region-87:1692</code>）。</li>
+<li><strong>shell 分三域</strong>：按调用方分 inner/turn/agent 域（<code>region-87:12</code> 的 <code>zdt</code>）；turn 域 shell 只在 turn-abort 时豁免被杀（<code>L$t</code>），reason 为 interrupt 时还有「打断转后台」分支——命令转入后台继续跑并标记 <code>backgroundedByTurnAbort:true</code>（遥测 tengu_bash_command_turn_abort_backgrounded），门控不满足则 kill（<code>region-87:3860</code>、<code>region-167:108</code>）；agent 域 shell 随 abort 一律被杀，agent 退出时还要收割其名下孤儿 shell（<code>region-110:19</code>）。</li>
+<li><strong>输入不丢</strong>：主回合被 user-cancel 打断时，未消费的排队 prompt 以 <code>admissionExempt:'resurrected'</code>、<code>ahead:true</code> 重新入队到队首（<code>region-205:205</code>）。</li>
+<li><strong>停止的持久化与话术</strong>：<code>stoppedByUser:true</code> + <code>userStopCount+1</code> 落盘；后台 agent 被停会发 <code>{status:'killed', summary:'Task … was stopped by the user'}</code> 通知；之后再向它 SendMessage 会得到 "was not resumed. Treat its work as cancelled"（<code>region-116:47</code>、<code>region-105:19</code>、<code>region-223:74</code>）。</li>
+</ul>
+
+<figure class="fig">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 760" role="img" font-family="-apple-system,'PingFang SC','Noto Sans SC',sans-serif">
+    <defs>
+      <marker id="arw5" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+      <marker id="arw5r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b91c1c"/></marker>
+      <marker id="arw5t" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0e7490"/></marker>
+    </defs>
+
+    <!-- 两个入口 -->
+    <rect x="100" y="36" width="200" height="48" rx="9" fill="#eaf7ef" stroke="#15803d" stroke-width="1.5"/>
+    <text x="200" y="58" text-anchor="middle" font-size="13" font-weight="600" fill="#15803d">Esc / 新消息插入</text>
+    <text x="200" y="74" text-anchor="middle" font-size="10.5" fill="#475569">abort('user-cancel')</text>
+
+    <rect x="560" y="36" width="240" height="48" rx="9" fill="#fbf3e8" stroke="#b45309" stroke-width="1.5"/>
+    <text x="680" y="58" text-anchor="middle" font-size="13" font-weight="600" fill="#b45309">TaskStop（taskId 或名字）</text>
+    <text x="680" y="74" text-anchor="middle" font-size="10.5" fill="#475569">另一条主动终止入口</text>
+
+    <!-- Esc 扇出到四个目标 -->
+    <path d="M200,84 V110 H145 V144" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arw5)"/>
+    <path d="M200,84 V110 H377 V144" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arw5)"/>
+    <path d="M200,84 V110 H609 V144" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arw5)"/>
+    <path d="M200,84 V110 H841 V144" fill="none" stroke="#64748b" stroke-width="1.6" marker-end="url(#arw5)"/>
+
+    <!-- 四个目标 -->
+    <rect x="40" y="150" width="210" height="128" rx="11" fill="#eef2f6" stroke="#475569" stroke-width="1.8"/>
+    <text x="145" y="176" text-anchor="middle" font-size="13.5" font-weight="700" fill="#334155">同步子 agent</text>
+    <text x="145" y="196" text-anchor="middle" font-size="10.5" fill="#475569">继承父回合的 AbortController</text>
+    <text x="145" y="212" text-anchor="middle" font-size="10.5" fill="#475569">共享 signal 即刻中止</text>
+    <text x="145" y="248" text-anchor="middle" font-size="12" font-weight="700" fill="#b91c1c">合成 tool_result：interrupted</text>
+    <text x="145" y="266" text-anchor="middle" font-size="10" fill="#64748b">SubagentStop hook 随之触发</text>
+
+    <rect x="272" y="150" width="210" height="128" rx="11" fill="#eaf7ef" stroke="#15803d" stroke-width="1.8"/>
+    <text x="377" y="176" text-anchor="middle" font-size="13.5" font-weight="700" fill="#15803d">后台 agent</text>
+    <text x="377" y="196" text-anchor="middle" font-size="10.5" fill="#475569">new 独立 AbortController</text>
+    <text x="377" y="212" text-anchor="middle" font-size="10.5" fill="#475569">与主回合解耦</text>
+    <text x="377" y="248" text-anchor="middle" font-size="12" font-weight="700" fill="#15803d">存活，继续跑</text>
+    <text x="377" y="266" text-anchor="middle" font-size="10" fill="#64748b">除非被 TaskStop 点名</text>
+
+    <rect x="504" y="150" width="210" height="128" rx="11" fill="#eef2f6" stroke="#475569" stroke-width="1.8"/>
+    <text x="609" y="176" text-anchor="middle" font-size="13.5" font-weight="700" fill="#334155">turn 域前台 shell</text>
+    <text x="609" y="196" text-anchor="middle" font-size="10.5" fill="#475569">turn-abort：豁免不杀</text>
+    <text x="609" y="212" text-anchor="middle" font-size="10.5" fill="#475569">interrupt：可转后台</text>
+    <text x="609" y="248" text-anchor="middle" font-size="11.5" font-weight="700" fill="#475569">backgroundedByTurnAbort</text>
+    <text x="609" y="266" text-anchor="middle" font-size="10" fill="#64748b">门控不满足则 kill</text>
+
+    <rect x="736" y="150" width="210" height="128" rx="11" fill="#fdeaea" stroke="#b91c1c" stroke-width="1.8"/>
+    <text x="841" y="176" text-anchor="middle" font-size="13.5" font-weight="700" fill="#b91c1c">agent 域 shell</text>
+    <text x="841" y="196" text-anchor="middle" font-size="10.5" fill="#475569">abort 即 kill</text>
+    <text x="841" y="212" text-anchor="middle" font-size="10.5" fill="#475569">agent 退出收孤儿 shell</text>
+    <text x="841" y="248" text-anchor="middle" font-size="12" font-weight="700" fill="#b91c1c">kill + 孤儿收割</text>
+
+    <!-- TaskStop → 升级链 -->
+    <path d="M680,84 H953 V524 H175 V554" fill="none" stroke="#b91c1c" stroke-width="1.8" marker-end="url(#arw5r)"/>
+    <text x="560" y="516" text-anchor="middle" font-size="10.5" fill="#64748b" paint-order="stroke" stroke="#ffffff" stroke-width="4">kill 升级链（10s / 30s，region-87:20）</text>
+
+    <rect x="40" y="560" width="270" height="72" rx="11" fill="#fdeaea" stroke="#b91c1c" stroke-width="1.8"/>
+    <text x="175" y="584" text-anchor="middle" font-size="13.5" font-weight="700" fill="#b91c1c">① abort + 置 killed</text>
+    <text x="175" y="602" text-anchor="middle" font-size="10.5" fill="#475569">spawnedSubagent.killed 连带直接子任务</text>
+    <text x="175" y="618" text-anchor="middle" font-size="10.5" fill="#475569">清空 keepaliveReasons</text>
+
+    <path d="M310,596 H339" fill="none" stroke="#b91c1c" stroke-width="1.8" marker-end="url(#arw5r)"/>
+    <text x="324" y="586" text-anchor="middle" font-size="9.5" fill="#64748b" paint-order="stroke" stroke="#ffffff" stroke-width="4">10s</text>
+
+    <rect x="345" y="560" width="270" height="72" rx="11" fill="#fdeaea" stroke="#b91c1c" stroke-width="1.8"/>
+    <text x="480" y="584" text-anchor="middle" font-size="13.5" font-weight="700" fill="#b91c1c">② 10s 未 settle</text>
+    <text x="480" y="602" text-anchor="middle" font-size="10.5" fill="#475569">所有 controller abort('workflow-abort')</text>
+    <text x="480" y="618" text-anchor="middle" font-size="10.5" fill="#475569">SIGKILL 全部进程组</text>
+
+    <path d="M615,596 H644" fill="none" stroke="#b91c1c" stroke-width="1.8" marker-end="url(#arw5r)"/>
+    <text x="629" y="586" text-anchor="middle" font-size="9.5" fill="#64748b" paint-order="stroke" stroke="#ffffff" stroke-width="4">30s</text>
+
+    <rect x="650" y="560" width="270" height="72" rx="11" fill="#ffffff" stroke="#b91c1c" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="785" y="584" text-anchor="middle" font-size="13.5" font-weight="700" fill="#b91c1c">③ 30s 仍未 settle</text>
+    <text x="785" y="602" text-anchor="middle" font-size="10.5" fill="#475569">遥测 task_kill_unsettled_overdue</text>
+    <text x="785" y="618" text-anchor="middle" font-size="10.5" fill="#475569">保留句柄；重启是最终恢复</text>
+
+    <!-- resurrected note -->
+    <path d="M100,84 H20 V708 H34" fill="none" stroke="#0e7490" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#arw5t)"/>
+    <rect x="40" y="680" width="580" height="56" rx="11" fill="#eff9fb" stroke="#0e7490" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="330" y="703" text-anchor="middle" font-size="13" font-weight="700" fill="#0e7490">主回合被打断 ≠ 丢输入</text>
+    <text x="330" y="723" text-anchor="middle" font-size="10.5" fill="#475569">未消费的排队 prompt 以 admissionExempt:'resurrected' 回到队首（ahead:true）</text>
+  </svg>
+  <figcaption class="figcap">图 5 · 打断信号传播全景：Esc 扇出到四类目标，TaskStop 走 10s/30s kill 升级链，排队输入以 resurrected 回到队首</figcaption>
+</figure>
+
 <h2 id="ch3">7. 第 3 章 团队与通信：信箱、teammate 与跨会话</h2>
 
 <h3>7.1 三个通信平面</h3>
@@ -726,6 +844,8 @@ return a.CLAUDE_CODE_SUBAGENT_MODEL_FORCE?e.omit({model:!0}):e</code></pre>
 <p>teammate 没有自己的 UI，工具权限 ask 经信箱委托给 lead 代答：写 permission_request 到 lead 信箱后每 500ms 轮询自己信箱，且只接受 <code>from==="team-lead"</code> 的应答（<code>region-230:11</code>）。计划批准权同样收敛到 lead——"Only the team lead can approve plans. Teammates cannot approve their own or other plans."（<code>region-223:52</code>）。</p>
 
 <p>被驱逐/停止的 teammate 收到消息可从 transcript 完整复活：恢复流程含名字可认领校验、消息清洗、agent 定义目录信任校验（不受信则降级为 team-essential tools）、stale 协议帧丢弃和 roster 重新加入（<code>region-223:12</code>）。</p>
+
+<p>三个边界本轮补齐：teammate 可以再 spawn 普通子 agent，但<strong>不能 spawn teammate</strong>——Agent 工具在 teammate 上下文里隐藏 <code>name</code> 参数并明文说明（<code>region-87:3632</code>）；权限询问是协议化的挂起——工具调用停在 Promise 上，permission_request 帧写进 lead 信箱并注册 onAllow/onReject 回调，裁决经 lead 弹框后写回（<code>region-205:218</code>）；生命周期帧不可伪造——SendMessage 的 validateInput 拒绝把 idle_notification、teammate_terminated、shutdown 等协议帧当纯文本发送（<code>region-223:53</code>）。成员关停后 lead 的回收动作：从 teamContext 移除、未完成任务转回 pending 并生成通知，文案区分 "has shut down" 与 "was terminated"（<code>region-83:11</code>）。</p>
 
 <h3>7.5 关停协议</h3>
 
@@ -846,6 +966,8 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 
 <p>hook 按 <code>tool_input.subagent_type</code> 名字匹配存在官方提示文本自认的风险："a hook that means to allow web fetching can exempt tool_input.subagent_type == 'web-fetch' — a name match, which a project, user, or plugin agent defined under that same name would also pass with whatever tools it declares"（<code>region-87:1356</code>）。</p>
 
+<p>时序与判裁（本轮补齐）：执行器内顺序是 validateInput → <strong>PreToolUse hooks → 权限决策</strong>——hook 先于权限闸运行（<code>region-87:1713</code>）；hook 自身抛错按 deny 处理，而 hook 给出的 allow 仍会被权限规则复审（deny 规则覆盖、<code>requireCanUseTool</code> 强制过闸）——两个方向都不豁免（<code>region-87:1692</code>）。<code>deny</code> 只挡单次工具调用、不杀 agent；能终止整轮的是 <code>preventContinuation</code>：Stop 层直接返回 <code>{reason:"stop_hook_prevented"}</code> 不再唤起模型（<code>region-116:47</code>）。Stop 与 SubagentStop 由同一函数分派（<code>g?"SubagentStop":"Stop"</code>，<code>region-87:2033</code>），后台子 agent 结束同样触发 SubagentStop（前后台共用 <code>cw</code> 运行器）；SubagentStop 输入多出 agent_id/agent_transcript_path/agent_type/last_assistant_message（<code>region-58:27</code>）。Stop 的 block 会把 blockingErrors 拼回消息重新唤起模型（<code>stopHookActive:true</code>），次数受 <code>CLAUDE_CODE_STOP_HOOK_BLOCK_CAP</code> 限制。默认超时按事件区分：PreToolUse/PostToolUse 15s、Stop/SubagentStop 120s，单 hook 可用 <code>timeoutSeconds</code> 覆盖（<code>region-87:536</code>）。hooks 默认同步阻塞循环（"PreToolUse, PostToolUse, UserPromptSubmit — these block the loop every time they fire"，<code>region-87:2047</code>）。</p>
+
 <h3>10.4 两层工具面</h3>
 
 <p>工具面分两层：<code>shouldDefer:!0</code> 或 MCP 工具进入 deferred 层、必须经 ToolSearch 加载后才能用；核心工具（含 Agent 工具）被强制常驻（<code>region-75:20</code>）。这就是 SendMessage 功能完整却"看不见"的原因——它在 deferred 层等检索。</p>
@@ -903,6 +1025,7 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 <li><strong>Workflow</strong>：meta 解析器 <code>ih</code> 实现体、脚本最大字节 <code>a_</code> 与单次条目上限 <code>X0</code> 数值、信号量 <code>$s</code> 实现细节、缓存锁存 <code>y</code> 与并发乱序组合的设计意图、remote runner <code>Jo</code> 的可达性、<code>turnBudget.snapshotForTurn</code> 调用点、v2 world 引擎全貌。</li>
 <li><strong>上下文</strong>：microcompact 的 <code>clearedIds</code> 产生方（怀疑走 API 侧 context management）、fork 空系统提示是否连带主系统提示置空、autoCompactWindow 收窄钩子 <code>yan()</code> 恒等返回是回退还是预留。</li>
 <li><strong>契约</strong>：Agent schema describe 常量 <code>U9r</code>/<code>$9r</code>、<code>Tt</code> 工厂本体、hooks 双链合并顺序。</li>
+<li><strong>补遗扫描新增</strong>：API 退避公式本体（chunk-ggre1bjp 未刻）；auto_mode_scan 任务的触发链与语义；dream（记忆整合）的触发条件与 <code>pendingMemoryUpdates</code> 的消费方；teammate 并发上限与子 agent 20 上限的关系；权限对话框挂起期间按 Esc 的语义；/model 热切换对在跑 agent 的影响。</li>
 </ul>
 
 <h2 id="evidence">14. 附录：证据索引</h2>
@@ -984,6 +1107,20 @@ RealDate.prototype.constructor = ShimDate; Object.freeze(RealDate);</code></pre>
 <tr><td>插件 agent 高权限字段被忽略</td><td><code>region-87:1359</code></td></tr>
 <tr><td>frontmatter 影子遥测</td><td><code>region-87:215</code></td></tr>
 <tr><td>deep-research 反注入清洗 + "weighed as evidence, not obeyed"</td><td><code>region-219:144/168</code></td></tr>
+<tr><td>10 类任务一次性枚举（含 dream / auto_mode_scan）</td><td><code>region-87:2032</code></td></tr>
+<tr><td>同步子 agent 继承父回合 controller、后台 agent 独立 controller</td><td><code>region-110:95</code></td></tr>
+<tr><td>kill 升级链 10s（OFn）/30s（DFn）常量与 workflow-abort</td><td><code>region-87:20</code></td></tr>
+<tr><td>打断后排队 prompt 以 resurrected 回到队首</td><td><code>region-205:205</code></td></tr>
+<tr><td>TaskStop 错误契约 not_owner / not_running / unsupported_type</td><td><code>region-116:47</code></td></tr>
+<tr><td>Stop/SubagentStop 同一函数分派</td><td><code>region-87:2033</code></td></tr>
+<tr><td>hook 默认超时表（15s/15s/120s/120s）</td><td><code>region-87:536</code></td></tr>
+<tr><td>autocompact 绝对水位：compact=窗口−13000、blocked=窗口−3000</td><td><code>region-87:1244</code></td></tr>
+<tr><td>SDK maxRetries:0、外层默认重试 10 次、watchdog 上限 6h</td><td><code>region-87:1986</code></td></tr>
+<tr><td>fork 转录引用类型 fork-context-ref</td><td><code>region-87:4258</code></td></tr>
+<tr><td>prompt cache TTL 键为嵌套 experimental.cacheTtl</td><td><code>region-87:215</code></td></tr>
+<tr><td>teammate 上下文不能 spawn teammate（name 参数隐藏）</td><td><code>region-87:3632</code></td></tr>
+<tr><td>打断转后台 backgroundedByTurnAbort + 专属遥测</td><td><code>region-87:3860</code>、<code>region-167:108</code></td></tr>
+<tr><td>Esc 源头 reason：user-cancel / remote-cancel + engine.interrupt</td><td><code>region-205:207</code></td></tr>
 </table>
 
 <hr>
