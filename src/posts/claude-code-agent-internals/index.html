@@ -40,6 +40,9 @@
   .toc ol { margin:8px 0; padding-left:1.4em; }
   .toc li { margin:3px 0; }
   .ref { color:#64748b; font-size:.85em; }
+  .fig { margin:22px 0; }
+  .fig svg { width:100%; height:auto; display:block; }
+  .figcap { color:var(--muted); font-size:.88em; margin:8px 0 0; }
 </style>
 </head>
 <body data-pagefind-body>
@@ -105,39 +108,83 @@
 
 <p>多 agent 系统的全景层次（自上而下为调用关系，横向为通信通道）：</p>
 
-<pre><code>┌─────────────────────────────────────────────────────────────┐
-│ 用户 / SDK 宿主                                              │
-└──────────────┬──────────────────────────────────────────────┘
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 主会话查询引擎（REPL / SDK 泵，region-220）                    │
-│  · 命令队列 commandQueue：prompt/poll-event/task-notification │
-│    出队优先级 now&lt;next&lt;later        (region-87:175)           │
-│  · 主对话即 team lead（地址常量 "team-lead"）                  │
-└───┬───────────────┬───────────────┬────────────────────────┘
-    │ Agent 工具     │ Workflow 工具  │ SendMessage/TaskStop…
-    ▼               ▼               ▼
-┌─────────────┐ ┌──────────────┐ ┌──────────────────────────┐
-│ 子 agent 生成 │ │ Workflow 引擎 │ │ 团队/通信平面              │
-│ lo() 校验    │ │ vm 脚本 +     │ │ 磁盘信箱 JSON + 文件锁     │
-│ cw() 执行    │ │ journal +     │ │ (region-83:11)           │
-│ (region-110) │ │ budget        │ │ 进程内 wakeRouter 泵      │
-│  ├ 同步 sub  │ │ (region-150/  │ │ (region-205:87)          │
-│  ├ 异步 sub  │ │  228)         │ │ 跨会话 UDS / bridge       │
-│  ├ fork     │ │ agent() 复用   │ │ (region-198/223)         │
-│  └ teammate │ │ cw 生成 sub   │ │                          │
-└──────┬──────┘ └──────┬───────┘ └──────────┬───────────────┘
-       │               │                    │
-       ▼               ▼                    ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 任务注册表 taskRegistry：10 类后台任务                         │
-│ local_bash/local_agent/monitor_mcp/mcp_task/local_workflow/  │
-│ in_process_teammate/remote_agent/dream/monitor_ws/           │
-│ auto_mode_scan                    (region-87:2032)           │
-└──────────────┬──────────────────────────────────────────────┘
-               │ 完成 → task-notification 入队（zi）
-               ▼
-        回到主会话命令队列（唯一汇合点）</code></pre>
+
+<figure class="fig">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 530" role="img" font-family="-apple-system,'PingFang SC','Noto Sans SC',sans-serif">
+  <defs>
+    <marker id="arw1" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0e7490"/></marker>
+    <marker id="arw1s" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+    <marker id="arw1v" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6d28d9"/></marker>
+    <marker id="arw1a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b45309"/></marker>
+  </defs>
+
+  <!-- 用户入口 -->
+  <rect x="400" y="24" width="160" height="44" rx="9" fill="#eaf7ef" stroke="#15803d" stroke-width="1.5"/>
+  <text x="480" y="51" text-anchor="middle" font-size="15" font-weight="600" fill="#15803d">用户 / SDK 宿主</text>
+  <path d="M480,68 V98" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw1)"/>
+  <text x="492" y="88" font-size="12" fill="#64748b">prompt</text>
+
+  <!-- 主会话查询引擎 -->
+  <rect x="310" y="104" width="340" height="64" rx="11" fill="#dff3f7" stroke="#0e7490" stroke-width="2"/>
+  <text x="480" y="131" text-anchor="middle" font-size="16" font-weight="700" fill="#0e7490">主会话查询引擎</text>
+  <text x="480" y="153" text-anchor="middle" font-size="12.5" fill="#475569">命令队列：now ＜ next ＜ later（唯一入口）</text>
+
+  <!-- fan-out -->
+  <path d="M480,168 V196 H180 V224" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw1)"/>
+  <path d="M480,168 V224" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw1)"/>
+  <path d="M480,168 V196 H780 V224" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw1)"/>
+
+  <!-- 三个子系统平面 -->
+  <rect x="60" y="228" width="240" height="88" rx="11" fill="#eef2f6" stroke="#475569" stroke-width="1.8"/>
+  <text x="180" y="254" text-anchor="middle" font-size="15" font-weight="700" fill="#334155">子 agent 执行平面</text>
+  <text x="180" y="277" text-anchor="middle" font-size="12" fill="#475569">同步内联 → generator cw</text>
+  <text x="180" y="295" text-anchor="middle" font-size="12" fill="#475569">归组并行 · run_in_background</text>
+  <text x="180" y="311" text-anchor="middle" font-size="10.5" fill="#94a3b8">region-110 · 112</text>
+
+  <rect x="360" y="228" width="240" height="88" rx="11" fill="#f3effa" stroke="#6d28d9" stroke-width="1.8"/>
+  <text x="480" y="254" text-anchor="middle" font-size="15" font-weight="700" fill="#6d28d9">Workflow 引擎</text>
+  <text x="480" y="277" text-anchor="middle" font-size="12" fill="#475569">local_workflow → vm pipeline</text>
+  <text x="480" y="295" text-anchor="middle" font-size="12" fill="#475569">journal 落盘 · 可恢复重放</text>
+  <text x="480" y="311" text-anchor="middle" font-size="10.5" fill="#94a3b8">region-150 · 228</text>
+
+  <rect x="660" y="228" width="240" height="88" rx="11" fill="#eef2f6" stroke="#475569" stroke-width="1.8"/>
+  <text x="780" y="254" text-anchor="middle" font-size="15" font-weight="700" fill="#334155">团队通信平面</text>
+  <text x="780" y="277" text-anchor="middle" font-size="12" fill="#475569">teammate 磁盘信箱</text>
+  <text x="780" y="295" text-anchor="middle" font-size="12" fill="#475569">shutdown / mode_set 协议</text>
+  <text x="780" y="311" text-anchor="middle" font-size="10.5" fill="#94a3b8">region-83 · 223 · 230</text>
+
+  <!-- fan-in 到任务注册表 -->
+  <path d="M180,316 V342 H420 V354" fill="none" stroke="#475569" stroke-width="1.8" marker-end="url(#arw1s)"/>
+  <path d="M480,316 V354" fill="none" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#arw1v)"/>
+  <path d="M780,316 V342 H540 V354" fill="none" stroke="#475569" stroke-width="1.8" marker-end="url(#arw1s)"/>
+
+  <!-- 任务注册表 -->
+  <rect x="310" y="360" width="340" height="64" rx="11" fill="#fbf3e8" stroke="#b45309" stroke-width="2"/>
+  <text x="480" y="387" text-anchor="middle" font-size="15" font-weight="700" fill="#b45309">任务注册表（task registry）</text>
+  <text x="480" y="409" text-anchor="middle" font-size="12" fill="#475569">后台任务句柄 · 完成 → task-notification</text>
+
+  <!-- 异步回流（虚线） -->
+  <path d="M310,392 H36 V140 H303" fill="none" stroke="#b45309" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arw1a)"/>
+  <text x="173" y="378" text-anchor="middle" font-size="11.5" fill="#b45309" paint-order="stroke" stroke="#ffffff" stroke-width="4">完成 → task-notification 入队</text>
+  <text x="173" y="410" text-anchor="middle" font-size="11" fill="#b45309" paint-order="stroke" stroke="#ffffff" stroke-width="4">（唯一异步汇合点）</text>
+
+  <!-- 图例 -->
+  <rect x="60" y="472" width="20" height="13" rx="3" fill="#dff3f7" stroke="#0e7490"/>
+  <text x="87" y="483" font-size="12" fill="#475569">主会话主线</text>
+  <rect x="190" y="472" width="20" height="13" rx="3" fill="#eef2f6" stroke="#475569"/>
+  <text x="217" y="483" font-size="12" fill="#475569">同步子 agent</text>
+  <rect x="330" y="472" width="20" height="13" rx="3" fill="#f3effa" stroke="#6d28d9"/>
+  <text x="357" y="483" font-size="12" fill="#475569">Workflow 引擎</text>
+  <rect x="480" y="472" width="20" height="13" rx="3" fill="#fbf3e8" stroke="#b45309"/>
+  <text x="507" y="483" font-size="12" fill="#475569">异步汇合点</text>
+  <rect x="610" y="472" width="20" height="13" rx="3" fill="#eaf7ef" stroke="#15803d"/>
+  <text x="637" y="483" font-size="12" fill="#475569">用户入口</text>
+  <path d="M730,478.5 H762" fill="none" stroke="#b45309" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="770" y="483" font-size="12" fill="#475569">异步回流</text>
+</svg>
+<figcaption class="figcap">图 1 · 多 agent 系统总体架构：一条主线（命令队列）+ 三个子系统平面 + 单一异步汇合点（任务注册表）</figcaption>
+</figure>
+
 
 <p>三条结构性事实贯穿全局：</p>
 
@@ -159,28 +206,261 @@
 
 <p>设用户输入"调研 X 并写份报告"。时间线如下：</p>
 
-<pre><code>t0  用户输入 ──► commandQueue(prompt, next) ──► 出队 ──► 模型请求
-t1  模型回复工具调用：6×Agent(并行) + 1×Agent(run_in_background) + 1×Workflow
-t2  同步侧：6 个子 agent 进 cw 执行器（isConcurrencySafe 归组，块内 ≤10，
-    墙钟 = 最慢者）；每个都是独立上下文，互相看不见
-    异步侧：后台 agent 在注册表登记后立即返回 task-id；Workflow 工具
-    (backgrounding:"never") 转成 local_workflow 任务，立即返回 runId
-t3  同步 tool_result 回齐（各带 agentId 句柄）──► 模型向用户汇报：
-    "结论如下；另有任务在后台"
-t4  后台并行推进：子 agent 各跑各的；workflow 脚本在 vm 里经 pipeline
-    涌出一个个 agent()（仍是同一条 cw 管线），journal 逐条落盘
-t5  某后台 agent 完成 ──► 回调只做"登记+装配" ──► task-notification
-    入队，优先级 later（不打断任何人）
-t6  主循环空闲（模型这轮说完）──► 出队 later ──► 包装成
-    [SYSTEM NOTIFICATION - NOT USER INPUT] 的 user-role 消息 ──►
-    下一轮模型请求：这就是 Claude Code"自己接着干活"的时刻
-t7  用户中途插话 ──► prompt 入队 next &gt; later，通知重排让位，先答用户
-t8  全部 settle ──► Stop hook 读 background_tasks/session_crons，
-    区分"真结束"与"暂停等后台"</code></pre>
+
+<figure class="fig">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1230" role="img" font-family="-apple-system,'PingFang SC','Noto Sans SC',sans-serif">
+  <defs>
+    <marker id="arw2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0e7490"/></marker>
+    <marker id="arw2t" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+    <marker id="arw2a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b45309"/></marker>
+    <marker id="arw2v" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6d28d9"/></marker>
+    <marker id="arw2g" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#15803d"/></marker>
+    <marker id="arw2r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b91c1c"/></marker>
+  </defs>
+
+  <!-- 主循环左柱 -->
+  <rect x="40" y="40" width="220" height="44" rx="9" fill="#eaf7ef" stroke="#15803d" stroke-width="1.5"/>
+  <text x="150" y="67" text-anchor="middle" font-size="13.5" font-weight="600" fill="#15803d">用户输入 prompt</text>
+  <text x="254" y="53" text-anchor="end" font-size="10.5" fill="#94a3b8">t0</text>
+
+  <path d="M150,84 V118" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw2)"/>
+
+  <rect x="40" y="124" width="220" height="56" rx="11" fill="#dff3f7" stroke="#0e7490" stroke-width="2"/>
+  <text x="150" y="147" text-anchor="middle" font-size="15" font-weight="700" fill="#0e7490">命令队列</text>
+  <text x="150" y="167" text-anchor="middle" font-size="11.5" fill="#475569">now ＜ next ＜ later</text>
+
+  <path d="M150,180 V214" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw2)"/>
+  <text x="160" y="202" font-size="11" fill="#64748b" paint-order="stroke" stroke="#ffffff" stroke-width="4">出队</text>
+
+  <rect x="40" y="220" width="220" height="56" rx="11" fill="#dff3f7" stroke="#0e7490" stroke-width="2"/>
+  <text x="150" y="243" text-anchor="middle" font-size="15" font-weight="700" fill="#0e7490">模型回合</text>
+  <text x="150" y="263" text-anchor="middle" font-size="11.5" fill="#475569">流式输出 → 工具调用？</text>
+  <text x="254" y="233" text-anchor="end" font-size="10.5" fill="#94a3b8">t1</text>
+
+  <path d="M150,276 V310" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw2)"/>
+
+  <polygon points="150,316 240,356 150,396 60,356" fill="#fdf6ec" stroke="#b45309" stroke-width="1.8"/>
+  <text x="150" y="361" text-anchor="middle" font-size="13" font-weight="700" fill="#b45309">有工具调用？</text>
+  <text x="54" y="346" text-anchor="end" font-size="11" fill="#64748b" paint-order="stroke" stroke="#ffffff" stroke-width="4">无</text>
+  <text x="160" y="414" font-size="11" fill="#64748b" paint-order="stroke" stroke="#ffffff" stroke-width="4">有</text>
+
+  <!-- 无 → 模型说完 -->
+  <path d="M60,356 H26 V762 H34" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw2)"/>
+
+  <!-- fan-out trunk -->
+  <path d="M150,396 V420 H430 V426" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw2)"/>
+  <path d="M150,420 H650 V426" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw2)"/>
+  <path d="M150,420 H850 V426" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw2)"/>
+  <text x="500" y="410" text-anchor="middle" font-size="11" fill="#64748b" paint-order="stroke" stroke="#ffffff" stroke-width="4">同一回合的工具调用 → 归组并行</text>
+
+  <!-- 用户插话 -->
+  <circle cx="620" cy="110" r="5" fill="#15803d"/>
+  <text x="620" y="96" text-anchor="middle" font-size="11" fill="#15803d">用户</text>
+  <path d="M620,110 H300 V150 H266" fill="none" stroke="#15803d" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#arw2g)"/>
+  <text x="460" y="100" text-anchor="middle" font-size="11" fill="#15803d" paint-order="stroke" stroke="#ffffff" stroke-width="4">插话 → 入队（next/later）</text>
+
+  <!-- 同步列 -->
+  <rect x="330" y="430" width="200" height="56" rx="11" fill="#eef2f6" stroke="#475569" stroke-width="1.8"/>
+  <text x="430" y="453" text-anchor="middle" font-size="14.5" font-weight="700" fill="#334155">校验闸</text>
+  <text x="430" y="473" text-anchor="middle" font-size="11" fill="#475569">深度 · 并发上限 · budget · deny</text>
+
+  <path d="M430,486 V524" fill="none" stroke="#475569" stroke-width="1.8" marker-end="url(#arw2t)"/>
+
+  <rect x="330" y="530" width="200" height="72" rx="11" fill="#eef2f6" stroke="#475569" stroke-width="1.8"/>
+  <text x="430" y="557" text-anchor="middle" font-size="14.5" font-weight="700" fill="#334155">generator cw 执行</text>
+  <text x="430" y="577" text-anchor="middle" font-size="11" fill="#475569">同组并发 · 进度实时上报</text>
+  <text x="524" y="543" text-anchor="end" font-size="10.5" fill="#94a3b8">t2</text>
+
+  <path d="M430,602 V640" fill="none" stroke="#475569" stroke-width="1.8" marker-end="url(#arw2t)"/>
+
+  <rect x="330" y="646" width="200" height="56" rx="11" fill="#eef2f6" stroke="#475569" stroke-width="1.8"/>
+  <text x="430" y="669" text-anchor="middle" font-size="14.5" font-weight="700" fill="#334155">结果消毒 + handback</text>
+  <text x="430" y="689" text-anchor="middle" font-size="11" fill="#475569">进度行剥离 · 权限再校验</text>
+
+  <path d="M330,676 H290 V248 H266" fill="none" stroke="#475569" stroke-width="1.8" marker-end="url(#arw2t)"/>
+  <text x="284" y="624" text-anchor="end" font-size="11" fill="#475569" paint-order="stroke" stroke="#ffffff" stroke-width="4">同步结果并入下一回合</text>
+
+  <!-- 异步列 -->
+  <rect x="560" y="430" width="180" height="56" rx="11" fill="#fbf3e8" stroke="#b45309" stroke-width="1.8"/>
+  <text x="650" y="453" text-anchor="middle" font-size="14" font-weight="700" fill="#b45309">注册表登记，立即返回</text>
+  <text x="650" y="473" text-anchor="middle" font-size="11" fill="#475569">拿到 agentId 句柄</text>
+  <text x="734" y="443" text-anchor="end" font-size="10.5" fill="#94a3b8">t3</text>
+
+  <path d="M650,486 V524" fill="none" stroke="#b45309" stroke-width="1.8" marker-end="url(#arw2a)"/>
+
+  <rect x="560" y="530" width="180" height="72" rx="11" fill="#fbf3e8" stroke="#b45309" stroke-width="1.8"/>
+  <text x="650" y="557" text-anchor="middle" font-size="14" font-weight="700" fill="#b45309">后台运行</text>
+  <text x="650" y="577" text-anchor="middle" font-size="11" fill="#475569">不阻塞主循环 · 完成写通知</text>
+  <text x="734" y="543" text-anchor="end" font-size="10.5" fill="#94a3b8">t5</text>
+
+  <path d="M650,602 V640" fill="none" stroke="#b45309" stroke-width="1.8" marker-end="url(#arw2a)"/>
+
+  <rect x="560" y="646" width="180" height="56" rx="11" fill="#fbf3e8" stroke="#b45309" stroke-width="1.8"/>
+  <text x="650" y="669" text-anchor="middle" font-size="13" font-weight="700" fill="#b45309">task-notification 入队</text>
+  <text x="650" y="689" text-anchor="middle" font-size="11" fill="#475569">进 later 队列</text>
+  <text x="734" y="659" text-anchor="end" font-size="10.5" fill="#94a3b8">t6</text>
+
+  <!-- workflow 列 -->
+  <rect x="770" y="430" width="160" height="56" rx="11" fill="#f3effa" stroke="#6d28d9" stroke-width="1.8"/>
+  <text x="850" y="453" text-anchor="middle" font-size="13" font-weight="700" fill="#6d28d9">发起 local_workflow</text>
+  <text x="850" y="473" text-anchor="middle" font-size="10.5" fill="#475569">Agent 工具的编排形态</text>
+
+  <path d="M850,486 V524" fill="none" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#arw2v)"/>
+
+  <rect x="770" y="530" width="160" height="72" rx="11" fill="#f3effa" stroke="#6d28d9" stroke-width="1.8"/>
+  <text x="850" y="557" text-anchor="middle" font-size="12.5" font-weight="700" fill="#6d28d9">vm pipeline 逐步执行</text>
+  <text x="850" y="577" text-anchor="middle" font-size="10.5" fill="#475569">确定性 · journal 落盘</text>
+  <text x="924" y="543" text-anchor="end" font-size="10.5" fill="#94a3b8">t4</text>
+
+  <path d="M850,602 V640" fill="none" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#arw2v)"/>
+
+  <rect x="770" y="646" width="160" height="56" rx="11" fill="#f3effa" stroke="#6d28d9" stroke-width="1.8"/>
+  <text x="850" y="669" text-anchor="middle" font-size="12.5" font-weight="700" fill="#6d28d9">run 收尾 → 汇总</text>
+  <text x="850" y="689" text-anchor="middle" font-size="10.5" fill="#475569">结果并入通知</text>
+
+  <!-- 异步汇合 → 包装 -->
+  <path d="M650,702 V916 H266" fill="none" stroke="#b45309" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#arw2a)"/>
+  <text x="658" y="810" font-size="11" fill="#b45309" paint-order="stroke" stroke="#ffffff" stroke-width="4">后台完成 → 通知</text>
+
+  <path d="M850,702 V944 H266" fill="none" stroke="#6d28d9" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#arw2v)"/>
+  <text x="858" y="810" font-size="10.5" fill="#6d28d9" paint-order="stroke" stroke="#ffffff" stroke-width="4">workflow 完成</text>
+
+  <!-- 模型说完 → 空闲 → 通知 -->
+  <rect x="40" y="740" width="220" height="44" rx="9" fill="#dff3f7" stroke="#0e7490" stroke-width="1.5"/>
+  <text x="150" y="767" text-anchor="middle" font-size="13.5" font-weight="600" fill="#0e7490">模型说完：纯文本回复</text>
+
+  <path d="M150,784 V812" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw2)"/>
+
+  <rect x="40" y="818" width="220" height="50" rx="9" fill="#eff9fb" stroke="#0e7490" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="150" y="840" text-anchor="middle" font-size="14" font-weight="700" fill="#0e7490">主循环空闲</text>
+  <text x="150" y="858" text-anchor="middle" font-size="10.5" fill="#475569">等待后台 / 下一输入</text>
+
+  <path d="M150,868 V894" fill="none" stroke="#b45309" stroke-width="1.8" marker-end="url(#arw2a)"/>
+  <text x="160" y="886" font-size="10.5" fill="#b45309" paint-order="stroke" stroke="#ffffff" stroke-width="4">收到通知</text>
+
+  <rect x="40" y="902" width="220" height="56" rx="11" fill="#fbf3e8" stroke="#b45309" stroke-width="1.8"/>
+  <text x="150" y="925" text-anchor="middle" font-size="13.5" font-weight="700" fill="#b45309">包装为系统通知</text>
+  <text x="150" y="945" text-anchor="middle" font-size="10.5" fill="#475569">[SYSTEM NOTIFICATION]</text>
+  <text x="254" y="915" text-anchor="end" font-size="10.5" fill="#94a3b8">t7</text>
+
+  <!-- 通知 → 重新出队 -->
+  <path d="M40,930 H16 V140 H34" fill="none" stroke="#b45309" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#arw2a)"/>
+  <text transform="translate(10,520) rotate(-90)" text-anchor="middle" font-size="10.5" fill="#b45309" paint-order="stroke" stroke="#ffffff" stroke-width="4">通知 → 重新出队</text>
+
+  <!-- 空闲 → Stop hook -->
+  <path d="M40,843 H26 V1060 H34" fill="none" stroke="#0e7490" stroke-width="1.8" marker-end="url(#arw2)"/>
+  <text x="30" y="1040" font-size="10.5" fill="#64748b" paint-order="stroke" stroke="#ffffff" stroke-width="4">回合结束</text>
+
+  <polygon points="150,1020 260,1060 150,1100 40,1060" fill="#fdf6ec" stroke="#b45309" stroke-width="1.8"/>
+  <text x="150" y="1056" text-anchor="middle" font-size="13" font-weight="700" fill="#b45309">Stop hook：</text>
+  <text x="150" y="1072" text-anchor="middle" font-size="13" font-weight="700" fill="#b45309">有后台任务？</text>
+  <text x="88" y="1090" font-size="10.5" fill="#94a3b8">t8</text>
+
+  <path d="M150,1100 V1118 H135 V1146" fill="none" stroke="#b91c1c" stroke-width="1.8" marker-end="url(#arw2r)"/>
+  <path d="M150,1118 H390 V1146" fill="none" stroke="#b45309" stroke-width="1.8" marker-end="url(#arw2a)"/>
+  <text x="136" y="1114" text-anchor="end" font-size="11" fill="#64748b" paint-order="stroke" stroke="#ffffff" stroke-width="4">无</text>
+  <text x="164" y="1114" font-size="11" fill="#64748b" paint-order="stroke" stroke="#ffffff" stroke-width="4">有</text>
+
+  <rect x="40" y="1150" width="190" height="48" rx="9" fill="#fdeaea" stroke="#b91c1c" stroke-width="1.8"/>
+  <text x="135" y="1178" text-anchor="middle" font-size="13.5" font-weight="700" fill="#b91c1c">会话结束</text>
+
+  <rect x="290" y="1150" width="200" height="48" rx="9" fill="#fbf3e8" stroke="#b45309" stroke-width="1.8"/>
+  <text x="390" y="1172" text-anchor="middle" font-size="13.5" font-weight="700" fill="#b45309">暂停等后台任务</text>
+  <text x="390" y="1190" text-anchor="middle" font-size="10.5" fill="#475569">唤醒后走 N 重新入队</text>
+
+  <!-- 图例 -->
+  <rect x="700" y="40" width="240" height="196" rx="11" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="716" y="66" font-size="13" font-weight="700" fill="#334155">图例</text>
+  <path d="M714,86 H746" fill="none" stroke="#0e7490" stroke-width="2"/>
+  <text x="754" y="90" font-size="11" fill="#475569">同步控制流（主循环）</text>
+  <path d="M714,110 H746" fill="none" stroke="#475569" stroke-width="2"/>
+  <text x="754" y="114" font-size="11" fill="#475569">子 agent 结果回流</text>
+  <path d="M714,134 H746" fill="none" stroke="#b45309" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="754" y="138" font-size="11" fill="#475569">异步通知（task-notification）</text>
+  <path d="M714,158 H746" fill="none" stroke="#6d28d9" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="754" y="162" font-size="11" fill="#475569">workflow 完成回流</text>
+  <path d="M714,182 H746" fill="none" stroke="#15803d" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="754" y="186" font-size="11" fill="#475569">用户插话入队</text>
+  <path d="M714,206 H746" fill="none" stroke="#b91c1c" stroke-width="2"/>
+  <text x="754" y="210" font-size="11" fill="#475569">终态</text>
+</svg>
+<figcaption class="figcap">图 2 · 一次请求的运行时走查：实线为同步回流，虚线为经命令队列的异步回流；t0–t8 与正文时间线一一对应</figcaption>
+</figure>
+
 
 <p>对应的代码锚点：t2 的归组并行（<code>region-112:14</code>、<code>region-110:14</code>）与立即返回（<code>region-87:2032</code>、<code>region-228:20</code>）；t3 的句柄（<code>region-112:29</code>）；t4 的 pipeline 涌出与 journal（<code>region-150:78/69/41</code>）；t5 的完成回调语义（<code>region-87:3818</code>）；t6 的通知包装（<code>region-75:159/20</code>）；t7 的插队（<code>region-87:175/176</code>、<code>region-116:11</code>）；t8 的 Stop hook 枚举字段（<code>region-58:27</code>）。</p>
 
 <h3>4.3 一个子 agent 的一生</h3>
+<figure class="fig">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" role="img" font-family="-apple-system,'PingFang SC','Noto Sans SC',sans-serif">
+  <defs>
+    <marker id="arw3" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+    <marker id="arw3g" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+    <marker id="arw3a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b45309"/></marker>
+    <marker id="arw3r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b91c1c"/></marker>
+  </defs>
+
+  <!-- 入口 -->
+  <text x="160" y="28" text-anchor="middle" font-size="11" fill="#64748b">Agent(&lt;type&gt;, ...) 调用</text>
+  <path d="M160,36 V54" fill="none" stroke="#64748b" stroke-width="1.8" marker-end="url(#arw3g)"/>
+
+  <!-- 出生前：校验闸 -->
+  <rect x="60" y="60" width="200" height="64" rx="11" fill="#eef2f6" stroke="#475569" stroke-width="1.8"/>
+  <text x="160" y="86" text-anchor="middle" font-size="14.5" font-weight="700" fill="#334155">出生前：校验闸</text>
+  <text x="160" y="107" text-anchor="middle" font-size="10.5" fill="#475569">深度 · 并发(20) · budget · deny</text>
+
+  <path d="M260,92 H374" fill="none" stroke="#475569" stroke-width="1.8" marker-end="url(#arw3)"/>
+
+  <!-- running 状态 -->
+  <rect x="380" y="40" width="240" height="120" rx="14" fill="#dff3f7" stroke="#0e7490" stroke-width="2.5"/>
+  <rect x="386" y="46" width="228" height="108" rx="10" fill="none" stroke="#0e7490" stroke-width="1"/>
+  <text x="500" y="82" text-anchor="middle" font-size="17" font-weight="700" fill="#0e7490">running</text>
+  <text x="500" y="106" text-anchor="middle" font-size="11" fill="#475569">四种形态共用同一执行器：</text>
+  <text x="500" y="124" text-anchor="middle" font-size="11" fill="#475569">同步 · 后台 · fork · teammate</text>
+
+  <!-- fork / teammate 标签 -->
+  <path d="M435,160 V194" fill="none" stroke="#94a3b8" stroke-width="1.2"/>
+  <path d="M565,160 V194" fill="none" stroke="#94a3b8" stroke-width="1.2"/>
+  <rect x="370" y="200" width="130" height="36" rx="18" fill="#eef2f6" stroke="#cbd5e1"/>
+  <text x="435" y="223" text-anchor="middle" font-size="10.5" fill="#475569">fork = 克隆上下文</text>
+  <rect x="510" y="200" width="130" height="36" rx="18" fill="#eef2f6" stroke="#cbd5e1"/>
+  <text x="575" y="223" text-anchor="middle" font-size="10.5" fill="#475569">teammate = 磁盘信箱</text>
+
+  <!-- 三条结局路径 -->
+  <path d="M380,50 H40 V342 H54" fill="none" stroke="#475569" stroke-width="1.8" marker-end="url(#arw3)"/>
+  <text x="320" y="40" text-anchor="middle" font-size="11" fill="#475569" paint-order="stroke" stroke="#ffffff" stroke-width="4">同步（阻塞等待）</text>
+
+  <path d="M500,160 V294" fill="none" stroke="#b45309" stroke-width="1.8" marker-end="url(#arw3a)"/>
+  <text x="512" y="264" font-size="11" fill="#b45309" paint-order="stroke" stroke="#ffffff" stroke-width="4">run_in_background=true</text>
+
+  <path d="M620,80 H800 V294" fill="none" stroke="#b91c1c" stroke-width="1.8" marker-end="url(#arw3r)"/>
+  <text x="632" y="72" font-size="11" fill="#b91c1c" paint-order="stroke" stroke="#ffffff" stroke-width="4">TaskStop / 崩溃 / 超时</text>
+
+  <!-- 结局 -->
+  <rect x="60" y="300" width="200" height="84" rx="11" fill="#eef2f6" stroke="#475569" stroke-width="1.8"/>
+  <text x="160" y="328" text-anchor="middle" font-size="14" font-weight="700" fill="#334155">同步：善终</text>
+  <text x="160" y="350" text-anchor="middle" font-size="10.5" fill="#475569">结果消毒 → handback</text>
+  <text x="160" y="368" text-anchor="middle" font-size="10.5" fill="#475569">回到同一模型回合循环</text>
+
+  <rect x="380" y="300" width="240" height="84" rx="11" fill="#fbf3e8" stroke="#b45309" stroke-width="1.8"/>
+  <text x="500" y="328" text-anchor="middle" font-size="14" font-weight="700" fill="#b45309">后台：善终 → parked</text>
+  <text x="500" y="350" text-anchor="middle" font-size="10.5" fill="#475569">task-notification 入队（later）</text>
+  <text x="500" y="368" text-anchor="middle" font-size="10.5" fill="#475569">句柄保留 30s 缓冲期</text>
+
+  <rect x="700" y="300" width="200" height="84" rx="11" fill="#fdeaea" stroke="#b91c1c" stroke-width="1.8"/>
+  <text x="800" y="328" text-anchor="middle" font-size="14" font-weight="700" fill="#b91c1c">横死</text>
+  <text x="800" y="350" text-anchor="middle" font-size="10.5" fill="#475569">TaskStop · 超时 · 崩溃</text>
+  <text x="800" y="368" text-anchor="middle" font-size="10.5" fill="#475569">STRICT：先尝试恢复</text>
+
+  <!-- 死后 note -->
+  <path d="M800,384 V420" fill="none" stroke="#b91c1c" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#arw3r)"/>
+  <rect x="690" y="426" width="220" height="64" rx="11" fill="#ffffff" stroke="#b91c1c" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="800" y="450" text-anchor="middle" font-size="12" font-weight="700" fill="#b91c1c">死后：note 追加进对话</text>
+  <text x="800" y="470" text-anchor="middle" font-size="10.5" fill="#475569">横死也留尸检记录，不静默消失</text>
+</svg>
+<figcaption class="figcap">图 3 · 子 agent 状态机：从校验闸到四种结局——同步善终、后台 parked、横死留 note</figcaption>
+</figure>
+
 
 <ul>
 <li><strong>出生前</strong>：过校验闸——spawn 深度、并发上限（默认 20）、budget、spawner 是否停止中、subagent_type 解析 + deny 规则；任一不过直接拒绝，不产生实体（<code>region-112:11/33</code>、<code>region-87:1287</code>）。</li>
