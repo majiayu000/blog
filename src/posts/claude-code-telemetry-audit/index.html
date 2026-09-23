@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Code 2.1.280 字节级审计：MAC、序列号零读取点，时区隐写确认已移除</title>
+  <meta name="date" content="2026-09-24">
+  <meta name="description" content="对 Claude Code 2.1.280 的 155MB JS 区段做字节级扫描：MAC、序列号、本机 IP 没有读取点，主板 UUID 仅剩一条默认关闭的 OTLP 通道；2026 年 6 月曝光的时区隐写管线确认已移除。附复现方法与证据边界。">
+  <meta name="tags" content="Claude Code, Agent 工具链, 逆向工程, 安全">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #161410;
+      --muted: #5c574c;
+      --paper: #f4f1ea;
+      --card: #fffdf8;
+      --line: #d9d2c4;
+      --blue: #2c4fd0;
+      --amber: #b56a10;
+      --red: #a33a3a;
+      --green: #1f7a4d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 17px/1.7 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+    }
+    main {
+      width: min(760px, calc(100% - 32px));
+      margin: auto;
+      padding: 72px 0 80px;
+    }
+    h1 {
+      font-size: clamp(1.85rem, 4.6vw, 2.6rem);
+      line-height: 1.18;
+      letter-spacing: -.03em;
+      margin: .18em 0 .45em;
+    }
+    h2 {
+      font-size: clamp(1.25rem, 2.6vw, 1.55rem);
+      line-height: 1.25;
+      margin: 52px 0 12px;
+      scroll-margin-top: 72px;
+    }
+    h3 {
+      font-size: 1.05rem;
+      line-height: 1.3;
+      margin: 28px 0 8px;
+    }
+    p { margin: 12px 0; }
+    .lede {
+      font-size: clamp(1.05rem, 2vw, 1.22rem);
+      line-height: 1.55;
+      color: var(--muted);
+    }
+    .kicker {
+      display: inline-block;
+      font-size: .78rem;
+      font-weight: 750;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--blue);
+    }
+    .home-link {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 20;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(244, 241, 234, .92);
+      color: var(--ink);
+      font-size: .8rem;
+      text-decoration: none;
+    }
+    .home-link:hover { border-color: var(--blue); }
+    a { color: #244fc4; text-underline-offset: 3px; }
+    a:focus-visible { outline: 3px solid #e29a3a; outline-offset: 2px; }
+    code {
+      font: 13.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: #efe9dc;
+      border-radius: 5px;
+      padding: .08em .34em;
+      overflow-wrap: anywhere;
+    }
+    pre {
+      margin: 16px 0;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+      overflow: auto;
+      font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .92rem;
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 10px 8px 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    th { color: var(--muted); font-weight: 650; font-size: .78rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px;
+    }
+    .note {
+      border-left: 4px solid var(--amber);
+      padding: 2px 0 2px 14px;
+      color: var(--muted);
+    }
+    footer { margin-top: 56px; color: var(--muted); font-size: .9rem; }
+    @media (max-width: 760px) {
+      main { padding-top: 56px; }
+      .home-link { top: 12px; left: 12px; }
+    }
+  </style>
+</head>
+<body>
+<a class="home-link" href="/">返回博客</a>
+<main>
+  <p class="kicker">X-Ray · Agent 工具链</p>
+  <h1>Claude Code 2.1.280 字节级审计：MAC、序列号零读取点，时区隐写确认已移除</h1>
+  <p class="lede">2026 年 6 月底曝出时区隐写事件后，我不想靠转述了解手边这版 Claude Code 的底细，于是对 2.1.280 的二进制做了一次字节级审计。结论分三层：MAC 地址、机身序列号、本机 IP 在全部代码路径里没有读取点，主板 UUID 只剩一条默认关闭的 OTLP 通道；6 月的隐写管线确认已拔干净；远程特征标志系统则是活的——写作时本地缓存里有 700 个服务端标志，当天刚刷新。</p>
+
+  <p class="note">审计对象：Claude Code 2.1.280（macOS arm64 原生二进制）。本文全部结论是 2026 年 9 月的时点快照，升级版本后需要重验。</p>
+
+  <h2>为什么做这次审计</h2>
+  <p>先把事件本身说清楚。2026 年 6 月底，社区研究者发现 Claude Code 曾在自定义 API 端点场景下读取系统时区、比对约 147 个中转域名，并把判定结果编码进系统提示词的日期格式和撇号码点——<code>Asia/Shanghai</code> 时区命中后日期分隔符从 <code>-</code> 变成 <code>/</code>，域名命中后 <code>Today's</code> 的撇号被换成 U+2019/U+02BC/U+02B9。这件事被 The Next Web、Reuters、TechCrunch 等广泛报道，Anthropic 工程师公开回应称这是 3 月上线的反转售实验、已在 7 月初的版本中移除。</p>
+  <p>报道归报道，我想要一份对当前版本的、可复现的字节级验证：隐写真的拔干净了吗？除了时区，它还读我机器上的什么？</p>
+
+  <h2>审计方法</h2>
+  <p>macOS 上的 Claude Code 是 Bun 编译的单文件二进制，JS 逻辑以明文区段嵌在其中，可以从固定偏移量切出来做全文扫描：</p>
+  <pre><code># 原生版安装路径（版本号即目录名）
+CC=~/.local/share/claude/versions/2.1.280
+
+# 内嵌 JS 区段约从 59MB 处开始，切出约 155MB
+dd if=$CC of=/tmp/bundle.bin bs=1048576 skip=59
+
+# 字节级搜索示例：硬件标识符、时区字符串、隐写码点
+rg -a -c 'IOPlatformSerialNumber' /tmp/bundle.bin   # 0
+rg -a -c 'Asia/Shanghai' /tmp/bundle.bin            # 0
+rg -a -c 'os\.networkInterfaces' /tmp/bundle.bin    # 0</code></pre>
+  <p>对低频疑点（比如 U+02BC/U+02B9 码点），需要用 Python 做上下文提取来定性——155MB 二进制里这些字节对天然会以指针表巧合的形式出现，必须看上下文才能区分真字符和编译产物。除静态扫描外，我还交叉验证了三类运行时证据：本地遥测队列的逐条解码（JSONL，可以自己看）、配置文件全字段枚举、系统级连接观测。</p>
+  <p>下文的结论分两种证据等级：能靠字节级扫描或本机数据解码直接复现的，正文直接给数字；由行为反推的，我会附上推理依据。</p>
+
+  <h2>标识符是随机数，不是机器码</h2>
+  <p>每次启动生成或读取的标识符全部是 crypto 随机值，持久化在 <code>~/.claude.json</code>（明文，键名可自行查看）：<code>userID</code>（即每次请求携带的 device_id）是 32 字节随机 hex，生成代码里没有任何硬件输入；<code>session_id</code> 与 <code>parent_session_id</code> 每会话随机；登录后的 <code>account_uuid</code> / <code>organization_uuid</code> 来自 OAuth，属账户身份而非设备身份。</p>
+  <p>这意味着删掉配置文件里的这些值，它们就会重新随机生成。设备指纹意义上的硬件绑定，在标识符层不存在。</p>
+
+  <h2>四条出站通道：一条无条件，两条有门控</h2>
+  <div class="card">
+  <table>
+    <thead>
+      <tr><th>通道</th><th>目的地</th><th>载荷</th><th>门控</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>A · 模型 API 请求</strong></td>
+        <td>跟随 <code>ANTHROPIC_BASE_URL</code></td>
+        <td>对话内容 + 工具结果 + <code>metadata.user_id</code>{device_id, account_uuid, session_id} + 系统提示词内的本地日期</td>
+        <td><strong>无条件，任何开关都拦不住</strong></td>
+      </tr>
+      <tr>
+        <td><strong>B · 遥测事件批量</strong></td>
+        <td>硬编码 <code>api.anthropic.com</code>（不跟随 BASE_URL）</td>
+        <td><code>tengu_*</code> 事件 + 环境 21 键 + 进程指标 blob</td>
+        <td>BASE_URL 指向第三方时自动停；<code>CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC</code> / <code>DISABLE_TELEMETRY</code> / <code>DO_NOT_TRACK</code> 可关</td>
+      </tr>
+      <tr>
+        <td><strong>C · OTLP 导出</strong></td>
+        <td>自行配置的端点</td>
+        <td>resource 属性含 <code>host.id</code> = IOPlatformUUID（主板 UUID）、host.name、host.arch</td>
+        <td>需同时设 <code>CLAUDE_CODE_ENABLE_TELEMETRY=1</code> + <code>OTEL_EXPORTER_OTLP_ENDPOINT</code>，默认关</td>
+      </tr>
+      <tr>
+        <td><strong>D · 基础流量</strong></td>
+        <td>版本检查 / 会话校验</td>
+        <td>无遥测载荷</td>
+        <td>不受遥测开关影响</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p>通道 A 是唯一无法关闭的出站：只要在用这个工具，对话内容和一个随机 device_id 就会进入发往模型端点的请求。这是产品形态决定的——模型必须收到内容才能工作。但有一点值得单独指出：<code>metadata.user_id</code> 在官方文档里并不显眼，而它不受任何遥测开关控制。</p>
+
+  <h2>遥测事件里有什么、没有什么</h2>
+  <p>把本地磁盘上的失败遥测队列逐条解码后，事件载荷的完整字段如下。有的部分：事件名、时间戳、session/account UUID、模型名、环境 21 键（platform、arch、shell、终端类型、运行时版本等）、进程指标（uptime、RSS、heap、物理内存大小、CPU 用时），以及行为字段——文件路径、bash 命令分类与 argv0、字节长度、权限决策。没有的部分：prompt 原文、文件内容、命令原文、hostname、用户名、locale、时区、任何硬件序列号。</p>
+  <p>一句话概括：它记录你做了什么类型的操作，不记录操作的内容。</p>
+
+  <h2>机器码读取能力全清单</h2>
+  <p>对读取点逐一定性之前要先立一个区分：能力（代码里有没有）不等于行为（实际读不读、发不发）。</p>
+  <div class="card">
+  <table>
+    <thead>
+      <tr><th>读取目标</th><th>代码读取点</th><th>出口</th><th>状态</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>主板 UUID</td>
+        <td><code>ioreg -rd1 -c "IOPlatformExpertDevice"</code> 仅 1 处（OTel SDK 的 <code>getMachineId</code>）</td>
+        <td>仅通道 C</td>
+        <td>休眠（默认无人配置）</td>
+      </tr>
+      <tr>
+        <td>hostname</td>
+        <td>3 处：OTel hostDetector（随通道 C）、设备名派生（1P 云功能）、本地同意记录绑定</td>
+        <td>前两者锁死或未启用，最后者纯本地</td>
+        <td>读而不发</td>
+      </tr>
+      <tr>
+        <td>MAC 地址</td>
+        <td><strong>0</strong>（<code>os.networkInterfaces</code> 应用层零调用）</td>
+        <td>—</td>
+        <td>不存在</td>
+      </tr>
+      <tr>
+        <td>机身序列号</td>
+        <td><strong>0</strong>（连读取代码都没有）</td>
+        <td>—</td>
+        <td>不存在</td>
+      </tr>
+      <tr>
+        <td>本机 IP</td>
+        <td><strong>0</strong>（dgram 取 IP 技巧、ifconfig 自执行、IP 回声服务全查无）</td>
+        <td>—</td>
+        <td>不存在</td>
+      </tr>
+      <tr>
+        <td>GPU / 电池 / GPS</td>
+        <td>0</td>
+        <td>—</td>
+        <td>不存在</td>
+      </tr>
+      <tr>
+        <td>出网探活</td>
+        <td>1 处：<code>HEAD http://1.1.1.1</code>（1 秒超时）</td>
+        <td>仅返回布尔连通性</td>
+        <td>无数据携带</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p>两点说明。第一，macOS 上用户态进程读机器码毫无技术障碍——<code>ioreg</code> 不需要 sudo。所以能不能读的答案永远是能，有意义的结论只有当前代码里有哪些读取点、出口开着没有。这是信任问题，不是技术问题。第二，GCP/Azure 认证库内有一段云 VM 检测代码（<code>/sys/class/dmi/...</code> 路径、<code>^42:01</code> MAC 前缀正则），在 macOS 上路径不存在，且仅在使用对应云凭证时才可能执行，判定结果是本地布尔值。</p>
+
+  <h2>时区和语言：读了，但不出网</h2>
+  <p>当前版本的读取点就两处，全是本地功能：<code>Intl.DateTimeFormat().resolvedOptions().timeZone</code> 用于终端 UI 时钟显示和 <code>/config</code> 时区设置；<code>resolvedOptions().locale</code> 提取语言码，仅用于语音听写（STT）的默认语言。<code>process.env.LANG</code> 与 <code>LC_*</code> 的读取次数为零。唯一出网的时区衍生物，是系统提示词里的本地日期——天粒度，随通道 A 发给你的模型端点。</p>
+  <p>对 6 月隐写事件的字节级复验结果如下：</p>
+  <div class="card">
+  <table>
+    <thead>
+      <tr><th>当年机制</th><th>2.1.280 复验结果</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>比较 <code>Asia/Shanghai</code> / <code>Asia/Urumqi</code></td><td>0 次命中</td></tr>
+      <tr><td>日期分隔符 <code>-</code> → <code>/</code> 替换逻辑</td><td>不存在；模板为直撇号(0x27)+短横线</td></tr>
+      <tr><td>撇号码点 U+2019 / U+02BC / U+02B9 标记</td><td>0 个真实命中（343 处 <code>’</code> 全在文本解析正则里；二百余处疑似命中均为编译指针表的字节巧合）</td></tr>
+      <tr><td>自定义 BASE_URL 检测管线</td><td>不存在</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>复验结果与官方 7 月初移除的口径一致。</p>
+
+  <h2>服务端能控制本地到什么程度</h2>
+  <p>这是最容易误解的一层，分两半说。</p>
+  <p>你设置的环境变量开关，服务端改不了，当前版本也绕不过。env 在进程启动时定格，OS 层没有任何远程修改通道；架构上本地优先——<code>DISABLE_GROWTHBOOK</code> 一设，远程标志求值系统整体瘫痪，官方报错文案明示了这一点。这部分是字节级可复现的。</p>
+  <p>但功能参数层确实受服务端实时控制。客户端内嵌了 GrowthBook 远程标志系统（默认端点 <code>cdn.growthbook.io</code>），写作时我的本地缓存里有 700 个标志、当天刚刷新过，控制范围包括各工具的输出 token 上限、最低版本要求（<code>tengu_version_config.minVersion</code>）、提示词相关开关、行为计时参数等。机制上服务端标志可以实时停启本地服务——代码里有现成的执行现场：本地 bridge 服务订阅标志刷新事件，服务端把 <code>tengu_ccr_bridge</code> 门拨到 off，运行中的服务就打日志 <code>[deviceBridge] stopping: the gate turned off</code> 并自停。还有一个已落盘的先例：服务端 API 响应会缓存为本地配置并改变行为（比如 <code>cachedExtraUsageDisabledReason</code>）。</p>
+  <p>这部分的诚实边界要说清楚：我能证明没有远程强制复活遥测的门控（队列停更是实测，加上架构证据），但不能逐一枚举 700 个标志的全部语义，这层保证只能靠版本重验维持。另有一个与开关无关的通道值得知情：agent 模式下模型输出会被本地执行，若用 <code>--dangerously-skip-permissions</code> 则不再询问。这条防线的性质是模型端对齐，不是操作系统。</p>
+
+  <h2>防御建议</h2>
+  <p>以下都是自己机器上的合法操作：</p>
+  <pre><code># 钉死已审计版本：关自动更新，每次升级前重扫
+export DISABLE_AUTOUPDATER=1
+
+# 遥测总闸（含 GrowthBook）：最强单开关
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+
+# 或单独关远程标志系统（代价：依赖标志的功能不可用）
+export DISABLE_GROWTHBOOK=1
+
+# 运行期监控：哪天它突然开始 ioreg，当场可见
+sudo opensnoop -n claude</code></pre>
+  <p>切换到官方登录之前，先把总闸加上——1P 模式下通道 B 会重新激活。平时可以定期看 <code>~/.claude.json</code>：device_id 明文可见，字段新增一眼可查。网络出口层面，用你已有的防火墙或代理工具做全流量观测即可；TLS 内容需要自行中间人解密，自行权衡。</p>
+
+  <h2>方法学边界</h2>
+  <p>这篇审计有四条边界，放在结尾而不是脚注。</p>
+  <p>第一，时点快照。全部结论绑定 2.1.280 和 2026 年 9 月，自动更新器是活跃的，任何一次更新都可能改变上述一切——这类审计没有一劳永逸。</p>
+  <p>第二，审计范围。覆盖的是 JS 逻辑区段（155MB，全部应用逻辑所在），字节扫描的零命中只在这个区段内成立；原生 Bun 运行时是理论盲区。不过所有运行时观测与 JS 层逻辑一致，未发现表里不一。</p>
+  <p>第三，事实与意图分离。本文只陈述有什么代码、往哪发、开关在哪。至于厂商意图，不属于字节能证明的范围。</p>
+  <p>第四，脱敏。文中的方法与结论不含本人任何凭据、账户标识、节点信息；读者复现时也请注意，不要把自己的 <code>~/.claude.json</code> 原样贴出来。</p>
+
+  <p class="note">表格中的代码实现、门控开关和本机记录是三个不同层面的信息。本文未抓取 TLS 明文流量，出站载荷的字段构成来自请求构造代码与本地队列解码；服务端如何保存收到的数据，本次检查没有验证。</p>
+
+  <footer>
+    <p>参考：2026 年 6 月时区隐写事件的公开报道与官方回应（The Next Web、Reuters、TechCrunch，2026 年 7 月；发现者为社区研究者，Anthropic 工程师公开确认系反转售实验并已移除）；Anthropic 官方支持地区名单与 2025 年 9 月起的控股限制政策更新；OpenTelemetry JS SDK 的 <code>getMachineId</code> 实现（<code>host.id</code> 来源）。</p>
+    <p>同系列前期记录：<a href="/posts/claude-code-agent-internals/">Claude Code 多 agent 架构逆向</a>、<a href="/posts/cline-desktop-telemetry/">Cline 桌面版遥测检查</a>。</p>
+    <p>审计与写作：2026 年 9 月，对象版本 2.1.280。转载请附带版本号与日期。<a href="/">回到首页</a></p>
+  </footer>
+</main>
+</body>
+</html>
