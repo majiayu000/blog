@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Claude Code 2.1.280 字节级审计：MAC、序列号零读取点，时区隐写确认已移除</title>
+  <title>拆开 Claude Code 2.1.280，看看它读了什么，又把什么发出去</title>
   <meta name="date" content="2026-09-24">
-  <meta name="description" content="对 Claude Code 2.1.280 的 155MB JS 区段做字节级扫描：MAC、序列号、本机 IP 没有读取点，主板 UUID 仅剩一条默认关闭的 OTLP 通道；2026 年 6 月曝光的时区隐写管线确认已移除。附复现方法与证据边界。">
+  <meta name="description" content="对 Claude Code 2.1.280 的 Bun 模块图、遥测事件和本机旧队列逐层逆向，画出模型请求、Anthropic、Datadog 与 OpenTelemetry 的数据流，并复验机器码和日期隐写问题。">
   <meta name="tags" content="Claude Code, Agent 工具链, 逆向工程, 安全">
   <style>
     :root {
@@ -64,7 +64,7 @@
       color: var(--blue);
     }
     .home-link {
-      position: fixed;
+      position: absolute;
       top: 18px;
       left: 18px;
       z-index: 20;
@@ -123,187 +123,322 @@
       main { padding-top: 56px; }
       .home-link { top: 12px; left: 12px; }
     }
+
+    .flow-figure {
+      --diagram-ink: #eaf2ff;
+      margin: 28px -92px 32px;
+      padding: 24px;
+      color: var(--diagram-ink);
+      border: 1px solid #283d66;
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 12% 10%, rgba(64,103,233,.24), transparent 32%),
+        radial-gradient(circle at 88% 86%, rgba(0,198,194,.15), transparent 33%),
+        linear-gradient(145deg, #101b33, #0b1528 62%, #0e2337);
+      box-shadow: 0 20px 52px rgba(18,37,74,.15);
+      overflow: hidden;
+    }
+    .flow-figure figcaption {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 22px;
+      color: #d8e7ff;
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+    .fig-no {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      flex: 0 0 auto;
+      width: 32px;
+      height: 32px;
+      border: 1px solid #5073b1;
+      border-radius: 10px;
+      color: #b8dbff;
+      font: 700 .72rem ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: #193152;
+    }
+    .flow-figure code {
+      color: #e3f5ff;
+      background: rgba(138,184,255,.12);
+      border: 1px solid rgba(167,207,255,.12);
+      font-size: .82em;
+    }
+    .flow-track {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 10px;
+    }
+    .flow-track + .flow-track { margin-top: 16px; }
+    .flow-track .flow-node { flex: 1 1 0; }
+    .flow-track.follow .flow-node { max-width: 290px; }
+    .flow-node {
+      min-width: 0;
+      padding: 15px 16px;
+      border: 1px solid var(--node-line, #4a638b);
+      border-radius: 15px;
+      background: linear-gradient(145deg, var(--node-top, #1a2a49), #122239);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 8px 22px rgba(0,0,0,.12);
+    }
+    .flow-node b,
+    .flow-node small { display: block; }
+    .flow-node b { color: #f5f8ff; font-size: .99rem; line-height: 1.3; }
+    .flow-node small { margin-top: 7px; color: #b9c9df; font-size: .77rem; line-height: 1.5; }
+    .flow-node.violet { --node-line: #7657cb; --node-top: #40306c; }
+    .flow-node.blue { --node-line: #3972d7; --node-top: #1b3f78; }
+    .flow-node.cyan { --node-line: #2a9ea9; --node-top: #1a5862; }
+    .flow-node.amber { --node-line: #b88434; --node-top: #675025; }
+    .flow-node.muted-node { --node-line: #5d708a; --node-top: #26354c; }
+    .flow-arrow {
+      align-self: center;
+      color: #8fc4ff;
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1;
+      text-shadow: 0 0 14px rgba(63,176,255,.45);
+    }
+    .flow-root {
+      width: min(430px, 100%);
+      margin: auto;
+      padding: 13px 18px;
+      text-align: center;
+      border: 1px solid #7f70da;
+      border-radius: 14px;
+      background: linear-gradient(110deg, #453d8b, #214e8d);
+      box-shadow: 0 0 30px rgba(79,95,222,.2);
+      font-weight: 700;
+    }
+    .flow-root small { display: block; color: #d4e9ff; font-weight: 450; font-size: .72rem; }
+    .flow-root.bottom { border-color: #458dc9; background: linear-gradient(110deg, #1a4782, #155c6e); }
+    .flow-down { padding: 9px 0; color: #90c8fb; font-size: 1.45rem; font-weight: 700; line-height: 1; text-align: center; }
+    .flow-foot {
+      margin-top: 18px;
+      padding: 11px 13px;
+      border-top: 1px solid #34486a;
+      color: #afc0d8;
+      font-size: .79rem;
+      line-height: 1.55;
+    }
+    .lane-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap: 10px;
+    }
+    .lane {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 255px;
+      padding: 15px 14px;
+      border: 1px solid var(--lane-line);
+      border-radius: 15px;
+      background: linear-gradient(165deg, var(--lane-bg), #132239 80%);
+    }
+    .lane.violet { --lane-line: #7657cb; --lane-bg: #342d69; }
+    .lane.blue { --lane-line: #3972d7; --lane-bg: #203c72; }
+    .lane.cyan { --lane-line: #2a9ea9; --lane-bg: #1a5262; }
+    .lane.amber { --lane-line: #b88434; --lane-bg: #594620; }
+    .lane-tag {
+      align-self: flex-start;
+      padding: 3px 8px;
+      border: 1px solid rgba(255,255,255,.24);
+      border-radius: 999px;
+      color: #d7e7fa;
+      font-size: .69rem;
+      letter-spacing: .03em;
+    }
+    .lane b { display: block; margin-top: 12px; color: white; line-height: 1.3; }
+    .lane p { margin: 10px 0; color: #c9d7e9; font-size: .77rem; line-height: 1.55; }
+    .lane-gate { margin-top: auto; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,.22); color: #a8d8fc; font-size: .72rem; }
+    .dual-pipeline { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+    .pipe {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 17px 14px;
+      border: 1px solid var(--pipe-line);
+      border-radius: 16px;
+      background: linear-gradient(150deg, var(--pipe-bg), #15243c);
+      text-align: center;
+    }
+    .pipe.blue { --pipe-line: #3972d7; --pipe-bg: #203a72; }
+    .pipe.cyan { --pipe-line: #2a9ea9; --pipe-bg: #19505c; }
+    .pipe span { align-self: flex-start; color: #a9d8ff; font-size: .7rem; letter-spacing: .06em; }
+    .pipe b { font-size: .86rem; line-height: 1.35; }
+    .pipe i { color: #97c9f9; font-size: 1.1rem; font-style: normal; line-height: 1; }
+    .pipe small { color: #b9c9df; font-size: .72rem; line-height: 1.45; }
+    .matrix-head,
+    .matrix-row { display: grid; grid-template-columns: 1fr 1.55fr 1.55fr; gap: 14px; align-items: start; }
+    .matrix-head { padding: 0 12px 8px; color: #9db7d5; font-size: .71rem; }
+    .matrix-row { padding: 12px; border-top: 1px solid #385073; font-size: .8rem; line-height: 1.52; }
+    .matrix-row:nth-child(even) { background: rgba(102,151,214,.07); }
+    .matrix-row b { color: #f3f7ff; }
+    .matrix-row span { color: #c1d0e2; }
+    .stego-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+    .stego { min-width: 0; padding: 17px; border: 1px solid var(--stego-line); border-radius: 16px; background: linear-gradient(160deg,var(--stego-bg),#14243c); text-align: center; }
+    .stego.old { --stego-line:#ab704c; --stego-bg:#553c3a; }
+    .stego.current { --stego-line:#2e9da4; --stego-bg:#1b5262; }
+    .stego span,.stego b,.stego small { display:block; }
+    .stego span { color:#bfd4e8; font-size:.73rem; }
+    .stego b { margin-top:10px; color:#f7fbff; font-size:.88rem; }
+    .stego small { margin-top:12px; color:#bbcee1; font-size:.73rem; }
+    .glyphs { display:flex; justify-content:center; flex-wrap:wrap; gap:6px; margin:12px 0; }
+    .glyphs code { padding:3px 7px; color:#fff; font-size:.82rem; }
+    .flow-divider { max-width:580px; margin:18px auto; padding:7px 11px; border:1px dashed #7891b6; border-radius:999px; color:#b8cbe3; text-align:center; font-size:.72rem; }
+    .source-note { margin:22px 0; padding:13px 16px; border:1px solid var(--line); border-radius:12px; background:var(--card); }
+    .source-note summary { cursor:pointer; font-weight:700; }
+    .source-note p { color:var(--muted); font-size:.88rem; }
+    .flow-track.control-track .flow-node { max-width:240px; }
+    .flow-track.control-track.lower .flow-node { max-width:300px; }
+    @media (max-width: 1000px) {
+      .flow-figure { margin-left:-34px; margin-right:-34px; }
+    }
+    @media (max-width: 760px) {
+      .flow-figure { margin:24px -8px 28px; padding:16px; border-radius:18px; }
+      .flow-track { flex-direction:column; align-items:stretch; gap:4px; }
+      .flow-track .flow-node, .flow-track.follow .flow-node, .flow-track.control-track .flow-node, .flow-track.control-track.lower .flow-node { max-width:none; }
+      .flow-arrow { align-self:center; transform:rotate(90deg); }
+      .lane-grid, .dual-pipeline, .stego-grid { grid-template-columns:1fr; }
+      .lane { min-height:0; }
+      .matrix-head { display:none; }
+      .matrix-row { grid-template-columns:1fr; gap:4px; }
+      .matrix-row b { color:#86dcdf; }
+      .flow-divider { border-radius:12px; }
+    }
   </style>
 </head>
 <body>
 <a class="home-link" href="/">返回博客</a>
 <main>
   <p class="kicker">X-Ray · Agent 工具链</p>
-  <h1>Claude Code 2.1.280 字节级审计：MAC、序列号零读取点，时区隐写确认已移除</h1>
-  <p class="lede">2026 年 6 月底曝出时区隐写事件后，我不想靠转述了解手边这版 Claude Code 的底细，于是对 2.1.280 的二进制做了一次字节级审计。结论分三层：MAC 地址、机身序列号、本机 IP 在全部代码路径里没有读取点，主板 UUID 只剩一条默认关闭的 OTLP 通道；6 月的隐写管线确认已拔干净；远程特征标志系统则是活的——写作时本地缓存里有 700 个服务端标志，当天刚刷新。</p>
+  <h1>拆开 Claude Code 2.1.280，看看它读了什么，又把什么发出去</h1>
+  <p class="lede">我原先问的是一个很直的问题。Claude Code 能读我的代码、运行命令，那它会不会顺手读网卡 MAC、机器序列号和 IP？沿着这个问题查下去，我翻了本机的二进制、旧遥测队列和一整段 Claude Code 调研记录。最后发现，最需要解释清楚的地方，是“程序里有读取能力”“事件在本机被构造”“服务端实际收到数据”之间那几步。</p>
+  <p class="note">这篇只针对我检查的 macOS arm64 安装包 2.1.280。安装文件 SHA-256 为 <code>387a5c5dcdbb815085edf0baf79591f9d8894efe922bceaf3d75b1b08055229d</code>。文中的本机观察发生在 2026 年 9 月，升级版本后要重新检查。</p>
 
-  <p class="note">审计对象：Claude Code 2.1.280（macOS arm64 原生二进制）。本文全部结论是 2026 年 9 月的时点快照，升级版本后需要重验。</p>
+  <h2>先把安装包打开</h2>
+  <p>起初我用字节搜索找 <code>IOPlatformUUID</code>、<code>networkInterfaces</code> 和时区字符串。这能迅速定位疑点，却不适合给出“全部代码都没有”的结论。一个字符串没搜到，可能是代码写法不同，也可能被编译到了别处。后来我们直接解析了 Bun 单文件程序里的模块图，再从提取出的 JS 模块追调用链。</p>
+  <figure class="flow-figure" aria-label="从安装包到结论的证据流程">
+    <figcaption><span class="fig-no">01</span> 这次审计实际走过的证据路径</figcaption>
+    <div class="flow-track five">
+      <div class="flow-node violet"><b>签名安装包</b><small>Mach-O · 217 MB<br>固定版本和 SHA-256</small></div>
+      <span class="flow-arrow" aria-hidden="true">→</span>
+      <div class="flow-node blue"><b>Bun 模块图</b><small>2,213 条记录<br>1,991 个 JS 模块</small></div>
+      <span class="flow-arrow" aria-hidden="true">→</span>
+      <div class="flow-node cyan"><b>调用点回溯</b><small>事件生成、清洗<br>门控、序列化、POST</small></div>
+    </div>
+    <div class="flow-track follow">
+      <div class="flow-node amber"><b>本机旧队列</b><small>173 条失败事件<br>证明构造与缓存</small></div>
+      <span class="flow-arrow" aria-hidden="true">→</span>
+      <div class="flow-node muted-node"><b>服务端是否收到</b><small>本次没有真实 TLS 明文抓包<br>不能从前四步直接推出</small></div>
+    </div>
+  </figure>
+  <p>模块图里有 37,884,508 字节可读的 JS 源文本，还附着 82,505,096 字节字节码。代码确实难看，文件名多是 <code>chunk-xxxxxxxx.js</code>，绝大多数函数名短到一两个字符，也没有随包源码映射。但事件名、上报地址、字段名和关键分支仍能在源文本里读出来。<a href="https://bun.com/docs/bundler/executables">Bun 自己也说明</a>，字节码不会因此遮住源码。这种打包和压缩妨碍阅读，却不足以证明整套采集逻辑被深度加密。三个随包的原生扩展没有逐指令反编译，我把它们留在结论的边界里。</p>
+  <details class="source-note"><summary>想自己复核这一版，可以从这里开始</summary><p>先确认拿到的是同一份安装包。旧稿用固定位置截取一大段二进制，适合粗搜，却会把非源码字节混进去。下面先查签名、哈希和 Bun 段，再按模块图提取 JS；偏移量只对这一个安装包成立。</p><pre><code>CC="$HOME/.local/share/claude/versions/2.1.280"
+shasum -a 256 "$CC"
+codesign -dv --verbose=2 "$CC"
+otool -l "$CC" | rg -A8 'sectname __bun|segname __BUN'</code></pre><p>在提取出的模块中，<code>chunk-m200zvyg.js</code> 有核心事件序列化和 Datadog 镜像，<code>chunk-h8651pre.js</code> 有内置 telemetry 插件，<code>chunk-s8swgzep.js</code> 有错误上报门控。模块名会随版本变化，所以先核安装包哈希，再核调用链。</p></details>
 
-  <h2>为什么做这次审计</h2>
-  <p>先把事件本身说清楚。2026 年 6 月底，社区研究者发现 Claude Code 曾在自定义 API 端点场景下读取系统时区、比对约 147 个中转域名，并把判定结果编码进系统提示词的日期格式和撇号码点——<code>Asia/Shanghai</code> 时区命中后日期分隔符从 <code>-</code> 变成 <code>/</code>，域名命中后 <code>Today's</code> 的撇号被换成 U+2019/U+02BC/U+02B9。这件事被 The Next Web、Reuters、TechCrunch 等广泛报道，Anthropic 工程师公开回应称这是 3 月上线的反转售实验、已在 7 月初的版本中移除。</p>
-  <p>报道归报道，我想要一份对当前版本的、可复现的字节级验证：隐写真的拔干净了吗？除了时区，它还读我机器上的什么？</p>
+  <h2>一段 Claude Code 会话，有几条不同的出站路</h2>
+  <p>旧稿把出站流量压成 A、B、C、D 四格，看起来简洁，恰好把两个重要出口藏掉了。现在沿代码拆开，模型请求、Anthropic 一方事件、Datadog 日志、用户配置的 OpenTelemetry 和 WebFetch 域名预检，各自有不同的触发条件。模型请求当然会带走完成任务所需的对话和工具结果；下图关心的是另外几条路，不再用模型请求代替遥测结论。</p>
+  <figure class="flow-figure" aria-label="Claude Code 各种出站路径与门控流程图">
+    <figcaption><span class="fig-no">02</span> 本地数据从哪里进入哪条路径</figcaption>
+    <div class="flow-root">Claude Code 2.1.280 <small>一次会话内可能出现的代码路径</small></div>
+    <div class="flow-down" aria-hidden="true">↓</div>
+    <div class="lane-grid">
+      <div class="lane violet"><span class="lane-tag">任务通信</span><b>模型请求</b><p>提示词、上下文、工具结果、会话标识等随请求发往当前模型端点。</p><div class="lane-gate">使用模型时发生</div></div>
+      <div class="lane blue"><span class="lane-tag">一方事件</span><b>Anthropic 批次接口</b><p>核心事件和内置 telemetry 插件分别构造使用数据，再发往 <code>api.anthropic.com</code> 的事件接口。</p><div class="lane-gate">提供商、凭据、开关、采样等门控</div></div>
+      <div class="lane cyan"><span class="lane-tag">独立日志</span><b>Datadog</b><p>白名单事件镜像与错误追踪分别走两个 Datadog 日志入口。</p><div class="lane-gate">各有额外门控和清洗</div></div>
+      <div class="lane amber"><span class="lane-tag">可配置</span><b>OpenTelemetry</b><p>用户或托管策略启用导出器时，日志和资源属性可到配置的 OTLP 目标。</p><div class="lane-gate">需导出器有效配置</div></div>
+    </div>
+    <div class="flow-foot">另有 WebFetch 域名预检等按功能触发的请求。地址出现在程序里，只证明存在路径；本图没有把所有路径画成已发生的流量。</div>
+  </figure>
+  <p>我在旧稿里写过“只要把 <code>ANTHROPIC_BASE_URL</code> 指向第三方，一方遥测就自动停”。这句话说得过满。2.1.280 的核心遥测门控检查提供商模式、网关、自定义 OAuth 和本地禁用开关，<strong>没有直接拿这个 URL 当总闸</strong>。一个自定义 URL 会怎样影响凭据和最终发送，还得继续走完调用链；仅凭改了模型地址，不能替另一条遥测路径下结论。</p>
 
-  <h2>审计方法</h2>
-  <p>macOS 上的 Claude Code 是 Bun 编译的单文件二进制，JS 逻辑以明文区段嵌在其中，可以从固定偏移量切出来做全文扫描：</p>
-  <pre><code># 原生版安装路径（版本号即目录名）
-CC=~/.local/share/claude/versions/2.1.280
+  <h2>随机设备 ID 没有硬件来源，依然能把事件串起来</h2>
+  <p>在用户配置里，<code>userID</code> 是一个持久标识。我们追到的生成路径用密码学随机数，没有把 MAC、序列号或主板 UUID 混进去。配置里另一个名字更吓人的 <code>machineID</code>，在这条生成路径里同样来自随机字节；Datadog 错误记录会取它的前 12 个字符。<code>userID</code> 进入一方事件时叫 <code>device_id</code>，模型 API 的 <code>metadata.user_id</code> 也包含设备和会话层标识。随机生成只说明生成方式；它被保存并重复使用以后，仍然能关联同一安装的多次活动。账号登录后出现的账户 UUID、组织 UUID，则是另一层身份。</p>
+  <figure class="flow-figure" aria-label="随机设备 ID 到遥测事件的关联流程">
+    <figcaption><span class="fig-no">03</span> “没有硬件绑定”和“可以持续关联”同时成立</figcaption>
+    <div class="flow-track id-track">
+      <div class="flow-node cyan"><b>随机生成</b><small>生成路径未见硬件输入</small></div>
+      <span class="flow-arrow" aria-hidden="true">→</span>
+      <div class="flow-node blue"><b>本地持久保存</b><small><code>~/.claude.json</code> 的 userID</small></div>
+      <span class="flow-arrow" aria-hidden="true">→</span>
+      <div class="flow-node violet"><b>多条事件复用</b><small>device_id + session_id<br>登录时可叠加账户 UUID</small></div>
+    </div>
+    <div class="flow-foot">随机 ID 不需要读取机器码，也能完成跨事件关联。下文不展示这台机器上任何真实 ID 值。</div>
+  </figure>
+  <p>本机 <code>~/.claude/telemetry/</code> 留着 8 个失败事件文件，共 173 条，来自 2.1.197 至 2.1.220。173 条共用一个设备 ID，53 条带账户和组织 UUID，37 条带 Git HEAD SHA。它们的 <code>additional_metadata</code> 是 Base64 编码的 JSON，解开能看见提示词长度、耗时、hook 名、提供商和操作分类等字段。这批样本说明客户端曾生成并缓存这些记录，文件名中的“failed”也提醒我，它们不能证明服务端已经收到。</p>
 
-# 内嵌 JS 区段约从 59MB 处开始，切出约 155MB
-dd if=$CC of=/tmp/bundle.bin bs=1048576 skip=59
+  <h2>事件多到不能靠一句“只记操作类型”概括</h2>
+  <p>这次把 1,991 个 JS 模块都交给语法解析器，零解析错误。按字面量事件名统计，<code>i(...)</code> 形式的调用点有 2,603 处，覆盖 1,713 种事件名。它们分布在 261 个模块里。这里的统计仍会漏掉动态生成的名称，展开运算符带来的字段也得人工回溯。</p>
+  <figure class="flow-figure" aria-label="核心事件与内置插件两套遥测管线">
+    <figcaption><span class="fig-no">04</span> 同一个事件接口前，有两套不同的字段约束</figcaption>
+    <div class="dual-pipeline">
+      <div class="pipe blue"><span>核心事件</span><b>各处 <code>tengu_*</code> 调用</b><i aria-hidden="true">↓</i><b>事件专属参数和清洗函数</b><i aria-hidden="true">↓</i><b>Base64 JSON 附加元数据</b><small>普通模式没有覆盖所有事件字段的全局封闭允许列表</small></div>
+      <div class="pipe cyan"><span>内置 telemetry 插件</span><b><code>$.telemetry.log / mark</code></b><i aria-hidden="true">↓</i><b>拒绝自由文本字符串</b><i aria-hidden="true">↓</i><b>只收布尔、有限数字、列举值</b><small>只有内置和核心来源能调用这套接口</small></div>
+    </div>
+    <div class="flow-down" aria-hidden="true">↓</div>
+    <div class="flow-root bottom">Anthropic 事件批次接口 <small><code>/api/event_logging/v2/batch</code></small></div>
+  </figure>
+  <p>这两套约束不能混用。插件主动拒绝自由文本，但核心事件还有大量由调用者逐个处理的参数。已经回溯的 Bash 事件会把命令解析成类别、白名单程序名和结构特征；API 错误事件把受限错误类型、状态和重试次数放进字段；工具异常调用清洗函数，把消息变成哈希和堆栈特征。字段名叫 <code>paths</code> 也不必然意味着传了路径，已检查的几个点实际上装的是计数或枚举。反过来，看到这几个点没有原始内容，也不能替剩下上千种事件作保证。</p>
+  <p>旧稿说失败队列里“有文件路径”，又说整个遥测“没有 prompt 原文、文件内容和命令原文”，两头都走得太远。对那 173 条旧样本做过绝对路径、邮箱、令牌形态扫描，没有发现匹配值；2.1.280 的核心事件代码则需要逐调用点检查，不能让一批旧样本代表所有版本。OpenTelemetry 还有一个独立开关 <code>OTEL_LOG_USER_PROMPTS</code>，默认把提示词记成 <code>&lt;REDACTED&gt;</code>，开启后会传原文。写“没有”之前，必须先说清是哪条管线、什么条件。</p>
+  <p>Datadog 也在这一步浮出来。核心代码会把选定的一方事件再做一份日志，先删一组敏感字段，并规范化工具、模型和 HTTP 状态。另一个错误追踪路径把清洗后的异常消息、堆栈、版本和平台信息送到 Datadog。它有独立的开关与合规判断，还给单进程排队数量设了上限。清洗规则很长，我只把它称作尽力脱敏；任何正则表都不能保证识别用户自定义的所有秘密。旧稿看到 <code>sentry.io</code> 字符串，就把 CLI 错误上报归给 Sentry。沿 <code>logError</code> 到 <code>POST</code> 追完，2.1.280 这里实际是 Datadog。</p>
 
-# 字节级搜索示例：硬件标识符、时区字符串、隐写码点
-rg -a -c 'IOPlatformSerialNumber' /tmp/bundle.bin   # 0
-rg -a -c 'Asia/Shanghai' /tmp/bundle.bin            # 0
-rg -a -c 'os\.networkInterfaces' /tmp/bundle.bin    # 0</code></pre>
-  <p>对低频疑点（比如 U+02BC/U+02B9 码点），需要用 Python 做上下文提取来定性——155MB 二进制里这些字节对天然会以指针表巧合的形式出现，必须看上下文才能区分真字符和编译产物。除静态扫描外，我还交叉验证了三类运行时证据：本地遥测队列的逐条解码（JSONL，可以自己看）、配置文件全字段枚举、系统级连接观测。</p>
-  <p>下文的结论分两种证据等级：能靠字节级扫描或本机数据解码直接复现的，正文直接给数字；由行为反推的，我会附上推理依据。</p>
+  <h2>硬件这一块，读到哪里，走到哪里</h2>
+  <p>我最在意的机器码问题，后来拆成了三问。程序能不能调用系统 API，代码里有没有这样的调用，调用结果是否进入出站载荷。macOS 用户态程序有能力读不少系统信息，所以“技术上能读”本身回答不了这台机器有没有被采集。</p>
+  <figure class="flow-figure" aria-label="本机硬件相关读取点与出站条件判定">
+    <figcaption><span class="fig-no">05</span> 对硬件线索逐项过三道门</figcaption>
+    <div class="matrix-head"><span>对象</span><span>检查到的读取点</span><span>已追到的出口或限制</span></div>
+    <div class="matrix-row"><b>主板 UUID</b><span>JS 包中的 OpenTelemetry <code>getMachineId</code> 调用 <code>ioreg</code></span><span>仅在相应资源检测和 OTLP 导出链成立时才可能外送</span></div>
+    <div class="matrix-row"><b>hostname</b><span>OTel hostDetector、远程控制设备名派生、本地同意记录</span><span>用途分开，不能一概写“读而不发”</span></div>
+    <div class="matrix-row"><b>MAC / 机身序列号</b><span>已提取 JS 的常见读取路径与相关字符串未见对应调用</span><span>这不覆盖未逐指令反编译的原生扩展或 Bun 运行时</span></div>
+    <div class="matrix-row"><b>本机 IP</b><span>已检查的 JS 未见主动读取网卡 IP 的应用调用</span><span>远端能从连接看到的来源 IP 是另一回事</span></div>
+    <div class="matrix-row"><b>屏幕 / 音频</b><span>包内有截屏、输入、录音相关原生扩展</span><span>证明存在可选功能能力，不证明后台自动录制或遥测上传</span></div>
+  </figure>
+  <p><code>ioreg</code> 读取 <code>IOPlatformUUID</code> 的调用点确实存在，藏在随包的 OpenTelemetry 组件里。旧稿把它写成“只需自己手动设两个环境变量才会激活”也不够严谨，因为程序还有托管设置注入遥测配置的路径。对普通未配置的本机会话，我们没有看到 OTLP 目标已设置；对程序能力，只能写“条件成立时可能导出”。这张图保留了一个重要的空白，原生扩展未完成机器码级审计，因此本文不能宣布整台软件“硬件零指纹”。</p>
 
-  <h2>标识符是随机数，不是机器码</h2>
-  <p>每次启动生成或读取的标识符全部是 crypto 随机值，持久化在 <code>~/.claude.json</code>（明文，键名可自行查看）：<code>userID</code>（即每次请求携带的 device_id）是 32 字节随机 hex，生成代码里没有任何硬件输入；<code>session_id</code> 与 <code>parent_session_id</code> 每会话随机；登录后的 <code>account_uuid</code> / <code>organization_uuid</code> 来自 OAuth，属账户身份而非设备身份。</p>
-  <p>这意味着删掉配置文件里的这些值，它们就会重新随机生成。设备指纹意义上的硬件绑定，在标识符层不存在。</p>
+  <h2>我为什么还去查日期里的撇号</h2>
+  <p>2026 年 6 月，<a href="https://github.com/anthropics/claude-code/issues/67120">Claude Code 官方仓库的一条公开 issue</a> 展示过旧版本的异常。系统提示词里普通的日期行，会根据自定义 API 主机名换用视觉相近的撇号；某些时区还会改变日期分隔符。那是一个值得认真复验的旧机制，因为它没有走显眼的遥测字段。</p>
+  <figure class="flow-figure" aria-label="旧版本日期隐写与当前版本的复验流程">
+    <figcaption><span class="fig-no">06</span> 旧机制和 2.1.280 的检查放在同一条线上</figcaption>
+    <div class="stego-grid">
+      <div class="stego old"><span>旧版本的公开复现</span><b>API 主机名 + 系统时区</b><div class="flow-down" aria-hidden="true">↓</div><b>选撇号码点与日期分隔符</b><div class="glyphs"><code>'</code><code>’</code><code>ʼ</code><code>ʹ</code><code>2026/06/30</code></div><small>编码进入系统提示词的日期行</small></div>
+      <div class="stego current"><span>这次检查的 2.1.280</span><b>提取模块后搜索旧标志</b><div class="flow-down" aria-hidden="true">↓</div><b>回看日期行构造代码</b><div class="glyphs"><code>Today's date is</code><code>YYYY-MM-DD</code></div><small>未找到旧的时区比较和撇号选择链</small></div>
+    </div>
+  </figure>
+  <p>最初的整段二进制扫描，<code>Asia/Shanghai</code> 和 <code>Asia/Urumqi</code> 是零命中。再把真正的 JS 模块提出来看，当前日期行保留普通 ASCII 撇号和短横线，没找到旧的字符选择调用链。这个结果与旧机制已经不在 2.1.280 的判断相符。它只覆盖本次检查的安装包，不能用“搜不到两个字符串”证明以后任何版本都不会用别的方式做环境分类。</p>
+  <p>现在的代码仍会读时区给终端时间显示或设置界面用，语言信息也会影响语音听写默认语言。日历日期可能出现在发给模型的系统上下文中。把这几件日常功能与旧版隐写并排看，区别就清楚了，读取本地时区、把完整时区上传、用时区改写日期标记，是三种不同的行为。</p>
 
-  <h2>四条出站通道：一条无条件，两条有门控</h2>
-  <div class="card">
-  <table>
-    <thead>
-      <tr><th>通道</th><th>目的地</th><th>载荷</th><th>门控</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>A · 模型 API 请求</strong></td>
-        <td>跟随 <code>ANTHROPIC_BASE_URL</code></td>
-        <td>对话内容 + 工具结果 + <code>metadata.user_id</code>{device_id, account_uuid, session_id} + 系统提示词内的本地日期</td>
-        <td><strong>无条件，任何开关都拦不住</strong></td>
-      </tr>
-      <tr>
-        <td><strong>B · 遥测事件批量</strong></td>
-        <td>硬编码 <code>api.anthropic.com</code>（不跟随 BASE_URL）</td>
-        <td><code>tengu_*</code> 事件 + 环境 21 键 + 进程指标 blob</td>
-        <td>BASE_URL 指向第三方时自动停；<code>CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC</code> / <code>DISABLE_TELEMETRY</code> / <code>DO_NOT_TRACK</code> 可关</td>
-      </tr>
-      <tr>
-        <td><strong>C · OTLP 导出</strong></td>
-        <td>自行配置的端点</td>
-        <td>resource 属性含 <code>host.id</code> = IOPlatformUUID（主板 UUID）、host.name、host.arch</td>
-        <td>需同时设 <code>CLAUDE_CODE_ENABLE_TELEMETRY=1</code> + <code>OTEL_EXPORTER_OTLP_ENDPOINT</code>，默认关</td>
-      </tr>
-      <tr>
-        <td><strong>D · 基础流量</strong></td>
-        <td>版本检查 / 会话校验</td>
-        <td>无遥测载荷</td>
-        <td>不受遥测开关影响</td>
-      </tr>
-    </tbody>
-  </table>
-  </div>
-  <p>通道 A 是唯一无法关闭的出站：只要在用这个工具，对话内容和一个随机 device_id 就会进入发往模型端点的请求。这是产品形态决定的——模型必须收到内容才能工作。但有一点值得单独指出：<code>metadata.user_id</code> 在官方文档里并不显眼，而它不受任何遥测开关控制。</p>
+  <h2>700 个远程标志说明了什么</h2>
+  <p>聊天记录里我们后来又追了一条线。写作当天，本机缓存里有 700 个 GrowthBook 远程功能标志。数量是那天的缓存快照，不是这个版本永远固定的配置表。它们能改变一些功能参数、提示词开关和最低版本条件。远程控制的 deviceBridge 还有一段很直白的代码，标志刷新后门关了，它就打印 <code>stopping: the gate turned off</code> 并停掉服务。</p>
+  <figure class="flow-figure" aria-label="GrowthBook 远程标志控制本地功能的流程图">
+    <figcaption><span class="fig-no">07</span> 服务端标志影响功能，隐私总闸仍要单独判断</figcaption>
+    <div class="flow-track control-track">
+      <div class="flow-node violet"><b>远端标志</b><small>GrowthBook 刷新</small></div><span class="flow-arrow" aria-hidden="true">→</span>
+      <div class="flow-node blue"><b>本地求值</b><small><code>tengu_ccr_bridge</code></small></div><span class="flow-arrow" aria-hidden="true">→</span>
+      <div class="flow-node cyan"><b>功能状态</b><small>bridge 可自行停转</small></div>
+    </div>
+    <div class="flow-divider">进程环境中的遥测禁用开关在另一条检查链上</div>
+    <div class="flow-track control-track lower">
+      <div class="flow-node amber"><b>本地环境变量</b><small><code>DISABLE_TELEMETRY</code> 等</small></div><span class="flow-arrow" aria-hidden="true">→</span>
+      <div class="flow-node muted-node"><b>遥测门控</b><small>需按发送路径逐条检查</small></div>
+    </div>
+  </figure>
+  <p>远程标志能让本地功能改变状态，这一点有代码证据。它不能直接推出“服务端能修改已经启动进程的环境变量”，也不能替我们保证所有未来标志都无关遥测。旧稿说“服务端改不了、当前版本也绕不过”，前半句指 OS 环境变量本身，后半句范围却太大。现在的说法更窄，已追到的一方事件门控检查本地禁用条件；700 个标志的所有语义没有逐一审完。</p>
 
-  <h2>遥测事件里有什么、没有什么</h2>
-  <p>把本地磁盘上的失败遥测队列逐条解码后，事件载荷的完整字段如下。有的部分：事件名、时间戳、session/account UUID、模型名、环境 21 键（platform、arch、shell、终端类型、运行时版本等）、进程指标（uptime、RSS、heap、物理内存大小、CPU 用时），以及行为字段——文件路径、bash 命令分类与 argv0、字节长度、权限决策。没有的部分：prompt 原文、文件内容、命令原文、hostname、用户名、locale、时区、任何硬件序列号。</p>
-  <p>一句话概括：它记录你做了什么类型的操作，不记录操作的内容。</p>
-
-  <h2>机器码读取能力全清单</h2>
-  <p>对读取点逐一定性之前要先立一个区分：能力（代码里有没有）不等于行为（实际读不读、发不发）。</p>
-  <div class="card">
-  <table>
-    <thead>
-      <tr><th>读取目标</th><th>代码读取点</th><th>出口</th><th>状态</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>主板 UUID</td>
-        <td><code>ioreg -rd1 -c "IOPlatformExpertDevice"</code> 仅 1 处（OTel SDK 的 <code>getMachineId</code>）</td>
-        <td>仅通道 C</td>
-        <td>休眠（默认无人配置）</td>
-      </tr>
-      <tr>
-        <td>hostname</td>
-        <td>3 处：OTel hostDetector（随通道 C）、设备名派生（1P 云功能）、本地同意记录绑定</td>
-        <td>前两者锁死或未启用，最后者纯本地</td>
-        <td>读而不发</td>
-      </tr>
-      <tr>
-        <td>MAC 地址</td>
-        <td><strong>0</strong>（<code>os.networkInterfaces</code> 应用层零调用）</td>
-        <td>—</td>
-        <td>不存在</td>
-      </tr>
-      <tr>
-        <td>机身序列号</td>
-        <td><strong>0</strong>（连读取代码都没有）</td>
-        <td>—</td>
-        <td>不存在</td>
-      </tr>
-      <tr>
-        <td>本机 IP</td>
-        <td><strong>0</strong>（dgram 取 IP 技巧、ifconfig 自执行、IP 回声服务全查无）</td>
-        <td>—</td>
-        <td>不存在</td>
-      </tr>
-      <tr>
-        <td>GPU / 电池 / GPS</td>
-        <td>0</td>
-        <td>—</td>
-        <td>不存在</td>
-      </tr>
-      <tr>
-        <td>出网探活</td>
-        <td>1 处：<code>HEAD http://1.1.1.1</code>（1 秒超时）</td>
-        <td>仅返回布尔连通性</td>
-        <td>无数据携带</td>
-      </tr>
-    </tbody>
-  </table>
-  </div>
-  <p>两点说明。第一，macOS 上用户态进程读机器码毫无技术障碍——<code>ioreg</code> 不需要 sudo。所以能不能读的答案永远是能，有意义的结论只有当前代码里有哪些读取点、出口开着没有。这是信任问题，不是技术问题。第二，GCP/Azure 认证库内有一段云 VM 检测代码（<code>/sys/class/dmi/...</code> 路径、<code>^42:01</code> MAC 前缀正则），在 macOS 上路径不存在，且仅在使用对应云凭证时才可能执行，判定结果是本地布尔值。</p>
-
-  <h2>时区和语言：读了，但不出网</h2>
-  <p>当前版本的读取点就两处，全是本地功能：<code>Intl.DateTimeFormat().resolvedOptions().timeZone</code> 用于终端 UI 时钟显示和 <code>/config</code> 时区设置；<code>resolvedOptions().locale</code> 提取语言码，仅用于语音听写（STT）的默认语言。<code>process.env.LANG</code> 与 <code>LC_*</code> 的读取次数为零。唯一出网的时区衍生物，是系统提示词里的本地日期——天粒度，随通道 A 发给你的模型端点。</p>
-  <p>对 6 月隐写事件的字节级复验结果如下：</p>
-  <div class="card">
-  <table>
-    <thead>
-      <tr><th>当年机制</th><th>2.1.280 复验结果</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>比较 <code>Asia/Shanghai</code> / <code>Asia/Urumqi</code></td><td>0 次命中</td></tr>
-      <tr><td>日期分隔符 <code>-</code> → <code>/</code> 替换逻辑</td><td>不存在；模板为直撇号(0x27)+短横线</td></tr>
-      <tr><td>撇号码点 U+2019 / U+02BC / U+02B9 标记</td><td>0 个真实命中（343 处 <code>’</code> 全在文本解析正则里；二百余处疑似命中均为编译指针表的字节巧合）</td></tr>
-      <tr><td>自定义 BASE_URL 检测管线</td><td>不存在</td></tr>
-    </tbody>
-  </table>
-  </div>
-  <p>复验结果与官方 7 月初移除的口径一致。</p>
-
-  <h2>服务端能控制本地到什么程度</h2>
-  <p>这是最容易误解的一层，分两半说。</p>
-  <p>你设置的环境变量开关，服务端改不了，当前版本也绕不过。env 在进程启动时定格，OS 层没有任何远程修改通道；架构上本地优先——<code>DISABLE_GROWTHBOOK</code> 一设，远程标志求值系统整体瘫痪，官方报错文案明示了这一点。这部分是字节级可复现的。</p>
-  <p>但功能参数层确实受服务端实时控制。客户端内嵌了 GrowthBook 远程标志系统（默认端点 <code>cdn.growthbook.io</code>），写作时我的本地缓存里有 700 个标志、当天刚刷新过，控制范围包括各工具的输出 token 上限、最低版本要求（<code>tengu_version_config.minVersion</code>）、提示词相关开关、行为计时参数等。机制上服务端标志可以实时停启本地服务——代码里有现成的执行现场：本地 bridge 服务订阅标志刷新事件，服务端把 <code>tengu_ccr_bridge</code> 门拨到 off，运行中的服务就打日志 <code>[deviceBridge] stopping: the gate turned off</code> 并自停。还有一个已落盘的先例：服务端 API 响应会缓存为本地配置并改变行为（比如 <code>cachedExtraUsageDisabledReason</code>）。</p>
-  <p>这部分的诚实边界要说清楚：我能证明没有远程强制复活遥测的门控（队列停更是实测，加上架构证据），但不能逐一枚举 700 个标志的全部语义，这层保证只能靠版本重验维持。另有一个与开关无关的通道值得知情：agent 模式下模型输出会被本地执行，若用 <code>--dangerously-skip-permissions</code> 则不再询问。这条防线的性质是模型端对齐，不是操作系统。</p>
-
-  <h2>防御建议</h2>
-  <p>以下都是自己机器上的合法操作：</p>
-  <pre><code># 钉死已审计版本：关自动更新，每次升级前重扫
-export DISABLE_AUTOUPDATER=1
-
-# 遥测总闸（含 GrowthBook）：最强单开关
-export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
-
-# 或单独关远程标志系统（代价：依赖标志的功能不可用）
-export DISABLE_GROWTHBOOK=1
-
-# 运行期监控：哪天它突然开始 ioreg，当场可见
-sudo opensnoop -n claude</code></pre>
-  <p>切换到官方登录之前，先把总闸加上——1P 模式下通道 B 会重新激活。平时可以定期看 <code>~/.claude.json</code>：device_id 明文可见，字段新增一眼可查。网络出口层面，用你已有的防火墙或代理工具做全流量观测即可；TLS 内容需要自行中间人解密，自行权衡。</p>
-
-  <h2>方法学边界</h2>
-  <p>这篇审计有四条边界，放在结尾而不是脚注。</p>
-  <p>第一，时点快照。全部结论绑定 2.1.280 和 2026 年 9 月，自动更新器是活跃的，任何一次更新都可能改变上述一切——这类审计没有一劳永逸。</p>
-  <p>第二，审计范围。覆盖的是 JS 逻辑区段（155MB，全部应用逻辑所在），字节扫描的零命中只在这个区段内成立；原生 Bun 运行时是理论盲区。不过所有运行时观测与 JS 层逻辑一致，未发现表里不一。</p>
-  <p>第三，事实与意图分离。本文只陈述有什么代码、往哪发、开关在哪。至于厂商意图，不属于字节能证明的范围。</p>
-  <p>第四，脱敏。文中的方法与结论不含本人任何凭据、账户标识、节点信息；读者复现时也请注意，不要把自己的 <code>~/.claude.json</code> 原样贴出来。</p>
-
-  <p class="note">表格中的代码实现、门控开关和本机记录是三个不同层面的信息。本文未抓取 TLS 明文流量，出站载荷的字段构成来自请求构造代码与本地队列解码；服务端如何保存收到的数据，本次检查没有验证。</p>
+  <h2>现在我会怎样给这次调查下结论</h2>
+  <p>2.1.280 的 JS 里有不少环境与行为信号，远比“只收一个匿名设备号”详细。稳定设备 ID、账户 UUID、会话 ID、Git 提交 SHA 和操作事件可以互相拼接。Datadog 与 Anthropic 事件接口也是独立出口。与此同时，已追到的代码没有支持“默认遥测偷偷发送完整提示词、源文件正文、原始 Bash 命令、屏幕或音频”这个判断。可选 OTEL 内容开关和屏幕音频功能各有自己的启动条件，需要按实际配置与运行行为再看。</p>
+  <p>最有用的复核动作很朴素。先固定要审计的版本与哈希，再看本地环境和托管设置，接着沿事件构造走到发送函数。如果要回答“这台机器那晚究竟发了什么”，还得拿到对应时段的网络证据；旧失败队列只能补一部分。读者自己检查配置时，别把 <code>~/.claude.json</code>、遥测队列或抓包里的凭据和标识符整份贴到网上。</p>
+  <p class="note">本文复核了提取出的 JS、旧版失败队列和原始调研记录。没有真实 TLS 明文抓包，也没有逐项反编译 Bun 运行时与三个原生扩展。代码里有发送路径、本地缓存过事件、远端实际收到并保存，是三个不同的结论。</p>
 
   <footer>
-    <p>参考：2026 年 6 月时区隐写事件的公开报道与官方回应（The Next Web、Reuters、TechCrunch，2026 年 7 月；发现者为社区研究者，Anthropic 工程师公开确认系反转售实验并已移除）；Anthropic 官方支持地区名单与 2025 年 9 月起的控股限制政策更新；OpenTelemetry JS SDK 的 <code>getMachineId</code> 实现（<code>host.id</code> 来源）。</p>
-    <p>同系列前期记录：<a href="/posts/claude-code-agent-internals/">Claude Code 多 agent 架构逆向</a>、<a href="/posts/cline-desktop-telemetry/">Cline 桌面版遥测检查</a>。</p>
-    <p>审计与写作：2026 年 9 月，对象版本 2.1.280。转载请附带版本号与日期。<a href="/">回到首页</a></p>
+    <p>资料与复核入口 <a href="https://github.com/anthropics/claude-code/issues/67120">旧版日期行异常的原始 issue</a>、<a href="https://bun.com/docs/bundler/executables">Bun 单文件程序文档</a>、<a href="https://code.claude.com/docs/en/data-usage">Claude Code 数据使用说明</a>。本文的安装包、旧队列和聊天记录来自作者本机，只公开统计、代码路径和脱敏后的结论。</p>
+    <p>同系列 <a href="/posts/claude-code-agent-internals/">Claude Code 多 agent 架构逆向</a>、<a href="/posts/cline-desktop-telemetry/">Cline 桌面版遥测检查</a>。审计对象为 2.1.280，写于 2026 年 9 月。<a href="/">回到首页</a></p>
   </footer>
 </main>
 </body>
