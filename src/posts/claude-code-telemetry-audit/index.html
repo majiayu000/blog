@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>拆开 Claude Code 2.1.280，看看它读了什么，又把什么发出去</title>
+  <title>Claude Code 会把什么发出去？</title>
   <meta name="date" content="2026-09-24">
-  <meta name="description" content="对 Claude Code 2.1.280 的 Bun 模块图、遥测事件和本机旧队列逐层逆向，画出模型请求、Anthropic、Datadog 与 OpenTelemetry 的数据流，并复验机器码和日期隐写问题。">
+  <meta name="description" content="从本机留下的 173 条失败记录查起，看看 Claude Code 的设备标识、遥测出口，以及关闭开关后仍要留意什么。">
   <meta name="tags" content="Claude Code, Agent 工具链, 逆向工程, 安全">
   <style>
     :root {
@@ -316,53 +316,17 @@
 <a class="home-link" href="/">返回博客</a>
 <main>
   <p class="kicker">X-Ray · Agent 工具链</p>
-  <h1>拆开 Claude Code 2.1.280，看看它读了什么，又把什么发出去</h1>
-  <p class="lede">我原先问的是一个很直的问题。Claude Code 能读我的代码、运行命令，那它会不会顺手读网卡 MAC、机器序列号和 IP？沿着这个问题查下去，我翻了本机的二进制、旧遥测队列和一整段 Claude Code 调研记录。最后发现，最需要解释清楚的地方，是“程序里有读取能力”“事件在本机被构造”“服务端实际收到数据”之间那几步。</p>
-  <p class="note">这篇只针对我检查的 macOS arm64 安装包 2.1.280。安装文件 SHA-256 为 <code>387a5c5dcdbb815085edf0baf79591f9d8894efe922bceaf3d75b1b08055229d</code>。文中的本机观察发生在 2026 年 9 月，升级版本后要重新检查。</p>
+  <h1>Claude Code 会把什么发出去？</h1>
+  <p class="lede">我一开始只想确认一件事：Claude Code 会不会读取我的机器码。</p>
+  <p>它能看代码、执行命令，当然有机会接触电脑上的其他信息。我想知道的是，它有没有读取网卡 MAC、机器序列号，或者拿这些东西生成一个可以长期识别我的编号。于是我翻了本机的安装包，也看了它留在磁盘上的遥测记录。</p>
+  <p>查到后面，最值得注意的反而是一个随机生成的 ID。即使不用机器序列号，只要这个 ID 一直保留，程序就有办法把不同时间的使用记录联系起来。围绕这个 ID，我又看到了账户标识、会话标识、Git 提交信息，以及几条分别控制的上报路径。</p>
+  <p>这篇记录的是 macOS arm64 版 Claude Code 2.1.280 的检查结果。用来对照的本地失败队列来自更早的版本，具体范围会在下面说明。安装包哈希、检查方法和没有覆盖的部分，放在文末供复核。</p>
 
-  <h2>先把安装包打开</h2>
-  <p>起初我用字节搜索找 <code>IOPlatformUUID</code>、<code>networkInterfaces</code> 和时区字符串。这能迅速定位疑点，却不适合给出“全部代码都没有”的结论。一个字符串没搜到，可能是代码写法不同，也可能被编译到了别处。后来我们直接解析了 Bun 单文件程序里的模块图，再从提取出的 JS 模块追调用链。</p>
-  <figure class="flow-figure" aria-label="从安装包到结论的证据流程">
-    <figcaption><span class="fig-no">01</span> 这次审计实际走过的证据路径</figcaption>
-    <div class="flow-track five">
-      <div class="flow-node violet"><b>签名安装包</b><small>Mach-O · 217 MB<br>固定版本和 SHA-256</small></div>
-      <span class="flow-arrow" aria-hidden="true">→</span>
-      <div class="flow-node blue"><b>Bun 模块图</b><small>2,213 条记录<br>1,991 个 JS 模块</small></div>
-      <span class="flow-arrow" aria-hidden="true">→</span>
-      <div class="flow-node cyan"><b>调用点回溯</b><small>事件生成、清洗<br>门控、序列化、POST</small></div>
-    </div>
-    <div class="flow-track follow">
-      <div class="flow-node amber"><b>本机旧队列</b><small>173 条失败事件<br>证明构造与缓存</small></div>
-      <span class="flow-arrow" aria-hidden="true">→</span>
-      <div class="flow-node muted-node"><b>服务端是否收到</b><small>本次没有真实 TLS 明文抓包<br>不能从前四步直接推出</small></div>
-    </div>
-  </figure>
-  <p>模块图里有 37,884,508 字节可读的 JS 源文本，还附着 82,505,096 字节字节码。代码确实难看，文件名多是 <code>chunk-xxxxxxxx.js</code>，绝大多数函数名短到一两个字符，也没有随包源码映射。但事件名、上报地址、字段名和关键分支仍能在源文本里读出来。<a href="https://bun.com/docs/bundler/executables">Bun 自己也说明</a>，字节码不会因此遮住源码。这种打包和压缩妨碍阅读，却不足以证明整套采集逻辑被深度加密。三个随包的原生扩展没有逐指令反编译，我把它们留在结论的边界里。</p>
-  <details class="source-note"><summary>想自己复核这一版，可以从这里开始</summary><p>先确认拿到的是同一份安装包。按固定位置截取二进制做粗搜，会把非源码字节混进结果。先查签名、哈希和 Bun 段，再按模块图提取 JS；偏移量只对这一个安装包成立。</p><pre><code>CC="$HOME/.local/share/claude/versions/2.1.280"
-shasum -a 256 "$CC"
-codesign -dv --verbose=2 "$CC"
-otool -l "$CC" | rg -A8 'sectname __bun|segname __BUN'</code></pre><p>在提取出的模块中，<code>chunk-m200zvyg.js</code> 有核心事件序列化和 Datadog 镜像，<code>chunk-h8651pre.js</code> 有内置 telemetry 插件，<code>chunk-s8swgzep.js</code> 有错误上报门控。模块名会随版本变化，所以先核安装包哈希，再核调用链。</p></details>
-
-  <h2>一段 Claude Code 会话，有几条不同的出站路</h2>
-  <p>Claude Code 一次会话可能通过多条路径与外部通信。模型请求携带完成任务所需的对话和工具结果；Anthropic 一方事件、Datadog 日志、按配置启用的 OpenTelemetry，以及 WebFetch 的域名预检，各有自己的触发条件。要判断程序额外记录了什么、发往哪里，得沿每条路径分别看字段、门控和发送代码。</p>
-  <figure class="flow-figure" aria-label="Claude Code 各种出站路径与门控流程图">
-    <figcaption><span class="fig-no">02</span> 本地数据从哪里进入哪条路径</figcaption>
-    <div class="flow-root">Claude Code 2.1.280 <small>一次会话内可能出现的代码路径</small></div>
-    <div class="flow-down" aria-hidden="true">↓</div>
-    <div class="lane-grid">
-      <div class="lane violet"><span class="lane-tag">任务通信</span><b>模型请求</b><p>提示词、上下文、工具结果、会话标识等随请求发往当前模型端点。</p><div class="lane-gate">使用模型时发生</div></div>
-      <div class="lane blue"><span class="lane-tag">一方事件</span><b>Anthropic 批次接口</b><p>核心事件和内置 telemetry 插件分别构造使用数据，再发往 <code>api.anthropic.com</code> 的事件接口。</p><div class="lane-gate">提供商、凭据、开关、采样等门控</div></div>
-      <div class="lane cyan"><span class="lane-tag">独立日志</span><b>Datadog</b><p>白名单事件镜像与错误追踪分别走两个 Datadog 日志入口。</p><div class="lane-gate">各有额外门控和清洗</div></div>
-      <div class="lane amber"><span class="lane-tag">可配置</span><b>OpenTelemetry</b><p>用户或托管策略启用导出器时，日志和资源属性可到配置的 OTLP 目标。</p><div class="lane-gate">需导出器有效配置</div></div>
-    </div>
-    <div class="flow-foot">另有 WebFetch 域名预检等按功能触发的请求。地址出现在程序里，只证明存在路径；本图没有把所有路径画成已发生的流量。</div>
-  </figure>
-  <p>把 <code>ANTHROPIC_BASE_URL</code> 指向第三方，不能据此认定一方遥测会自动停止。2.1.280 的核心遥测门控检查提供商模式、网关、自定义 OAuth 和本地禁用开关，<strong>没有直接拿这个 URL 当总闸</strong>。自定义地址如何影响凭据和最终发送，还得继续追调用链；模型请求改了目的地，不能替另一条遥测路径下结论。</p>
-
-  <h2>随机设备 ID 没有硬件来源，依然能把事件串起来</h2>
-  <p>在用户配置里，<code>userID</code> 是一个持久标识。我们追到的生成路径用密码学随机数，没有把 MAC、序列号或主板 UUID 混进去。配置里另一个名字更吓人的 <code>machineID</code>，在这条生成路径里同样来自随机字节；Datadog 错误记录会取它的前 12 个字符。<code>userID</code> 进入一方事件时叫 <code>device_id</code>，模型 API 的 <code>metadata.user_id</code> 也包含设备和会话层标识。随机生成只说明生成方式；它被保存并重复使用以后，仍然能关联同一安装的多次活动。账号登录后出现的账户 UUID、组织 UUID，则是另一层身份。</p>
+  <h2>先从电脑里留下的 173 条记录说起</h2>
+  <p>在 <code>~/.claude/telemetry/</code> 里，我找到了 8 个失败事件文件，一共 173 条记录，来自 2.1.197 到 2.1.220。它们共用一个设备 ID，其中 53 条带有账户和组织 UUID，37 条带有 Git HEAD SHA。附加字段里的 <code>additional_metadata</code> 是 Base64 编码的 JSON，解开后能看到提示词长度、耗时、hook 名、模型提供商和操作分类。Base64 在这里是编码，看起来不直观，但不提供加密保护。</p>
+  <p>这批记录让我把注意力从“机器码”转到了“关联”。我沿着配置里的 <code>userID</code> 查下去，看到它由密码学随机数生成，保存在 <code>~/.claude.json</code> 中，进入 Anthropic 的事件时使用的字段名是 <code>device_id</code>。另一个叫 <code>machineID</code> 的值，在查到的生成路径里也来自随机字节。名字听起来像硬件指纹，实际没有用到 MAC 或序列号。Datadog 错误记录会取它的前 12 个字符；模型 API 的 <code>metadata.user_id</code> 也包含设备和会话层标识。</p>
   <figure class="flow-figure" aria-label="随机设备 ID 到遥测事件的关联流程">
-    <figcaption><span class="fig-no">03</span> “没有硬件绑定”和“可以持续关联”同时成立</figcaption>
+    <figcaption><span class="fig-no">01</span> 随机生成的 ID，也能关联多次使用记录</figcaption>
     <div class="flow-track id-track">
       <div class="flow-node cyan"><b>随机生成</b><small>生成路径未见硬件输入</small></div>
       <span class="flow-arrow" aria-hidden="true">→</span>
@@ -370,14 +334,35 @@ otool -l "$CC" | rg -A8 'sectname __bun|segname __BUN'</code></pre><p>在提取�
       <span class="flow-arrow" aria-hidden="true">→</span>
       <div class="flow-node violet"><b>多条事件复用</b><small>device_id + session_id<br>登录时可叠加账户 UUID</small></div>
     </div>
-    <div class="flow-foot">随机 ID 不需要读取机器码，也能完成跨事件关联。下文不展示这台机器上任何真实 ID 值。</div>
+    <div class="flow-foot">随机 ID 不需要读取机器码，也能完成跨事件关联。本文不展示这台机器上任何真实 ID 值。</div>
   </figure>
-  <p>本机 <code>~/.claude/telemetry/</code> 留着 8 个失败事件文件，共 173 条，来自 2.1.197 至 2.1.220。173 条共用一个设备 ID，53 条带账户和组织 UUID，37 条带 Git HEAD SHA。它们的 <code>additional_metadata</code> 是 Base64 编码的 JSON，解开能看见提示词长度、耗时、hook 名、提供商和操作分类等字段。这批样本说明客户端曾生成并缓存这些记录，文件名中的“failed”也提醒我，它们不能证明服务端已经收到。</p>
+  <p>随机生成不代表每次都会换。一个编号只要持续复用，就能成为多次活动之间的连接点；再叠加账户和会话标识，记录之间的关系会更清楚。假如我关心的是自己的使用过程能被关联到什么程度，只问“有没有读机器序列号”，就漏掉了这部分。</p>
+  <p>还要交代这批文件的性质：它们是失败队列，只能证明客户端生成并缓存过这些事件。我没有拿到相应时段的网络证据，因此不知道其中哪些后来重试成功。它们也不能充当 2.1.280 的运行抓包。</p>
 
-  <h2>事件多到不能靠一句“只记操作类型”概括</h2>
-  <p>这次把 1,991 个 JS 模块都交给语法解析器，零解析错误。按字面量事件名统计，<code>i(...)</code> 形式的调用点有 2,603 处，覆盖 1,713 种事件名。它们分布在 261 个模块里。这里的统计仍会漏掉动态生成的名称，展开运算符带来的字段也得人工回溯。</p>
+  <h2>换了 API 地址，其他请求怎么办</h2>
+  <p>要看懂这些记录，先得把模型调用和产品遥测分开。你交给 Claude Code 的问题，以及进入模型上下文的代码和工具结果，会随着模型请求发到所用的服务端。关闭遥测以后，这部分任务通信仍然需要发生。<a href="https://code.claude.com/docs/en/data-usage">官方数据使用说明</a>也明确写着，本地运行的 Claude Code 需要通过网络与模型交互。</p>
+  <p>在我检查的版本中，额外的使用事件会走 Anthropic 的事件批次接口；一部分事件和错误报告还有 Datadog 出口。它们分别有提供商、凭据、采样和禁用开关等条件。<a href="https://code.claude.com/docs/en/network-config">当前官方网络文档</a>也列出了两个 Datadog 接收地址，分别用于运行事件和错误报告。</p>
+  <p>OpenTelemetry 又是一套独立的监控配置。启用导出器后，数据发往指定的接收端，地址可以由用户或组织的托管设置配置。它与 Anthropic 自己的运行遥测分开，<a href="https://code.claude.com/docs/en/monitoring-usage">官方监控文档</a>说明了这两套配置的区别。</p>
+  <figure class="flow-figure" aria-label="Claude Code 各种出站路径与启用条件流程图">
+    <figcaption><span class="fig-no">02</span> 模型请求以外，还有分别控制的上报路径</figcaption>
+    <div class="flow-root">Claude Code 2.1.280 <small>一次会话内可能出现的代码路径</small></div>
+    <div class="flow-down" aria-hidden="true">↓</div>
+    <div class="lane-grid">
+      <div class="lane violet"><span class="lane-tag">任务通信</span><b>模型请求</b><p>提示词、上下文、工具结果、会话标识等随请求发往当前模型端点。</p><div class="lane-gate">使用模型时发生</div></div>
+      <div class="lane blue"><span class="lane-tag">一方事件</span><b>Anthropic 批次接口</b><p>核心事件和内置 telemetry 插件分别构造使用数据，再发往 <code>api.anthropic.com</code> 的事件接口。</p><div class="lane-gate">提供商、凭据、开关、采样等条件</div></div>
+      <div class="lane cyan"><span class="lane-tag">独立日志</span><b>Datadog</b><p>白名单事件镜像与错误追踪分别走两个 Datadog 日志入口。</p><div class="lane-gate">各有额外启用条件和清洗</div></div>
+      <div class="lane amber"><span class="lane-tag">可配置</span><b>OpenTelemetry</b><p>用户或托管策略启用导出器时，日志和资源属性可到配置的 OTLP 目标。</p><div class="lane-gate">需导出器有效配置</div></div>
+    </div>
+    <div class="flow-foot">另有 WebFetch 域名预检等按功能触发的请求。地址出现在程序里，只证明存在路径；本图没有把所有路径画成已发生的流量。</div>
+  </figure>
+  <p>所以，我不建议看到 <code>ANTHROPIC_BASE_URL</code> 换成了第三方地址，就直接认定“所有数据都只去这个地址”。在 2.1.280 查到的核心遥测判断中，这个 URL 没有被直接用作关闭遥测的总开关。它对认证和最终发送还有其他影响，需要接着追；仅凭模型请求改道，还回答不了日志和使用事件的去向。</p>
+  <p>对公司内部接入来说，我会分别检查模型请求、产品遥测和自建监控，而不把一个 API 地址当成整套程序的网络配置。</p>
+
+  <h2>事件很多，里面有没有代码和提示词</h2>
+  <p>提取 JavaScript 模块后，我按字面量事件名做了统计：2,603 个调用点，覆盖 1,713 种事件名，分布在 261 个模块里。这是代码中识别出的事件种类，不能读成“一次会话会发送 1,713 条记录”；哪些分支会执行，还要看功能、配置和实际操作。动态生成的名称不在这个统计里，展开运算符带来的字段也得人工回溯。</p>
+  <p>这些事件的字段约束也不完全相同。内置 telemetry 插件的接口会拒绝自由文本字符串，只接受布尔值、有限数字和列举值。核心事件则有大量由调用者各自处理的参数。我检查过的 Bash 事件，会把命令转成类别、白名单程序名和结构特征；API 错误事件会记录受限错误类型、状态和重试次数；一些工具异常事件会对错误消息做清洗，转成哈希或堆栈特征。甚至有些叫 <code>paths</code> 的字段，装的也是计数或枚举。光看名字，很容易判断错。</p>
   <figure class="flow-figure" aria-label="核心事件与内置插件两套遥测管线">
-    <figcaption><span class="fig-no">04</span> 同一个事件接口前，有两套不同的字段约束</figcaption>
+    <figcaption><span class="fig-no">03</span> 插件接口的限制，不能替核心事件作保证</figcaption>
     <div class="dual-pipeline">
       <div class="pipe blue"><span>核心事件</span><b>各处 <code>tengu_*</code> 调用</b><i aria-hidden="true">↓</i><b>事件专属参数和清洗函数</b><i aria-hidden="true">↓</i><b>Base64 JSON 附加元数据</b><small>普通模式没有覆盖所有事件字段的全局封闭允许列表</small></div>
       <div class="pipe cyan"><span>内置 telemetry 插件</span><b><code>$.telemetry.log / mark</code></b><i aria-hidden="true">↓</i><b>拒绝自由文本字符串</b><i aria-hidden="true">↓</i><b>只收布尔、有限数字、列举值</b><small>只有内置和核心来源能调用这套接口</small></div>
@@ -385,14 +370,15 @@ otool -l "$CC" | rg -A8 'sectname __bun|segname __BUN'</code></pre><p>在提取�
     <div class="flow-down" aria-hidden="true">↓</div>
     <div class="flow-root bottom">Anthropic 事件批次接口 <small><code>/api/event_logging/v2/batch</code></small></div>
   </figure>
-  <p>这两套约束不能混用。插件主动拒绝自由文本，但核心事件还有大量由调用者逐个处理的参数。已经回溯的 Bash 事件会把命令解析成类别、白名单程序名和结构特征；API 错误事件把受限错误类型、状态和重试次数放进字段；工具异常调用清洗函数，把消息变成哈希和堆栈特征。字段名叫 <code>paths</code> 也不必然意味着传了路径，已检查的几个点实际上装的是计数或枚举。反过来，看到这几个点没有原始内容，也不能替剩下上千种事件作保证。</p>
-  <p>对那 173 条旧样本做绝对路径、邮箱、令牌形态扫描，没有发现匹配值。这个结果只说明这批文件里没有扫出这些形态，2.1.280 的核心事件仍须逐调用点检查。OpenTelemetry 还有独立开关 <code>OTEL_LOG_USER_PROMPTS</code>，默认把提示词记成 <code>&lt;REDACTED&gt;</code>，开启后会传原文。判断某类内容会不会外送，必须同时说清管线和启用条件。</p>
-  <p>Datadog 也有自己的出口。核心代码会把选定的一方事件再做一份日志，先删一组敏感字段，并规范化工具、模型和 HTTP 状态。另一个错误追踪路径把清洗后的异常消息、堆栈、版本和平台信息送到 Datadog。它有独立的开关与合规判断，还给单进程排队数量设了上限。清洗规则很长，我只把它称作尽力脱敏；任何正则表都不能保证识别用户自定义的所有秘密。安装包里也能找到 <code>sentry.io</code> 字符串，但沿 <code>logError</code> 到 <code>POST</code> 追完，2.1.280 的这条 CLI 错误上报路径实际指向 Datadog。</p>
+  <p>对那 173 条旧记录做绝对路径、邮箱和令牌形态扫描时，我没有发现匹配值。已经追到的代码，也不足以支持“默认遥测会额外发送完整提示词、源文件正文和原始 Bash 命令”这个说法。不过，我没有逐个确认上千种事件的全部字段，不能把几个清洗得比较仔细的调用点当成整套系统的保证。</p>
+  <p>Datadog 两条路径也有各自的处理。事件镜像会先删一组敏感字段，再规范化工具、模型和 HTTP 状态；错误上报会清洗异常消息和堆栈，并限制单进程的排队数量。我把这些称作尽力脱敏：清洗规则再长，也很难识别用户自定义的所有秘密。安装包里虽然有 <code>sentry.io</code> 字符串，但沿 <code>logError</code> 追到 <code>POST</code>，这版 CLI 的这条错误上报路径实际指向 Datadog。</p>
+  <p>OpenTelemetry 则允许配置内容记录。<code>OTEL_LOG_USER_PROMPTS</code> 默认关闭；开启它，并配置相应导出器后，提示词原文可以进入指定的监控接收端。补查<a href="https://code.claude.com/docs/en/monitoring-usage">当前官方文档</a>时，我还看到默认关闭的 <code>OTEL_LOG_RAW_API_BODIES</code>，可记录包含对话历史的模型 API 请求和响应 JSON。内联模式受内容长度限制，文件模式则把未截断内容写到本地文件，事件里记录文件引用；是否外发、外发多少，还要看导出配置。因此，团队排查时得看内容记录选项，不能只问“有没有开遥测”。</p>
 
-  <h2>硬件这一块，读到哪里，走到哪里</h2>
-  <p>我最在意的机器码问题，后来拆成了三问。程序能不能调用系统 API，代码里有没有这样的调用，调用结果是否进入出站载荷。macOS 用户态程序有能力读不少系统信息，所以“技术上能读”本身回答不了这台机器有没有被采集。</p>
+  <h2>机器码和时区，我查到了哪一步</h2>
+  <p>回到最初的问题。在提取出的 JavaScript 里，我没有找到常见的 MAC、机身序列号读取调用。但 OpenTelemetry 组件中确实存在通过 <code>ioreg</code> 读取 <code>IOPlatformUUID</code> 的代码。它是否进入出站数据，取决于资源检测和 OTLP 导出链是否生效；本次普通本机会话中，我没有看到已配置的 OTLP 目标。</p>
+  <p>hostname 也出现在几处不同用途里，包括监控资源检测和远程控制设备名。至于 IP，“程序主动读取本机网卡地址”和“接收端看到网络连接的来源地址”是两件事。包内还有截屏、输入和录音相关原生扩展，但我没有据此发现后台自动录制并通过默认遥测上传的证据。这些扩展没有做完机器码级审计，所以这篇也不能给整个安装包开一张“从不读取硬件信息”的证明。</p>
   <figure class="flow-figure" aria-label="本机硬件相关读取点与出站条件判定">
-    <figcaption><span class="fig-no">05</span> 对硬件线索逐项过三道门</figcaption>
+    <figcaption><span class="fig-no">04</span> 硬件线索：看到了什么，还缺什么</figcaption>
     <div class="matrix-head"><span>对象</span><span>检查到的读取点</span><span>已追到的出口或限制</span></div>
     <div class="matrix-row"><b>主板 UUID</b><span>JS 包中的 OpenTelemetry <code>getMachineId</code> 调用 <code>ioreg</code></span><span>仅在相应资源检测和 OTLP 导出链成立时才可能外送</span></div>
     <div class="matrix-row"><b>hostname</b><span>OTel hostDetector、远程控制设备名派生、本地同意记录</span><span>用途分开，不能一概写“读而不发”</span></div>
@@ -400,24 +386,21 @@ otool -l "$CC" | rg -A8 'sectname __bun|segname __BUN'</code></pre><p>在提取�
     <div class="matrix-row"><b>本机 IP</b><span>已检查的 JS 未见主动读取网卡 IP 的应用调用</span><span>远端能从连接看到的来源 IP 是另一回事</span></div>
     <div class="matrix-row"><b>屏幕 / 音频</b><span>包内有截屏、输入、录音相关原生扩展</span><span>证明存在可选功能能力，不证明后台自动录制或遥测上传</span></div>
   </figure>
-  <p><code>ioreg</code> 读取 <code>IOPlatformUUID</code> 的调用点确实存在，位于随包的 OpenTelemetry 组件中。导出配置既可能来自用户环境，也可能由托管设置注入。对普通未配置的本机会话，我们没有看到 OTLP 目标已设置；对程序能力，只能写“条件成立时可能导出”。这张图保留了一个重要的空白，原生扩展未完成机器码级审计，因此本文不能宣布整台软件“硬件零指纹”。</p>
-
-  <h2>我为什么还去查日期里的撇号</h2>
-  <p>2026 年 6 月，<a href="https://github.com/anthropics/claude-code/issues/67120">Claude Code 官方仓库的一条公开 issue</a> 展示过旧版本的异常。系统提示词里普通的日期行，会根据自定义 API 主机名换用视觉相近的撇号；某些时区还会改变日期分隔符。那是一个值得认真复验的旧机制，因为它没有走显眼的遥测字段。</p>
-  <figure class="flow-figure" aria-label="旧版本日期隐写与当前版本的复验流程">
-    <figcaption><span class="fig-no">06</span> 旧机制和 2.1.280 的检查放在同一条线上</figcaption>
+  <p>时区的检查还有一段背景。2026 年 6 月，<a href="https://github.com/anthropics/claude-code/issues/67120">Claude Code 官方仓库的一条用户报告</a>展示过旧版本的异常：系统提示词里普通的日期行，会根据自定义 API 主机名换用视觉相近的撇号；某些时区还会改变日期分隔符。这类报告可以提供检查线索，但不能当作官方对用途的确认。</p>
+  <p>这个细节值得查，因为标记藏在正常发给模型的文字里，只盯着独立遥测请求会漏掉它。我回看了 2.1.280 的日期行构造，看到的是普通 ASCII 撇号和 <code>YYYY-MM-DD</code>，没有找到旧报告中的字符选择逻辑。这个结果针对本次 macOS 安装包，不能拿旧版本的发现直接替它下结论，也不能证明以后不会有新的实现。</p>
+  <figure class="flow-figure" aria-label="旧版本日期行异常与当前版本的检查结果">
+    <figcaption><span class="fig-no">05</span> 旧版报告和这次安装包，分开看</figcaption>
     <div class="stego-grid">
-      <div class="stego old"><span>旧版本的公开复现</span><b>API 主机名 + 系统时区</b><div class="flow-down" aria-hidden="true">↓</div><b>选撇号码点与日期分隔符</b><div class="glyphs"><code>'</code><code>’</code><code>ʼ</code><code>ʹ</code><code>2026/06/30</code></div><small>编码进入系统提示词的日期行</small></div>
+      <div class="stego old"><span>旧版本的公开复现</span><b>API 主机名 + 系统时区</b><div class="flow-down" aria-hidden="true">↓</div><b>选撇号码点与日期分隔符</b><div class="glyphs"><code>'</code><code>’</code><code>ʼ</code><code>ʹ</code><code>YYYY/MM/DD</code></div><small>变化出现在系统提示词的日期行</small></div>
       <div class="stego current"><span>这次检查的 2.1.280</span><b>提取模块后搜索旧标志</b><div class="flow-down" aria-hidden="true">↓</div><b>回看日期行构造代码</b><div class="glyphs"><code>Today's date is</code><code>YYYY-MM-DD</code></div><small>未找到旧的时区比较和撇号选择链</small></div>
     </div>
   </figure>
-  <p>最初的整段二进制扫描，<code>Asia/Shanghai</code> 和 <code>Asia/Urumqi</code> 是零命中。再把真正的 JS 模块提出来看，当前日期行保留普通 ASCII 撇号和短横线，没找到旧的字符选择调用链。这个结果与旧机制已经不在 2.1.280 的判断相符。它只覆盖本次检查的安装包，不能用“搜不到两个字符串”证明以后任何版本都不会用别的方式做环境分类。</p>
-  <p>现在的代码仍会读时区给终端时间显示或设置界面用，语言信息也会影响语音听写默认语言。日历日期可能出现在发给模型的系统上下文中。把这几件日常功能与旧版隐写并排看，区别就清楚了，读取本地时区、把完整时区上传、用时区改写日期标记，是三种不同的行为。</p>
 
-  <h2>700 个远程标志说明了什么</h2>
-  <p>聊天记录里我们后来又追了一条线。写作当天，本机缓存里有 700 个 GrowthBook 远程功能标志。数量是那天的缓存快照，不是这个版本永远固定的配置表。它们能改变一些功能参数、提示词开关和最低版本条件。远程控制的 deviceBridge 还有一段很直白的代码，标志刷新后门关了，它就打印 <code>stopping: the gate turned off</code> 并停掉服务。</p>
-  <figure class="flow-figure" aria-label="GrowthBook 远程标志控制本地功能的流程图">
-    <figcaption><span class="fig-no">07</span> 服务端标志影响功能，隐私总闸仍要单独判断</figcaption>
+  <h2>查完以后，该怎么处理</h2>
+  <p>这次检查让我觉得，判断隐私风险时，应该先把问题问具体：哪些数据会被记录，能否关联到同一安装或账户，什么条件下发送，发往哪里。把所有东西都叫作“匿名遥测”，或者反过来都叫作“偷数据”，都会漏掉决定结论的细节。</p>
+  <p>版本号以外，配置也值得留下记录。检查当天，本机缓存中有 700 个 GrowthBook 远程功能标志；其中一条远程控制路径，会在相应标志关闭后停止服务。这说明本地功能状态可以随远端配置变化。但这份缓存并没有证明服务端能够绕过本地遥测禁用开关，700 个标志的含义也没有逐项审完。</p>
+  <figure class="flow-figure" aria-label="远程功能标志与本地遥测禁用条件的区别">
+    <figcaption><span class="fig-no">06</span> 远程控制功能的开关，与遥测禁用条件分开检查</figcaption>
     <div class="flow-track control-track">
       <div class="flow-node violet"><b>远端标志</b><small>GrowthBook 刷新</small></div><span class="flow-arrow" aria-hidden="true">→</span>
       <div class="flow-node blue"><b>本地求值</b><small><code>tengu_ccr_bridge</code></small></div><span class="flow-arrow" aria-hidden="true">→</span>
@@ -426,18 +409,49 @@ otool -l "$CC" | rg -A8 'sectname __bun|segname __BUN'</code></pre><p>在提取�
     <div class="flow-divider">进程环境中的遥测禁用开关在另一条检查链上</div>
     <div class="flow-track control-track lower">
       <div class="flow-node amber"><b>本地环境变量</b><small><code>DISABLE_TELEMETRY</code> 等</small></div><span class="flow-arrow" aria-hidden="true">→</span>
-      <div class="flow-node muted-node"><b>遥测门控</b><small>需按发送路径逐条检查</small></div>
+      <div class="flow-node muted-node"><b>遥测启用条件</b><small>需按发送路径逐条检查</small></div>
     </div>
   </figure>
-  <p>远程标志能让本地功能改变状态，这一点有代码证据。它不能直接证明服务端能修改已经启动进程的环境变量，也不能保证所有远程标志都与遥测无关。已追到的一方事件门控会检查本地禁用条件；那 700 个标志的语义没有逐一审完。</p>
+  <p>下面这部分依据的是截至 2026 年 9 月 24 日的<a href="https://code.claude.com/docs/en/data-usage">官方数据使用文档</a>，供实际配置时参考。要在终端中新启动一个关闭非必要流量的会话，可以这样运行：</p>
+  <pre><code>CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 claude</code></pre>
+  <p>需要分别控制时，使用指标和错误报告各有 <code>DISABLE_TELEMETRY=1</code>、<code>DISABLE_ERROR_REPORTING=1</code>。关闭遥测或非必要流量还会影响 Remote Control 依赖的功能标志求值，使用远程控制的人要留意这个影响。</p>
+  <p>不过，这条命令不等于断网。官方文档特别注明，WebFetch 的域名安全检查有独立开关 <code>skipWebFetchPreflight</code>，不会随上述总开关关闭；关闭它也意味着放弃这层域名安全检查。当前文档还列出官方插件市场自动安装的独立退出开关，因此不要把“非必要流量”理解为全部出站请求。</p>
+  <p>有团队监控的环境，还应核对 <a href="https://code.claude.com/docs/en/monitoring-usage">OpenTelemetry 的接收地址和托管设置</a>。自己没有配置，不等于组织没有配置。要求严格控制出站连接的团队，我建议再用网关或防火墙验证允许的目的地，并结合受控测试确认实际请求。<a href="https://code.claude.com/docs/en/network-config">官方网络文档列出的连接用途</a>可以用作检查起点，但不能拿一张域名表替代对实际环境的验证。</p>
+  <p>最后一个提醒比任何参数都简单：排查的时候，别把完整的 <code>~/.claude.json</code>、遥测队列或抓包文件贴到公开平台。这些材料本身就可能包含需要保护的标识符和凭据。</p>
+  <p>我最初想找的是一个机器码，最后更在意的是那些能被长期连起来的使用记录。对我来说，了解它们如何生成、在哪里关闭、关闭后还有什么请求，比得到一个笼统的“安全”或“不安全”更有用。</p>
 
-  <h2>现在我会怎样给这次调查下结论</h2>
-  <p>2.1.280 的 JS 里有不少环境与行为信号，远比“只收一个匿名设备号”详细。稳定设备 ID、账户 UUID、会话 ID、Git 提交 SHA 和操作事件可以互相拼接。Datadog 与 Anthropic 事件接口也是独立出口。与此同时，已追到的代码没有支持“默认遥测偷偷发送完整提示词、源文件正文、原始 Bash 命令、屏幕或音频”这个判断。可选 OTEL 内容开关和屏幕音频功能各有自己的启动条件，需要按实际配置与运行行为再看。</p>
-  <p>最有用的复核动作很朴素。先固定要审计的版本与哈希，再看本地环境和托管设置，接着沿事件构造走到发送函数。如果要回答“这台机器那晚究竟发了什么”，还得拿到对应时段的网络证据；旧失败队列只能补一部分。读者自己检查配置时，别把 <code>~/.claude.json</code>、遥测队列或抓包里的凭据和标识符整份贴到网上。</p>
-  <p class="note">本文复核了提取出的 JS、旧版失败队列和原始调研记录。没有真实 TLS 明文抓包，也没有逐项反编译 Bun 运行时与三个原生扩展。代码里有发送路径、本地缓存过事件、远端实际收到并保存，是三个不同的结论。</p>
+  <details class="source-note">
+    <summary>检查范围、安装包哈希与复核方法</summary>
+    <p>本次静态检查对象是 macOS arm64 版 Claude Code 2.1.280，安装文件 SHA-256 为 <code>387a5c5dcdbb815085edf0baf79591f9d8894efe922bceaf3d75b1b08055229d</code>。本机观察发生在 2026 年 9 月，升级版本后要重新检查。</p>
+    <p>起初我用字节搜索找 <code>IOPlatformUUID</code>、<code>networkInterfaces</code> 和时区字符串。这能定位疑点，却不适合给出“全部代码都没有”的结论：代码可能有不同写法，也可能被编译到了别处。后来直接解析了 Bun 单文件程序里的模块图，再从提取出的 JS 模块追调用链。</p>
+    <figure class="flow-figure" aria-label="从安装包到结论的证据流程">
+      <figcaption><span class="fig-no">07</span> 这次审计实际走过的证据路径</figcaption>
+      <div class="flow-track five">
+        <div class="flow-node violet"><b>签名安装包</b><small>Mach-O · 217 MB<br>固定版本和 SHA-256</small></div>
+        <span class="flow-arrow" aria-hidden="true">→</span>
+        <div class="flow-node blue"><b>Bun 模块图</b><small>2,213 条记录<br>1,991 个 JS 模块</small></div>
+        <span class="flow-arrow" aria-hidden="true">→</span>
+        <div class="flow-node cyan"><b>调用点回溯</b><small>事件生成、清洗<br>启用条件、序列化、POST</small></div>
+      </div>
+      <div class="flow-track follow">
+        <div class="flow-node amber"><b>本机旧队列</b><small>173 条失败事件<br>证明构造与缓存</small></div>
+        <span class="flow-arrow" aria-hidden="true">→</span>
+        <div class="flow-node muted-node"><b>服务端是否收到</b><small>本次没有真实 TLS 明文抓包<br>不能从前四步直接推出</small></div>
+      </div>
+    </figure>
+    <p>模块图里有 37,884,508 字节可读的 JS 源文本，附着 82,505,096 字节字节码。提取出的 1,991 个 JavaScript 模块全部通过语法解析。文件名多是 <code>chunk-xxxxxxxx.js</code>，函数名也经过压缩，没有随包源码映射，但事件名、上报地址、字段名和关键分支仍能读出来。<a href="https://bun.com/docs/bundler/executables">Bun 官方文档</a>也说明，启用字节码编译不会因此隐藏源码。</p>
+    <p>先确认拿到的是同一份安装包。按固定位置截取二进制做粗搜，会把非源码字节混进结果。先查签名、哈希和 Bun 段，再按模块图提取 JS；偏移量只对这一个安装包成立。</p>
+    <pre><code>CC="$HOME/.local/share/claude/versions/2.1.280"
+shasum -a 256 "$CC"
+codesign -dv --verbose=2 "$CC"
+otool -l "$CC" | rg -A8 'sectname __bun|segname __BUN'</code></pre>
+    <p>在提取出的模块中，<code>chunk-m200zvyg.js</code> 有核心事件序列化和 Datadog 镜像，<code>chunk-h8651pre.js</code> 有内置 telemetry 插件，<code>chunk-s8swgzep.js</code> 有错误上报条件。模块名会随版本变化，所以先核安装包哈希，再核调用链。</p>
+    <p>本文没有对应会话的 TLS 明文抓包，没有逐指令审计 Bun 运行时及三个原生扩展，也没有服务端接收和保存记录。文中的本地队列、代码路径和官方配置说明分别回答不同的问题，不应混用。</p>
+  </details>
 
   <footer>
-    <p>资料与复核入口 <a href="https://github.com/anthropics/claude-code/issues/67120">旧版日期行异常的原始 issue</a>、<a href="https://bun.com/docs/bundler/executables">Bun 单文件程序文档</a>、<a href="https://code.claude.com/docs/en/data-usage">Claude Code 数据使用说明</a>。本文的安装包、旧队列和聊天记录来自作者本机，只公开统计、代码路径和脱敏后的结论。</p>
+    <p>资料与复核入口：<a href="https://github.com/majiayu000/blog/blob/3f5913e479a227eaf1532e6db170f177ecb46f32/src/posts/claude-code-telemetry-audit/index.html">改写前的审计稿（固定仓库版本）</a>、<a href="https://github.com/anthropics/claude-code/issues/67120">旧版日期行异常的原始 issue</a>、<a href="https://bun.com/docs/bundler/executables">Bun 单文件程序文档</a>、<a href="https://code.claude.com/docs/en/data-usage">Claude Code 数据使用说明</a>、<a href="https://code.claude.com/docs/en/network-config">网络配置</a>、<a href="https://code.claude.com/docs/en/monitoring-usage">OpenTelemetry 监控配置</a>。官方文档核对日期：2026 年 9 月 24 日。</p>
+    <p>这次修订重组了文章叙述，并补充官方配置说明，没有重新执行本机审计。安装包、旧队列和原始调研记录来自作者本机，只公开统计、代码路径和脱敏后的结论。</p>
     <p>同系列 <a href="/posts/claude-code-agent-internals/">Claude Code 多 agent 架构逆向</a>、<a href="/posts/cline-desktop-telemetry/">Cline 桌面版遥测检查</a>。审计对象为 2.1.280，写于 2026 年 9 月。<a href="/">回到首页</a></p>
   </footer>
 </main>
