@@ -338,13 +338,13 @@
     </div>
   </figure>
   <p>模块图里有 37,884,508 字节可读的 JS 源文本，还附着 82,505,096 字节字节码。代码确实难看，文件名多是 <code>chunk-xxxxxxxx.js</code>，绝大多数函数名短到一两个字符，也没有随包源码映射。但事件名、上报地址、字段名和关键分支仍能在源文本里读出来。<a href="https://bun.com/docs/bundler/executables">Bun 自己也说明</a>，字节码不会因此遮住源码。这种打包和压缩妨碍阅读，却不足以证明整套采集逻辑被深度加密。三个随包的原生扩展没有逐指令反编译，我把它们留在结论的边界里。</p>
-  <details class="source-note"><summary>想自己复核这一版，可以从这里开始</summary><p>先确认拿到的是同一份安装包。旧稿用固定位置截取一大段二进制，适合粗搜，却会把非源码字节混进去。下面先查签名、哈希和 Bun 段，再按模块图提取 JS；偏移量只对这一个安装包成立。</p><pre><code>CC="$HOME/.local/share/claude/versions/2.1.280"
+  <details class="source-note"><summary>想自己复核这一版，可以从这里开始</summary><p>先确认拿到的是同一份安装包。按固定位置截取二进制做粗搜，会把非源码字节混进结果。先查签名、哈希和 Bun 段，再按模块图提取 JS；偏移量只对这一个安装包成立。</p><pre><code>CC="$HOME/.local/share/claude/versions/2.1.280"
 shasum -a 256 "$CC"
 codesign -dv --verbose=2 "$CC"
 otool -l "$CC" | rg -A8 'sectname __bun|segname __BUN'</code></pre><p>在提取出的模块中，<code>chunk-m200zvyg.js</code> 有核心事件序列化和 Datadog 镜像，<code>chunk-h8651pre.js</code> 有内置 telemetry 插件，<code>chunk-s8swgzep.js</code> 有错误上报门控。模块名会随版本变化，所以先核安装包哈希，再核调用链。</p></details>
 
   <h2>一段 Claude Code 会话，有几条不同的出站路</h2>
-  <p>旧稿把出站流量压成 A、B、C、D 四格，看起来简洁，恰好把两个重要出口藏掉了。现在沿代码拆开，模型请求、Anthropic 一方事件、Datadog 日志、用户配置的 OpenTelemetry 和 WebFetch 域名预检，各自有不同的触发条件。模型请求当然会带走完成任务所需的对话和工具结果；下图关心的是另外几条路，不再用模型请求代替遥测结论。</p>
+  <p>Claude Code 一次会话可能通过多条路径与外部通信。模型请求携带完成任务所需的对话和工具结果；Anthropic 一方事件、Datadog 日志、按配置启用的 OpenTelemetry，以及 WebFetch 的域名预检，各有自己的触发条件。要判断程序额外记录了什么、发往哪里，得沿每条路径分别看字段、门控和发送代码。</p>
   <figure class="flow-figure" aria-label="Claude Code 各种出站路径与门控流程图">
     <figcaption><span class="fig-no">02</span> 本地数据从哪里进入哪条路径</figcaption>
     <div class="flow-root">Claude Code 2.1.280 <small>一次会话内可能出现的代码路径</small></div>
@@ -357,7 +357,7 @@ otool -l "$CC" | rg -A8 'sectname __bun|segname __BUN'</code></pre><p>在提取�
     </div>
     <div class="flow-foot">另有 WebFetch 域名预检等按功能触发的请求。地址出现在程序里，只证明存在路径；本图没有把所有路径画成已发生的流量。</div>
   </figure>
-  <p>我在旧稿里写过“只要把 <code>ANTHROPIC_BASE_URL</code> 指向第三方，一方遥测就自动停”。这句话说得过满。2.1.280 的核心遥测门控检查提供商模式、网关、自定义 OAuth 和本地禁用开关，<strong>没有直接拿这个 URL 当总闸</strong>。一个自定义 URL 会怎样影响凭据和最终发送，还得继续走完调用链；仅凭改了模型地址，不能替另一条遥测路径下结论。</p>
+  <p>把 <code>ANTHROPIC_BASE_URL</code> 指向第三方，不能据此认定一方遥测会自动停止。2.1.280 的核心遥测门控检查提供商模式、网关、自定义 OAuth 和本地禁用开关，<strong>没有直接拿这个 URL 当总闸</strong>。自定义地址如何影响凭据和最终发送，还得继续追调用链；模型请求改了目的地，不能替另一条遥测路径下结论。</p>
 
   <h2>随机设备 ID 没有硬件来源，依然能把事件串起来</h2>
   <p>在用户配置里，<code>userID</code> 是一个持久标识。我们追到的生成路径用密码学随机数，没有把 MAC、序列号或主板 UUID 混进去。配置里另一个名字更吓人的 <code>machineID</code>，在这条生成路径里同样来自随机字节；Datadog 错误记录会取它的前 12 个字符。<code>userID</code> 进入一方事件时叫 <code>device_id</code>，模型 API 的 <code>metadata.user_id</code> 也包含设备和会话层标识。随机生成只说明生成方式；它被保存并重复使用以后，仍然能关联同一安装的多次活动。账号登录后出现的账户 UUID、组织 UUID，则是另一层身份。</p>
@@ -386,8 +386,8 @@ otool -l "$CC" | rg -A8 'sectname __bun|segname __BUN'</code></pre><p>在提取�
     <div class="flow-root bottom">Anthropic 事件批次接口 <small><code>/api/event_logging/v2/batch</code></small></div>
   </figure>
   <p>这两套约束不能混用。插件主动拒绝自由文本，但核心事件还有大量由调用者逐个处理的参数。已经回溯的 Bash 事件会把命令解析成类别、白名单程序名和结构特征；API 错误事件把受限错误类型、状态和重试次数放进字段；工具异常调用清洗函数，把消息变成哈希和堆栈特征。字段名叫 <code>paths</code> 也不必然意味着传了路径，已检查的几个点实际上装的是计数或枚举。反过来，看到这几个点没有原始内容，也不能替剩下上千种事件作保证。</p>
-  <p>旧稿说失败队列里“有文件路径”，又说整个遥测“没有 prompt 原文、文件内容和命令原文”，两头都走得太远。对那 173 条旧样本做过绝对路径、邮箱、令牌形态扫描，没有发现匹配值；2.1.280 的核心事件代码则需要逐调用点检查，不能让一批旧样本代表所有版本。OpenTelemetry 还有一个独立开关 <code>OTEL_LOG_USER_PROMPTS</code>，默认把提示词记成 <code>&lt;REDACTED&gt;</code>，开启后会传原文。写“没有”之前，必须先说清是哪条管线、什么条件。</p>
-  <p>Datadog 也在这一步浮出来。核心代码会把选定的一方事件再做一份日志，先删一组敏感字段，并规范化工具、模型和 HTTP 状态。另一个错误追踪路径把清洗后的异常消息、堆栈、版本和平台信息送到 Datadog。它有独立的开关与合规判断，还给单进程排队数量设了上限。清洗规则很长，我只把它称作尽力脱敏；任何正则表都不能保证识别用户自定义的所有秘密。旧稿看到 <code>sentry.io</code> 字符串，就把 CLI 错误上报归给 Sentry。沿 <code>logError</code> 到 <code>POST</code> 追完，2.1.280 这里实际是 Datadog。</p>
+  <p>对那 173 条旧样本做绝对路径、邮箱、令牌形态扫描，没有发现匹配值。这个结果只说明这批文件里没有扫出这些形态，2.1.280 的核心事件仍须逐调用点检查。OpenTelemetry 还有独立开关 <code>OTEL_LOG_USER_PROMPTS</code>，默认把提示词记成 <code>&lt;REDACTED&gt;</code>，开启后会传原文。判断某类内容会不会外送，必须同时说清管线和启用条件。</p>
+  <p>Datadog 也有自己的出口。核心代码会把选定的一方事件再做一份日志，先删一组敏感字段，并规范化工具、模型和 HTTP 状态。另一个错误追踪路径把清洗后的异常消息、堆栈、版本和平台信息送到 Datadog。它有独立的开关与合规判断，还给单进程排队数量设了上限。清洗规则很长，我只把它称作尽力脱敏；任何正则表都不能保证识别用户自定义的所有秘密。安装包里也能找到 <code>sentry.io</code> 字符串，但沿 <code>logError</code> 到 <code>POST</code> 追完，2.1.280 的这条 CLI 错误上报路径实际指向 Datadog。</p>
 
   <h2>硬件这一块，读到哪里，走到哪里</h2>
   <p>我最在意的机器码问题，后来拆成了三问。程序能不能调用系统 API，代码里有没有这样的调用，调用结果是否进入出站载荷。macOS 用户态程序有能力读不少系统信息，所以“技术上能读”本身回答不了这台机器有没有被采集。</p>
@@ -400,7 +400,7 @@ otool -l "$CC" | rg -A8 'sectname __bun|segname __BUN'</code></pre><p>在提取�
     <div class="matrix-row"><b>本机 IP</b><span>已检查的 JS 未见主动读取网卡 IP 的应用调用</span><span>远端能从连接看到的来源 IP 是另一回事</span></div>
     <div class="matrix-row"><b>屏幕 / 音频</b><span>包内有截屏、输入、录音相关原生扩展</span><span>证明存在可选功能能力，不证明后台自动录制或遥测上传</span></div>
   </figure>
-  <p><code>ioreg</code> 读取 <code>IOPlatformUUID</code> 的调用点确实存在，藏在随包的 OpenTelemetry 组件里。旧稿把它写成“只需自己手动设两个环境变量才会激活”也不够严谨，因为程序还有托管设置注入遥测配置的路径。对普通未配置的本机会话，我们没有看到 OTLP 目标已设置；对程序能力，只能写“条件成立时可能导出”。这张图保留了一个重要的空白，原生扩展未完成机器码级审计，因此本文不能宣布整台软件“硬件零指纹”。</p>
+  <p><code>ioreg</code> 读取 <code>IOPlatformUUID</code> 的调用点确实存在，位于随包的 OpenTelemetry 组件中。导出配置既可能来自用户环境，也可能由托管设置注入。对普通未配置的本机会话，我们没有看到 OTLP 目标已设置；对程序能力，只能写“条件成立时可能导出”。这张图保留了一个重要的空白，原生扩展未完成机器码级审计，因此本文不能宣布整台软件“硬件零指纹”。</p>
 
   <h2>我为什么还去查日期里的撇号</h2>
   <p>2026 年 6 月，<a href="https://github.com/anthropics/claude-code/issues/67120">Claude Code 官方仓库的一条公开 issue</a> 展示过旧版本的异常。系统提示词里普通的日期行，会根据自定义 API 主机名换用视觉相近的撇号；某些时区还会改变日期分隔符。那是一个值得认真复验的旧机制，因为它没有走显眼的遥测字段。</p>
@@ -429,7 +429,7 @@ otool -l "$CC" | rg -A8 'sectname __bun|segname __BUN'</code></pre><p>在提取�
       <div class="flow-node muted-node"><b>遥测门控</b><small>需按发送路径逐条检查</small></div>
     </div>
   </figure>
-  <p>远程标志能让本地功能改变状态，这一点有代码证据。它不能直接推出“服务端能修改已经启动进程的环境变量”，也不能替我们保证所有未来标志都无关遥测。旧稿说“服务端改不了、当前版本也绕不过”，前半句指 OS 环境变量本身，后半句范围却太大。现在的说法更窄，已追到的一方事件门控检查本地禁用条件；700 个标志的所有语义没有逐一审完。</p>
+  <p>远程标志能让本地功能改变状态，这一点有代码证据。它不能直接证明服务端能修改已经启动进程的环境变量，也不能保证所有远程标志都与遥测无关。已追到的一方事件门控会检查本地禁用条件；那 700 个标志的语义没有逐一审完。</p>
 
   <h2>现在我会怎样给这次调查下结论</h2>
   <p>2.1.280 的 JS 里有不少环境与行为信号，远比“只收一个匿名设备号”详细。稳定设备 ID、账户 UUID、会话 ID、Git 提交 SHA 和操作事件可以互相拼接。Datadog 与 Anthropic 事件接口也是独立出口。与此同时，已追到的代码没有支持“默认遥测偷偷发送完整提示词、源文件正文、原始 Bash 命令、屏幕或音频”这个判断。可选 OTEL 内容开关和屏幕音频功能各有自己的启动条件，需要按实际配置与运行行为再看。</p>
