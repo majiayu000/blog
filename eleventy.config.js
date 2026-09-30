@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { enhanceBuiltPosts } from "./lib/enhance-posts.js";
 import { generateOgImages } from "./lib/og-images.js";
@@ -14,15 +15,27 @@ export default function (eleventyConfig) {
 
   // 正式构建和 dev server 每次重建都走同一个增强步骤，避免本地预览与线上产物分叉。
   eleventyConfig.on("eleventy.after", () => {
-    const posts = readPosts(path.join(import.meta.dirname, "src", "posts"));
+    const postsDir = path.join(import.meta.dirname, "src", "posts");
+    const outputDir = path.join(import.meta.dirname, "_site");
+    const posts = readPosts(postsDir);
+    const publishedSlugs = new Set(posts.map((post) => post.slug));
+    // readPosts 已校验所有非隐藏文章目录；未入公开列表的目录就是草稿。
+    // passthrough 会复制附件，必须在 Pagefind 运行前移除整个草稿目录。
+    if (fs.existsSync(postsDir)) {
+      for (const entry of fs.readdirSync(postsDir, { withFileTypes: true })) {
+        if (entry.isDirectory() && !entry.name.startsWith(".") && !publishedSlugs.has(entry.name.toLowerCase())) {
+          fs.rmSync(path.join(outputDir, "posts", entry.name), { recursive: true, force: true });
+        }
+      }
+    }
     enhanceBuiltPosts({
       posts,
-      outputDir: path.join(import.meta.dirname, "_site"),
+      outputDir,
       site,
     });
     generateOgImages({
       posts,
-      outputDir: path.join(import.meta.dirname, "_site"),
+      outputDir,
       site,
     });
   });
