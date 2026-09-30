@@ -20,11 +20,12 @@ export default function (eleventyConfig) {
     const posts = readPosts(postsDir);
     const publishedSlugs = new Set(posts.map((post) => post.slug));
     // readPosts 已校验所有非隐藏文章目录；未入公开列表的目录就是草稿。
-    // passthrough 会复制附件，必须在 Pagefind 运行前移除整个草稿目录。
+    // passthrough 会复制附件，必须在 Pagefind 运行前移除草稿目录及旧分享图。
     if (fs.existsSync(postsDir)) {
       for (const entry of fs.readdirSync(postsDir, { withFileTypes: true })) {
         if (entry.isDirectory() && !entry.name.startsWith(".") && !publishedSlugs.has(entry.name.toLowerCase())) {
           fs.rmSync(path.join(outputDir, "posts", entry.name), { recursive: true, force: true });
+          fs.rmSync(path.join(outputDir, "og", `${entry.name.toLowerCase()}.png`), { force: true });
         }
       }
     }
