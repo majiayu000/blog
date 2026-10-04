@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Multi-Harness RL 教程：在 Claude Code、Codex、OpenCode 里同时训练一个小模型</title>
+<meta name="date" content="2026-10-05">
+<meta name="description" content="整理 Hugging Face《The Ultimate Guide to Multi-Harness RL》：用捕获代理让未改动的 harness 产出 RL 训练数据，LFM2.5-2.6B 的 pass@1 从 42.2% 到 54.2%。附架构图、复现步骤和作者踩过的坑。">
+<meta name="tags" content="RL, Agent, Harness, 训练管线, TRL">
+<style>
+  :root { --fg:#1a1a2e; --muted:#666; --accent:#0e7490; --border:#e2e2e8; --bg:#fafafa; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif; color:var(--fg);
+         max-width:860px; margin:0 auto; padding:32px 20px 80px; line-height:1.75; background:var(--bg); }
+  h1 { font-size:1.6em; line-height:1.4; border-bottom:2px solid var(--accent); padding-bottom:12px; }
+  h2 { font-size:1.3em; margin-top:2em; border-left:4px solid var(--accent); padding-left:10px; }
+  table { border-collapse:collapse; width:100%; margin:16px 0; font-size:0.92em; background:#fff; }
+  th, td { border:1px solid var(--border); padding:8px 10px; text-align:left; }
+  th { background:#f0f4f5; }
+  code { background:#eef0f2; padding:2px 6px; border-radius:4px; font-size:0.9em; }
+  pre { background:#16213e; color:#e6e6e6; padding:16px; border-radius:8px; overflow-x:auto; line-height:1.55; }
+  pre code { background:none; padding:0; }
+  blockquote { border-left:3px solid var(--accent); margin:16px 0; padding:4px 16px;
+               color:var(--muted); background:#fff; }
+  strong { color:#b45309; }
+  figure { margin:20px 0; }
+  figure svg { width:100%; height:auto; background:#fff; border:1px solid var(--border); border-radius:8px; }
+  figcaption { font-size:0.88em; color:var(--muted); margin-top:6px; }
+  /* blog 平台要求：文章自带返回链接 */
+  .back { display:inline-block; font-size:13.5px; color:var(--accent); border:1px solid var(--border);
+          border-radius:6px; padding:3px 12px; background:#fff; margin-bottom:28px; text-decoration:none; }
+  .back:hover { border-color:var(--accent); }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  /* 功能性的表格横向滚动容器（防手机端宽表破版） */
+  .tw { overflow-x:auto; margin:16px 0; }
+  .tw table { margin:0; min-width:560px; }
+</style>
+</head>
+<body>
+<a class="back" href="/">← 博客首页</a>
+
+<h1>Multi-Harness RL 教程：在 Claude Code、Codex、OpenCode 里同时训练一个小模型</h1>
+
+<p>这篇整理 Hugging Face 与 Liquid AI 在 2026-10-01 发布的 <a href="https://huggingface.co/spaces/FineEnvs/multi-harness-rl">《The Ultimate Guide to Multi-Harness RL》</a>。原文的结论是：把一个 2.6B 的小模型放进 4 个不同的 agent harness 里一起做强化学习，测试集 pass@1 从 42.2% 升到 54.2%，而且 4 个 harness 上都没有退步。下文的数字、命令和代码都来自原文，我没有重新跑这组实验；命令以原文发布时的版本为准，动手前请对照仓库最新代码。</p>
+
+<h2>1 · 为什么要在多个 harness 里训练</h2>
+
+<p>Harness 指模型和任务之间那层软件：它拼出模型看到的上下文，定义工具的名字和参数格式，校验输出，并决定什么时候重试、什么时候停。Claude Code、Codex、OpenCode、Mini-SWE-Agent 都属于这一类。原文举的例子是 GLM-5.2 在 SWE-bench Pro 上，换一个 harness，分数就从 23% 变成 52%，模型权重完全相同。</p>
+
+<p>如果只在一个 harness 里做 RL，模型会顺带学到这个 harness 特有的工具格式和控制流程，换到别的 harness 时提升就不均匀，甚至变差。Multi-harness RL 的做法很直接：训练时让同一个模型轮流在多个 harness 里做题、拿奖励，让它学到的行为不依赖某一个外壳。</p>
+
+<h2>2 · 系统架构：harness 不改，代理在模型 API 层截数据</h2>
+
+<p>RL 需要的不只是对话文本，还要有模型实际采样出的 token ID 和每个 token 的 logprob。各家 harness 不会把这些交出来，原文的办法是在 harness 和推理服务之间放一个捕获代理。代理对 harness 来说就是一个普通的模型 API，兼容 OpenAI Chat Completions、OpenAI Responses、Anthropic Messages 和 Gemini 四种格式；它把请求转给 vLLM，同时记下 token 和 logprob。这样任何 harness 都不需要改代码就能接入训练。</p>
+
+<figure>
+<svg viewBox="0 0 760 340" role="img" aria-label="捕获代理让未改动的 harness 产出 RL 训练数据" font-family="-apple-system,'PingFang SC','Noto Sans SC',sans-serif" font-size="13">
+  <defs><marker id="mh-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8a8f98"/></marker></defs>
+  <text x="24" y="34" font-size="15" font-weight="600" fill="#1a1a2e">捕获代理让未改动的 harness 产出 RL 训练数据</text>
+  <g fill="none" stroke="#8a8f98" stroke-width="1.25">
+    <path d="M214 108H285" marker-end="url(#mh-arrow)"/>
+    <path d="M285 132H214" marker-end="url(#mh-arrow)"/>
+    <path d="M475 108H546" marker-end="url(#mh-arrow)"/>
+    <path d="M546 132H475" marker-end="url(#mh-arrow)"/>
+    <path d="M119 164V244" marker-end="url(#mh-arrow)"/>
+    <path d="M380 164V244" marker-end="url(#mh-arrow)"/>
+    <path d="M214 280H285" marker-end="url(#mh-arrow)"/>
+    <path d="M475 280H641V164" marker-end="url(#mh-arrow)"/>
+  </g>
+  <g text-anchor="middle">
+    <rect x="24" y="76" width="190" height="88" rx="8" fill="none" stroke="#8a8f98" stroke-width="1.25"/>
+    <text x="119" y="100" font-weight="600" fill="#1a1a2e">Agent Harness × 4</text>
+    <text x="119" y="120" font-size="11.5" fill="#666">Claude Code · Codex</text>
+    <text x="119" y="136" font-size="11.5" fill="#666">OpenCode · Mini-SWE-Agent</text>
+    <text x="119" y="152" font-size="11.5" fill="#666">在沙箱中运行，代码不改</text>
+
+    <rect x="285" y="76" width="190" height="88" rx="8" fill="#0e7490" fill-opacity="0.1" stroke="#0e7490" stroke-width="2"/>
+    <text x="380" y="100" font-weight="600" fill="#1a1a2e">捕获代理</text>
+    <text x="380" y="120" font-size="11.5" fill="#1a1a2e">兼容 OpenAI / Anthropic / Gemini</text>
+    <text x="380" y="136" font-size="11.5" fill="#1a1a2e">记录 token ID</text>
+    <text x="380" y="152" font-size="11.5" fill="#1a1a2e">与逐 token logprob</text>
+
+    <rect x="546" y="76" width="190" height="88" rx="8" fill="none" stroke="#8a8f98" stroke-width="1.25"/>
+    <text x="641" y="100" font-weight="600" fill="#1a1a2e">vLLM 推理服务</text>
+    <text x="641" y="120" font-size="11.5" fill="#666">H100 · GPU 1</text>
+    <text x="641" y="136" font-size="11.5" fill="#666">采样生成回复</text>
+
+    <rect x="24" y="244" width="190" height="72" rx="8" fill="none" stroke="#8a8f98" stroke-width="1.25"/>
+    <text x="119" y="268" font-weight="600" fill="#1a1a2e">任务评分器</text>
+    <text x="119" y="288" font-size="11.5" fill="#666">答对 1.0，答错 0</text>
+    <text x="119" y="304" font-size="11.5" fill="#666">少用工具加分 ≤ 0.1</text>
+
+    <rect x="285" y="244" width="190" height="72" rx="8" fill="none" stroke="#8a8f98" stroke-width="1.25"/>
+    <text x="380" y="268" font-weight="600" fill="#1a1a2e">TRL 异步 GRPO</text>
+    <text x="380" y="288" font-size="11.5" fill="#666">H100 · GPU 0</text>
+    <text x="380" y="304" font-size="11.5" fill="#666">8 条一组，组内比较</text>
+
+    <text x="249.5" y="100" font-size="11.5" fill="#666">请求</text>
+    <text x="249.5" y="150" font-size="11.5" fill="#666">回复</text>
+    <text x="510.5" y="100" font-size="11.5" fill="#666">转发</text>
+    <text x="510.5" y="150" font-size="11.5" fill="#666">采样结果</text>
+    <text x="249.5" y="272" font-size="11.5" fill="#666">奖励</text>
+    <text x="558" y="272" font-size="11.5" fill="#666">同步新权重</text>
+  </g>
+  <text x="127" y="208" font-size="11.5" fill="#666">跑完后评分</text>
+  <text x="388" y="208" font-size="11.5" fill="#666">token + logprob</text>
+</svg>
+<figcaption>图 1　训练数据流。根据原文描述重绘，GPU 分配按原文的 2 × H100 配置。</figcaption>
+</figure>
+
+<p>三个开源组件各管一段：<a href="https://github.com/huggingface/OpenEnv">OpenEnv</a> 提供环境接口和捕获代理；<a href="https://github.com/harbor-framework/harbor">Harbor</a> 管理容器化任务，带 40 多个 harness 适配器和多种沙箱后端；<a href="https://github.com/huggingface/trl">TRL</a> 消费轨迹并执行训练。对应的集成分别是 OpenEnv PR #1036 和 TRL PR #6947，原文写的是都已合并。</p>
+
+<h2>3 · 一次更新是怎么走完的</h2>
+
+<p>算法是异步 GRPO：生成和训练分开跑在两张 GPU 上，策略权重最多落后 2 到 4 个优化步。每一步从 SmolDataEnvs 任务集里取题，这套任务由 Kaggle notebook 改写而来，训练集 1,000 题，测试集 250 题，每题自带评分器。同一组 8 条 rollout 使用同一个 harness，不同组轮换 harness。Harbor 在 E2B 或 Daytona 上为每条 rollout 开一个 1 CPU、4 GB 内存的沙箱，在里面启动原样的 harness。</p>
+
+<p>Harness 发出的模型请求经过捕获代理到达 vLLM，代理记下采样结果。Harness 结束后，评分器给出奖励：答对 1.0，答错 0；答对且工具调用更少的，再加最多 0.1。8 条轨迹各自减去组内平均奖励得到优势值，TRL 用捕获到的 token 和 logprob 做一步策略梯度更新，再把新权重同步回 vLLM。</p>
+
+<div class="tw"><table>
+<tr><th>项</th><th>原文取值</th></tr>
+<tr><td>基础模型</td><td>LiquidAI/LFM2.5-2.6B（另有 Qwen3.5-2B 的早期实验）</td></tr>
+<tr><td>优化步数</td><td>1,000</td></tr>
+<tr><td>GRPO 组大小</td><td>8</td></tr>
+<tr><td>最大输出 token</td><td>4,096，训练与评测一致</td></tr>
+<tr><td>temperature / top_p / top_k</td><td>1.0 / 1.0 / -1</td></tr>
+<tr><td>硬件</td><td>2 × H100，训练和 vLLM 各一张</td></tr>
+<tr><td>训练耗时</td><td>仅 OpenCode 约 32 小时，多 harness 约 46 小时（不含评测和排队）</td></tr>
+</table></div>
+
+<h2>4 · 动手复现</h2>
+
+<p>完整脚本和 HF Jobs、Slurm 的启动方式在 <a href="https://github.com/adithya-s-k/FineEnvs/blob/main/05-multi-harness-rl/REPRODUCE.md">FineEnvs 的 REPRODUCE.md</a>。下面按原文给出的顺序，把最小链路拆成五步。环境要求是 Python 3.12，OpenEnv 0.7.0 以上，Harbor 0.22.0 以上；TRL 在 1.15 发布前需要装 main 分支。</p>
+
+<p>第一步安装依赖：</p>
+<pre><code>git clone --depth 1 --branch main https://github.com/huggingface/OpenEnv.git
+python -m pip install -e './OpenEnv[harbor]'
+export PYTHONPATH="$PWD/OpenEnv/envs${PYTHONPATH:+:$PYTHONPATH}"
+pip install 'trl @ git+https://github.com/huggingface/trl.git@main'</code></pre>
+
+<p>第二步启动推理服务。两个参数必须加上，否则拿不到训练需要的 token ID 和与采样一致的 logprob。原文说 SGLang 0.5.17 以上也可以替代 vLLM。</p>
+<pre><code>vllm serve LiquidAI/LFM2.5-2.6B --return-tokens-as-token-ids --logprobs-mode processed_logprobs</code></pre>
+
+<p>第三步启动捕获代理，之后把各个 harness 的模型 API 地址都指向它。代理默认只监听本机：</p>
+<pre><code>python -m openenv.core.harness.capture.server --llm-url http://127.0.0.1:8000 --model LiquidAI/LFM2.5-2.6B</code></pre>
+
+<p>第四步先手动跑几条 rollout，确认 harness、沙箱、代理和评分器这条链是通的。这一步需要 E2B 或 Daytona 账号：</p>
+<pre><code>openenv harbor info --llm-url $LLM --dataset FineEnvs/SmolDataEnvs-harbor-train
+openenv harbor rollout --llm-url $LLM --dataset FineEnvs/SmolDataEnvs-harbor-train \
+  --task-index 0 -n 5 --harness opencode --sandbox e2b</code></pre>
+
+<p>第五步接入 TRL。核心是 <code>HarnessRolloutWorker</code>：它不自己跑 agent 循环（<code>harness_adapter=None</code>），而是交给 harness 去跑，自己只收集代理记下的轨迹。构造好之后作为 <code>rollout_worker</code> 传给 <code>AsyncGRPOTrainer</code>：</p>
+<pre><code>from functools import partial
+from harbor_env.harness import HarborSessionFactory
+from trl.experimental.async_grpo.openenv_harness import HarnessRolloutWorker
+
+def correctness_reward(outcome):
+    return outcome.env_reward  # 评分器失败时为 None
+
+factory = partial(
+    HarborSessionFactory,
+    server_url=server_url,
+    split="FineEnvs/SmolDataEnvs-harbor-train",
+    llm_url=vllm_url,
+    model=model,
+    harness="opencode",        # 多 harness 训练时按组轮换
+    sandbox="daytona",
+    reward_key="correctness,reward",
+)
+worker = HarnessRolloutWorker(
+    harness_session_factory=factory,
+    harness_adapter=None,
+    rollout_reward_fn=correctness_reward,
+    model_name=model,
+    dataset=dataset,
+    processing_class=tokenizer,
+    reward_funcs=[],
+    num_generations=8,         # GRPO 组大小
+    max_inflight_tasks=8,
+    vllm_server_url=vllm_url,
+    max_tokens=4096,
+    temperature=1.0,
+    top_p=1.0,                 # 不截断分布
+    top_k=-1,
+    chat_template_kwargs={"enable_thinking": False},
+)</code></pre>
+
+<p>TRL 仓库里有完整示例 <a href="https://github.com/huggingface/trl/tree/main/examples/async_grpo_harbor">examples/async_grpo_harbor</a>。只想先看看环境、不打算训练的话，可以打开原作者放出的 <a href="https://huggingface.co/spaces/FineEnvs/smoldataenv-multi-harness-harbor">Harbor 环境 Space</a>。</p>
+
+<h2>5 · 结果：多 harness 训练换来的是均衡</h2>
+
+<p>评测在 250 道测试题上进行，每个检查点、每个 harness、每道题各跑一次。下表是第 1,000 步的结果：</p>
+
+<div class="tw"><table>
+<tr><th>训练方式</th><th>总体</th><th>OpenCode</th><th>Claude Code</th><th>Codex</th><th>Mini-SWE-Agent</th></tr>
+<tr><td>基础模型</td><td>42.2%</td><td>33.6%</td><td>33.2%</td><td>40.0%</td><td>62.1%</td></tr>
+<tr><td>仅 OpenCode RL</td><td>52.3%</td><td>58.0%</td><td>42.0%</td><td>43.0%</td><td>61.0%</td></tr>
+<tr><td>多 harness RL</td><td>54.2%</td><td>50.0%</td><td>49.0%</td><td>54.0%</td><td>62.0%</td></tr>
+<tr><td>多 harness SFT</td><td>43.1%</td><td>38.0%</td><td>42.4%</td><td>46.8%</td><td>45.2%</td></tr>
+</table></div>
+
+<p>只在 OpenCode 里训练，OpenCode 一项最高（58.0%），但 Codex 只从 40.0% 涨到 43.0%。多 harness 训练在 OpenCode 上少了 8 个点，换来 Claude Code 和 Codex 各多出 7 到 11 个点，总体也略高。Mini-SWE-Agent 的基线已经是 62.1%，两种 RL 都没有明显改变它。SFT 一行用的是 Qwen3.8-27B 生成的 3,189 条成功轨迹，总体只到 43.1%，在 Mini-SWE-Agent 上还从 62.1% 掉到 45.2%。</p>
+
+<p>工具调用数也有差别。原文只统计基础模型和训练后模型都答对的题：多 harness RL 平均少用 31% 的工具调用，仅 OpenCode RL 少 11%，并且在 Claude Code 上反而多用了 21%；SFT 少 24.2%。</p>
+
+<h2>6 · 作者踩过的坑</h2>
+
+<p>最容易出错的是 token 对齐。Harness 会修 JSON、调整空白、加角色标记，如果拿最终文本重新分词，得到的 token 序列和模型当时采样的不一样，重要性采样的修正就会带偏。所以捕获点必须放在模型 API 层，而不是文本层。同样的原因，RL 期间不能用 top_p 或 top_k 截断分布：截断后的采样已经偏离真实策略，vLLM 在截断之后算出的 logprob 也对不上。</p>
+
+<p>第二类坑出在奖励和长度上。只用对错做奖励时，有 17.5%（仅 OpenCode）和 22.6%（多 harness）的组是 8 条全对，优势全为 0，这些组等于白跑。加上工具调用的效率奖励后，全对的组里也有了区分。没加这项的 Qwen 实验里，每条 rollout 的工具调用从 17 次涨到 21 次。Qwen 还遇到了另一个问题：训练时回答长到 16,384 token，而评测上限更短，回答被截断，多 harness 准确率从第 500 步的 37% 跌到第 1,000 步的 26%。LFM 实验把训练和评测的上限都设成 4,096，避开了这个问题。</p>
+
+<p>还有两个工程细节。Claude Code 每轮都会重写历史，一条 rollout 大约拆出 8 个训练样本，其他 harness 约 1 个，所以多 harness 训练里各 harness 贡献的数据量并不相等。单进程的捕获代理在约 200 个并发会话时稳定，到 320 个时会崩溃，扩大并发前要先规划多个代理实例。</p>
+
+<h2>资源</h2>
+
+<p>原文：<a href="https://huggingface.co/spaces/FineEnvs/multi-harness-rl">The Ultimate Guide to Multi-Harness RL</a>（Adithya S Kolavi、Joel Niklaus、Sergio Paniego Blanco、Leonie Monigatti、Amine Dirhoussi、Ben Burtenshaw、Lewis Tunstall、Leandro von Werra）。数据集在 <a href="https://huggingface.co/collections/FineEnvs/smoldataenvs-multi-harness-rl-6abdfaaa8d74dacd481d5212">SmolDataEnvs 合集</a>；训练好的模型有 <a href="https://huggingface.co/FineEnvs/LFM2.5-2.6B-multiharness-RL">LFM2.5-2.6B-multiharness-RL</a> 和 <a href="https://huggingface.co/FineEnvs/LFM2.5-2.6B-opencode-RL">LFM2.5-2.6B-opencode-RL</a>；训练曲线可以在 <a href="https://huggingface.co/spaces/FineEnvs/data-agent-training-comparison-trackio">对比面板</a> 里查看。</p>
+
+<p><a href="/">← 返回博客首页</a></p>
+</body>
+</html>
