@@ -1,57 +1,6 @@
 /* Blog shell only. Self-contained post HTML is copied byte-for-byte and never loads this file. */
 
-:root {
-  color-scheme: light;
-  --bg: #faf9f5;
-  --panel: #f2f0e9;
-  --card: #fffefa;
-  --fg: #191712;
-  --muted: #615e56;
-  --faint: #6f6b61;
-  --line: #dfdcd3;
-  --line-2: #ece9e1;
-  --accent: #3657ee;
-  --accent-fg: #fffefa;
-  --shadow: 0 18px 46px rgb(25 23 18 / 0.09);
-  --display: "Avenir Next", "Helvetica Neue", "PingFang SC", "Noto Sans CJK SC",
-    sans-serif;
-  --body: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-    sans-serif;
-  --mono: "SFMono-Regular", "Cascadia Code", "Roboto Mono", Menlo, Consolas,
-    monospace;
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #131211;
-  --panel: #1a1917;
-  --card: #1e1d1a;
-  --fg: #f0ede6;
-  --muted: #b6b1a6;
-  --faint: #928c80;
-  --line: #34312c;
-  --line-2: #272520;
-  --accent: #8da4ff;
-  --accent-fg: #131211;
-  --shadow: 0 18px 46px rgb(0 0 0 / 0.28);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #131211;
-    --panel: #1a1917;
-    --card: #1e1d1a;
-    --fg: #f0ede6;
-    --muted: #b6b1a6;
-    --faint: #928c80;
-    --line: #34312c;
-    --line-2: #272520;
-    --accent: #8da4ff;
-    --accent-fg: #131211;
-    --shadow: 0 18px 46px rgb(0 0 0 / 0.28);
-  }
-}
+/* 颜色、字体与尺度变量在 tokens.css（由 design/tokens.json 生成）。 */
 
 * {
   box-sizing: border-box;

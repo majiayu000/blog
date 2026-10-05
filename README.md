@@ -64,6 +64,14 @@ index, while the homepage and `/tags/` lead with the stable reading paths.
 Pagefind scans only `posts/*/index.html`, so search results never contain tag,
 archive or topic pages.
 
+## Design tokens
+
+Colors, font stacks, spacing, radii and shadows live in `design/tokens.json`
+(the same file as the Silent Star design system in Claude). `bun run tokens`
+regenerates `src/css/tokens.css` from it; `bun run build` does this first.
+Edit the JSON, never `tokens.css`. `main.css` keeps the old variable names
+(`--bg`, `--accent`, `--shadow`, `--display`…), so nothing else changes.
+
 ## Configuration
 
 Site details come from environment variables (see `src/_data/site.js`):
