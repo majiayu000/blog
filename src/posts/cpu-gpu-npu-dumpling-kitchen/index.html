@@ -108,6 +108,30 @@ canvas.mini{aspect-ratio:320/180;background:var(--bg)}
 .pu.hl{border-color:var(--ink)}
 .tag{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--muted)}
 .fine{font-size:13px;color:var(--muted);max-width:60em;margin:0}
+/* pro section */
+.pro{display:flex;flex-direction:column;gap:14px;max-width:62em}
+.pro h2{font-size:24px}
+.pro h3{font-size:18px;margin-top:10px}
+.pro p{margin:0}
+.pro .intro{color:var(--muted)}
+.energy{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.erow{display:grid;grid-template-columns:minmax(0,11em) 1fr 70px;gap:10px;align-items:center;font-size:13.5px}
+.erow .track{height:14px;background:var(--cell);border-radius:3px;overflow:hidden}
+.erow .fill{height:100%;min-width:2px;background:var(--muted)}
+.erow.hot .fill{background:var(--cpu)}
+.erow .v{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.energy small{color:var(--muted)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.tablewrap table{border-collapse:collapse;width:100%;min-width:760px;font-size:13.5px}
+.tablewrap th,.tablewrap td{padding:9px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+.tablewrap th{font-weight:700;color:var(--muted);font-size:12.5px;letter-spacing:.04em}
+.tablewrap tr:last-child td{border-bottom:0}
+.tablewrap td:first-child{font-family:var(--f-mono);font-weight:600}
+.pro ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
+.refs{font-size:13.5px;color:var(--muted)}
+.refs a{color:inherit}
+.pu .tech{font-size:13.5px;color:var(--muted)}
+.pu .tech strong{color:var(--ink)}
 @media (prefers-reduced-motion:reduce){.bar .fill{transition:none}}
 </style>
 </head>
@@ -188,6 +212,64 @@ canvas.mini{aspect-ratio:320/180;background:var(--bg)}
     <p class="fine" style="grid-column:1/-1">ISP、DSP、DPU、QPU 没有参赛，因为它们干的不是这种 AI 计算：ISP 修照片，DSP 处理声音，DPU 搬运网络数据，QPU 用量子原理算特定难题。拿它们比包饺子，就像让洗碗机和厨师比切菜。它们各自的本事在下面的图鉴里。另外，不同芯片的规模差别很大，比赛里的数字是为了演示做法差异而设定的。</p>
   </section>
 
+  <section class="pro" id="pro">
+    <div class="eyebrow">专业版</div>
+    <h2>比喻背后的真实原理</h2>
+    <p class="intro">上面的厨房是简化模型。这一节把每个比喻对应回芯片设计里的术语和公开数字，想深入的读者可以对照着看。</p>
+
+    <h3>跑冰箱为什么最贵：搬数据比算数据更耗能</h3>
+    <p>Mark Horowitz 在 ISSCC 2014 的报告里列出了 45nm 工艺下各种操作的能耗，Han 等人在 2015 年的剪枝论文中把它整理成一张表，此后被 AI 芯片相关的论文和课程反复引用。从片外 DRAM 读一个 32 位数要 640 pJ，大约是一次 32 位浮点乘法（3.7 pJ）的 170 倍。动画里跑冰箱只设成包饺子的 5 倍耗电，真实差距要大得多。</p>
+    <div class="energy" role="img" aria-label="45nm 工艺下各操作能耗，DRAM 读取 640 皮焦，远高于其他操作">
+      <div class="erow"><span>32 位整数加法</span><div class="track"><div class="fill" style="width:0.016%"></div></div><span class="v">0.1 pJ</span></div>
+      <div class="erow"><span>32 位浮点加法</span><div class="track"><div class="fill" style="width:0.141%"></div></div><span class="v">0.9 pJ</span></div>
+      <div class="erow"><span>32 位整数乘法</span><div class="track"><div class="fill" style="width:0.484%"></div></div><span class="v">3.1 pJ</span></div>
+      <div class="erow"><span>32 位浮点乘法（包一个饺子）</span><div class="track"><div class="fill" style="width:0.578%"></div></div><span class="v">3.7 pJ</span></div>
+      <div class="erow"><span>从片上 SRAM 缓存读 32 位</span><div class="track"><div class="fill" style="width:0.781%"></div></div><span class="v">5 pJ</span></div>
+      <div class="erow hot"><span>从片外 DRAM 内存读 32 位（跑一趟冰箱）</span><div class="track"><div class="fill" style="width:100.000%"></div></div><span class="v">640 pJ</span></div>
+      <small>线性刻度，单位皮焦（pJ）。数据来自 Horowitz（ISSCC 2014），按 Han 等（2015）的整理。工艺越新，绝对值越小，但计算与搬运之间的数量级差距仍然存在。</small>
+    </div>
+    <p>这个差距常被称为「存储墙」（memory wall）：计算单元越来越快，数据却供不上。AI 加速器的设计大多围绕同一个目标：一个数据从 DRAM 读进来以后，让它参与尽可能多次计算。每搬一个字节能做多少次运算，叫算术强度（arithmetic intensity）。Roofline 模型用它判断一个任务是受算力限制，还是受内存带宽限制。</p>
+
+    <h3>六种芯片逐个对照</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>芯片</th><th>动画里的比喻</th><th>真实的计算组织</th><th>数据放在哪</th><th>瓶颈与取舍</th></tr></thead>
+        <tbody>
+          <tr><td class="k-cpu">CPU</td><td>一位全能大厨</td><td>少量强核心，乱序执行、分支预测，带 SIMD 向量单元（AVX-512、NEON 等）</td><td>多级缓存（L1/L2/L3）加 DRAM</td><td>并行度有限；擅长控制流复杂、对延迟敏感的串行任务</td></tr>
+          <tr><td class="k-gpu">GPU</td><td>16 个帮工一起上</td><td>SIMT：线程以 32 个为一组（warp）同步执行。H100 SXM 有 132 个 SM，配 Tensor Core 专做矩阵块乘法</td><td>HBM 显存（H100 SXM：80 GB，3.35 TB/s），加共享内存和 L2 缓存</td><td>功耗高；批量小时受显存带宽限制，算力闲置</td></tr>
+          <tr><td class="k-apu">APU</td><td>大厨和帮工挤一间厨房</td><td>CPU 和 GPU 做在同一块芯片上</td><td>统一内存，两者共用（PS5：16 GB GDDR6，448 GB/s）</td><td>省掉 CPU 与 GPU 之间的数据拷贝，但两者争用同一份带宽</td></tr>
+          <tr><td class="k-npu">NPU</td><td>饺子流水线</td><td>大量低精度乘加单元（INT8、INT4），常见脉动阵列或向量阵列结构，各厂商设计不同</td><td>片上 SRAM，尽量放下权重和中间结果</td><td>能效高；只支持特定算子，遇到不支持的操作要退回 CPU 或 GPU 执行</td></tr>
+          <tr><td class="k-tpu">TPU</td><td>铺满整面墙的流水线</td><td>权重驻留型脉动阵列。TPU v1 是 256×256 = 65,536 个 8 位乘加单元，峰值 92 TOPS</td><td>片上缓冲（v1 共 28 MiB）加片外内存，从第二代起改用 HBM</td><td>阵列要先「灌满」才进入满速，适合大批量矩阵运算</td></tr>
+          <tr><td class="k-lpu">LPU</td><td>料全摆在台面上的出餐线</td><td>Groq 的流式处理器（TSP），执行顺序由编译器提前排定（静态调度）</td><td>只用片上 SRAM，每片约 230 MB，不接 HBM</td><td>单个请求延迟低；容量小，大模型要用很多片</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>「快」有两种：吞吐和延迟</h3>
+    <p>比赛里「包得多」对应吞吐量（throughput），「第一个出锅」对应延迟（latency）。放到大模型推理上，吞吐是整台机器每秒生成的 token 总数，延迟是首个 token 的等待时间（TTFT）和之后每个 token 的间隔。</p>
+    <p>大模型逐字生成（decode）时，每出一个 token 都要把全部权重读一遍。以 700 亿参数、8 位量化的模型为例，权重约 70 GB。H100 SXM 的显存带宽是 3.35 TB/s，读一遍约需 21 ms，所以单卡、一次只服务一个请求时，每秒最多约 48 个 token。这是忽略 KV cache 和其他开销的理论上限。这个阶段 GPU 的算力大部分闲着，瓶颈在带宽。加大批量能让同一份权重同时服务多个请求，总吞吐上去了，每个用户等待的时间却不会变短。</p>
+    <p>Groq 的 LPU 走了另一条路：权重拆开放进大量芯片的片上 SRAM，片上带宽远高于 HBM，再配合静态调度，单个请求的出字速度就很快。代价是容量。按每片 230 MB 计算，只放下一个 70 GB 的模型就需要约 300 片芯片。</p>
+
+    <h3>动画简化了哪些地方</h3>
+    <ul>
+      <li>真实的 GPU 不会让每个线程都直接去显存取数。它会先把一块数据搬进共享内存或缓存，在片上反复使用（tiling）。动画夸大了 GPU 跑冰箱的次数。</li>
+      <li>真实的 CPU 有多个核心和 SIMD 向量指令，一条指令能同时处理多个数，不是一次只算一个。</li>
+      <li>手机 NPU 的内部结构各家不同，并不都是脉动阵列。它们的共同点是低精度运算单元，加上尽量大的片上存储。</li>
+      <li>TPU 的阵列远大于动画里的 4 个工位；不同代际的 TPU 在精度、存储和互联上也有很大变化。</li>
+      <li>比赛中的数量和耗电是设定值，只用来表达相对关系，不是任何芯片的实测结果。</li>
+    </ul>
+
+    <h3>参考资料</h3>
+    <ul class="refs">
+      <li>M. Horowitz, “Computing’s energy problem (and what we can do about it)”, ISSCC 2014. <a href="https://ieeexplore.ieee.org/document/6757323">IEEE Xplore</a></li>
+      <li>S. Han et al., “Learning both Weights and Connections for Efficient Neural Networks”, NeurIPS 2015. <a href="https://arxiv.org/abs/1506.02626">arXiv:1506.02626</a></li>
+      <li>N. P. Jouppi et al., “In-Datacenter Performance Analysis of a Tensor Processing Unit”, ISCA 2017. <a href="https://arxiv.org/abs/1704.04760">arXiv:1704.04760</a></li>
+      <li>S. Williams, A. Waterman, D. Patterson, “Roofline: An Insightful Visual Performance Model for Multicore Architectures”, CACM 2009. <a href="https://doi.org/10.1145/1498765.1498785">DOI</a></li>
+      <li>D. Abts et al., “Think Fast: A Tensor Streaming Processor (TSP) for Accelerating Deep Learning Workloads”, ISCA 2020.</li>
+      <li>NVIDIA H100 规格。<a href="https://www.nvidia.com/en-us/data-center/h100/">nvidia.com</a></li>
+    </ul>
+  </section>
+
   <section style="display:flex;flex-direction:column;gap:14px">
     <div class="guide-head">
       <h2 style="font-size:24px">还有哪些「PU」</h2>
@@ -210,36 +292,43 @@ canvas.mini{aspect-ratio:320/180;background:var(--bg)}
         <canvas class="mini" data-scene="tpu" width="640" height="360" aria-label="TPU 动画"></canvas>
         <p class="ana">比喻：把饺子流水线铺满一整面墙</p>
         <p>谷歌自己造的 AI 芯片。饺子皮从上往下流，馅料从左往右传，所有工位像波浪一样依次开工。真实的 TPU 一面墙上有上万个工位。</p>
+        <p class="tech"><strong>原理：</strong>权重驻留型脉动阵列：权重预先装进乘加单元，输入数据从一侧流入，部分和沿另一方向传递，每个权重被多次复用。详见上面的对照表。</p>
         <span class="where">在哪：谷歌的数据中心，训练和运行 Gemini 等模型</span></div>
       <div class="pu"><div class="name"><span class="abbr">LPU</span><span class="full">语言处理器</span></div>
         <canvas class="mini" data-scene="lpu" width="640" height="360" aria-label="LPU 动画"></canvas>
         <p class="ana">比喻：料全备在台面上的超长出餐线</p>
         <p>Groq 公司为大模型设计。它把模型参数直接放在芯片里，几乎不去「冰箱」拿，所以 AI 回答时一个字接一个字出得特别快。</p>
+        <p class="tech"><strong>原理：</strong>只用片上 SRAM，不接 HBM，由编译器静态调度每个时钟周期的数据流动。单请求延迟低，但大模型需要很多片芯片。</p>
         <span class="where">在哪：Groq 的云服务</span></div>
       <div class="pu"><div class="name"><span class="abbr">DPU</span><span class="full">数据处理器</span></div>
         <canvas class="mini" data-scene="dpu" width="640" height="360" aria-label="DPU 动画"></canvas>
         <p class="ana">比喻：后门专管收货的仓库管家</p>
         <p>数据中心里源源不断有数据进出。DPU 负责收货、分拣、上架，大厨（CPU）就能专心做菜，不被打断。</p>
+        <p class="tech"><strong>原理：</strong>把网络协议处理、存储虚拟化、加密等基础设施工作从 CPU 卸载（offload）。BlueField-3 支持 400 Gb/s 网络。</p>
         <span class="where">在哪：服务器网卡。英伟达 BlueField</span></div>
       <div class="pu"><div class="name"><span class="abbr">ISP</span><span class="full">图像信号处理器</span></div>
         <canvas class="mini" data-scene="isp" width="640" height="360" aria-label="ISP 动画"></canvas>
         <p class="ana">比喻：把刚买回来的菜洗净、调味、摆盘</p>
         <p>摄像头拍到的原始画面又暗又满是噪点。ISP 一步步降噪、调颜色、提亮，变成你看到的照片。按下快门那一瞬间就做完了。</p>
+        <p class="tech"><strong>原理：</strong>固定功能的图像流水线，依次做去马赛克（Bayer 阵列插值）、降噪、白平衡、色彩校正、色调映射，以及多帧 HDR 合成。</p>
         <span class="where">在哪：每部手机和相机</span></div>
       <div class="pu"><div class="name"><span class="abbr">DSP</span><span class="full">数字信号处理器</span></div>
         <canvas class="mini" data-scene="dsp" width="640" height="360" aria-label="DSP 动画"></canvas>
         <p class="ana">比喻：专门对付抽油烟机噪音的人</p>
         <p>以耳机降噪为例：DSP 听到外面的噪音，马上造一个正好相反的声波。两个一叠加，互相抵消，你耳朵里就安静了。</p>
+        <p class="tech"><strong>原理：</strong>擅长连续的乘加和滤波运算（FIR、IIR、FFT）。主动降噪用自适应滤波器实时估计噪声，对延迟要求极高。</p>
         <span class="where">在哪：手机、耳机、音箱</span></div>
       <div class="pu"><div class="name"><span class="abbr">APU</span><span class="full">加速处理器</span></div>
         <canvas class="mini" data-scene="apu" width="640" height="360" aria-label="APU 动画"></canvas>
         <p class="ana">比喻：大厨和帮工挤在同一间小厨房</p>
         <p>AMD 把 CPU 和 GPU 做在同一块芯片上，共用一台冰箱（内存）。省地方、省电、成本低，很适合游戏机。</p>
+        <p class="tech"><strong>原理：</strong>统一内存架构：CPU 和 GPU 访问同一块内存，不必来回拷贝数据，代价是两者共享带宽。</p>
         <span class="where">在哪：PS5、Xbox、Steam Deck 掌机</span></div>
       <div class="pu"><div class="name"><span class="abbr">QPU</span><span class="full">量子处理器</span></div>
         <canvas class="mini" data-scene="qpu" width="640" height="360" aria-label="QPU 动画"></canvas>
         <p class="ana">比喻：还在旋转的硬币</p>
         <p>普通芯片里每一位不是 0 就是 1，像放平的硬币。量子比特在计算时像转着的硬币，还没定下来；最后一测量才落成 0 或 1。只对少数特定问题有优势，还在实验阶段。</p>
+        <p class="tech"><strong>原理：</strong>用叠加和纠缠表示状态，靠干涉提高正确答案出现的概率。量子比特极易受噪声干扰，大规模计算需要量子纠错，目前只在因数分解、量子化学模拟等特定问题上有理论优势。</p>
         <span class="where">在哪：IBM、谷歌等公司的实验室</span></div>
     </div>
     <p class="fine">灵感来自 nnn 在 X 上发的 <a href="https://x.com/nnn112358/status/2106833060859981888" style="color:inherit">CPU・GPU・NPU 动画</a>。</p>
