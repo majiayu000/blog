@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>用包饺子看懂 CPU、GPU、NPU、TPU 和 LPU</title>
+<meta name="date" content="2026-10-05">
+<meta name="description" content="六个厨房比赛包饺子的动画：比较 CPU、GPU、APU、NPU、TPU、LPU 的产量、出第一个结果的速度和耗电，附 DPU、ISP、DSP、QPU 等处理器图鉴。">
+<meta name="tags" content="AI 芯片, 科普, LLM">
+<style>
+/* Layout: one big kitchen race (three canvases), a word-to-chip dictionary, results, then a field guide to every "PU". */
+:root{
+  --bg:#edf0f3; --dot:#d5dbe2; --panel:#f9fbfc; --ink:#18202b; --muted:#5b6676; --line:#cfd6de; --cell:#e4e9ee;
+  --paper:#ffffff; --steel:#b9c3ce; --belt:#3a4452;
+  --cpu:#cf5a22; --gpu:#24935a; --npu:#6448d6;
+  --cpu-soft:#f6dccd; --gpu-soft:#cfeedd; --npu-soft:#e1dafb;
+  --apu:#a8670c; --tpu:#2263c4; --lpu:#bf336f;
+  --apu-soft:#f3e2c4; --tpu-soft:#d3e2f7; --lpu-soft:#f6d6e3;
+  --f1:#d94f4f; --f2:#3f9b4a; --f3:#e0a31f; --f4:#8a5a3b;
+  --f-display:"Songti SC","Noto Serif SC","STSong",serif;
+  --f-body:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  --f-mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#11151b; --dot:#1e252e; --panel:#181e26; --ink:#e5e9ef; --muted:#97a2b2; --line:#2b3440; --cell:#222a35;
+  --paper:#eef1f4; --steel:#4a5564; --belt:#0b0e12;
+  --cpu:#f08a52; --gpu:#4cc382; --npu:#9d88ff;
+  --cpu-soft:#4a2716; --gpu-soft:#173b28; --npu-soft:#2c2558;
+  --apu:#e3a64a; --tpu:#6fa6f3; --lpu:#f17dad;
+  --apu-soft:#45320f; --tpu-soft:#16304f; --lpu-soft:#4a1c30; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151b; --dot:#1e252e; --panel:#181e26; --ink:#e5e9ef; --muted:#97a2b2; --line:#2b3440; --cell:#222a35;
+  --paper:#eef1f4; --steel:#4a5564; --belt:#0b0e12;
+  --cpu:#f08a52; --gpu:#4cc382; --npu:#9d88ff;
+  --cpu-soft:#4a2716; --gpu-soft:#173b28; --npu-soft:#2c2558;
+  --apu:#e3a64a; --tpu:#6fa6f3; --lpu:#f17dad;
+  --apu-soft:#45320f; --tpu-soft:#16304f; --lpu-soft:#4a1c30; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);background-image:radial-gradient(var(--dot) 1px,transparent 1px);background-size:18px 18px;color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:28px 56px;display:flex;flex-direction:column;gap:30px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+b,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-size:12px;letter-spacing:.14em;color:var(--muted);font-family:var(--f-mono)}
+h1{font-size:clamp(28px,4.6vw,46px);line-height:1.15;font-weight:900;margin-block:6px 10px}
+.lede{color:var(--muted);max-width:40em;margin:0}
+
+/* dictionary */
+.dict{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.dict div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column}
+.dict .k{font-weight:700}
+.dict .v{color:var(--muted);font-size:13.5px}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:7px;padding:6px 14px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible{outline:2px solid var(--npu);outline-offset:2px}
+button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);min-width:92px}
+.timer{font-family:var(--f-mono);color:var(--muted);font-size:13px}
+.timer b{color:var(--ink);font-size:16px}
+.tbar{flex:1 1 160px;height:6px;background:var(--cell);border-radius:3px;overflow:hidden;min-width:120px}
+.tbar i{display:block;height:100%;width:0;background:var(--ink)}
+
+/* lanes */
+.lanes{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px}
+.lane{--c:var(--cpu);--soft:var(--cpu-soft);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.lane.gpu{--c:var(--gpu);--soft:var(--gpu-soft)}
+.lane.npu{--c:var(--npu);--soft:var(--npu-soft)}
+.lane.apu{--c:var(--apu);--soft:var(--apu-soft)}
+.lane.tpu{--c:var(--tpu);--soft:var(--tpu-soft)}
+.lane.lpu{--c:var(--lpu);--soft:var(--lpu-soft)}
+.head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.chip{font-family:var(--f-mono);font-weight:600;font-size:22px;color:var(--c)}
+.head h2{font-size:18px}
+.how{margin:0;font-size:14px;color:var(--muted);min-height:3.3em}
+canvas{width:100%;aspect-ratio:360/220;max-width:100%;background:var(--bg);border-radius:8px;display:block}
+.say{font-size:14px;min-height:22px;color:var(--c);font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.stats div{background:var(--bg);border-radius:8px;padding:6px 8px;display:flex;flex-direction:column}
+.stats span{font-size:12px;color:var(--muted)}
+.stats b{font-size:18px}
+
+/* results */
+.results{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:20px}
+.results h3{font-size:17px;margin-bottom:2px}
+.results .sub{font-size:12.5px;color:var(--muted);margin:0 0 6px}
+.bar{display:grid;grid-template-columns:44px 1fr 64px;gap:10px;align-items:center;font-family:var(--f-mono);font-size:13px;margin-block:6px}
+.bar .track{height:14px;background:var(--cell);border-radius:3px;overflow:hidden}
+.bar .fill{height:100%;width:0;transition:width .2s}
+.bar .num{text-align:right}
+.k-cpu{color:var(--cpu)} .k-gpu{color:var(--gpu)} .k-npu{color:var(--npu)} .k-apu{color:var(--apu)} .k-tpu{color:var(--tpu)} .k-lpu{color:var(--lpu)}
+.f-cpu{background:var(--cpu)} .f-gpu{background:var(--gpu)} .f-npu{background:var(--npu)} .f-apu{background:var(--apu)} .f-tpu{background:var(--tpu)} .f-lpu{background:var(--lpu)}
+.verdict{grid-column:1/-1;margin:0;border-left:3px solid var(--ink);padding-left:14px;max-width:52em}
+
+/* field guide */
+.guide-head{display:flex;flex-direction:column;gap:6px}
+.guide-head p{margin:0;color:var(--muted);max-width:44em}
+.guide{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+canvas.mini{aspect-ratio:320/180;background:var(--bg)}
+.pu .ana{font-weight:700}
+.pu{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.pu .name{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.pu .abbr{font-family:var(--f-mono);font-weight:600;font-size:20px}
+.pu .full{color:var(--muted);font-size:13px}
+.pu p{margin:0;font-size:14px}
+.pu .where{font-size:13px;color:var(--muted)}
+.pu.hl{border-color:var(--ink)}
+.tag{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--muted)}
+.fine{font-size:13px;color:var(--muted);max-width:60em;margin:0}
+@media (prefers-reduced-motion:reduce){.bar .fill{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><a href="/" style="color:inherit">Silent Star</a> · CPU · GPU · APU · NPU · TPU · LPU 的区别</div>
+    <h1>六个厨房，比赛包饺子</h1>
+    <p class="lede">芯片干的活，大部分是海量的小计算。把每一次计算想成包一个饺子，把内存想成冰箱。六个厨房比 12 秒，看三件事：谁包得多，谁的第一个饺子最先出锅，谁最省电。</p>
+  </header>
+
+  <div class="dict" aria-label="比喻对照">
+    <div><span class="k">一个饺子</span><span class="v">一次计算（一次乘法加法）</span></div>
+    <div><span class="k">冰箱</span><span class="v">内存，数据都存在这里</span></div>
+    <div><span class="k">跑一趟冰箱</span><span class="v">搬一次数据，最费电的一步</span></div>
+    <div><span class="k">馅料</span><span class="v">AI 模型的参数（权重）</span></div>
+    <div><span class="k">厨师 / 帮工</span><span class="v">芯片里的计算核心</span></div>
+  </div>
+
+  <div class="controls">
+    <button class="primary" id="play">❚❚ 暂停</button>
+    <button id="reset">重新比赛</button>
+    <div class="tbar" aria-hidden="true"><i id="tfill"></i></div>
+    <div class="timer">比赛时间 <b id="clock">0.0</b> / 12 秒</div>
+  </div>
+
+  <section class="lanes">
+    <article class="lane cpu">
+      <div class="head"><span class="chip">CPU</span><h2>一位全能大厨</h2></div>
+      <p class="how">手艺最好，什么菜都会做。但只有一双手：跑冰箱拿料、回来包一个，再跑一趟。</p>
+      <canvas id="cv-cpu" width="720" height="440" aria-label="CPU 厨房动画"></canvas>
+      <div class="say" id="say-cpu"></div>
+      <div class="stats"><div><span>包好</span><b id="made-cpu">0</b></div><div><span>第一个</span><b id="first-cpu">—</b></div><div><span>跑冰箱</span><b id="trip-cpu">0</b></div><div><span>耗电</span><b id="pow-cpu">0</b></div></div>
+    </article>
+    <article class="lane gpu">
+      <div class="head"><span class="chip">GPU</span><h2>16 个帮工一起上</h2></div>
+      <p class="how">人多力量大，16 个人同时包。代价是每个人都要自己跑冰箱，门口挤成一团，电费很高。</p>
+      <canvas id="cv-gpu" width="720" height="440" aria-label="GPU 厨房动画"></canvas>
+      <div class="say" id="say-gpu"></div>
+      <div class="stats"><div><span>包好</span><b id="made-gpu">0</b></div><div><span>第一个</span><b id="first-gpu">—</b></div><div><span>跑冰箱</span><b id="trip-gpu">0</b></div><div><span>耗电</span><b id="pow-gpu">0</b></div></div>
+    </article>
+    <article class="lane apu">
+      <div class="head"><span class="chip">APU</span><h2>大厨和帮工挤一间小厨房</h2></div>
+      <p class="how">一位大厨加 6 个帮工，共用一台冰箱。省地方又便宜，但大家还是得自己跑冰箱。</p>
+      <canvas id="cv-apu" width="720" height="440" aria-label="APU 厨房动画"></canvas>
+      <div class="say" id="say-apu"></div>
+      <div class="stats"><div><span>包好</span><b id="made-apu">0</b></div><div><span>第一个</span><b id="first-apu">—</b></div><div><span>跑冰箱</span><b id="trip-apu">0</b></div><div><span>耗电</span><b id="pow-apu">0</b></div></div>
+    </article>
+    <article class="lane npu">
+      <div class="head"><span class="chip">NPU</span><h2>饺子流水线</h2></div>
+      <p class="how">4 个工位各守一种馅，馅就放在手边，从不去冰箱拿。饺子皮坐着传送带流过，每过一站加一勺。</p>
+      <canvas id="cv-npu" width="720" height="440" aria-label="NPU 厨房动画"></canvas>
+      <div class="say" id="say-npu"></div>
+      <div class="stats"><div><span>包好</span><b id="made-npu">0</b></div><div><span>第一个</span><b id="first-npu">—</b></div><div><span>跑冰箱</span><b id="trip-npu">0</b></div><div><span>耗电</span><b id="pow-npu">0</b></div></div>
+    </article>
+    <article class="lane tpu">
+      <div class="head"><span class="chip">TPU</span><h2>铺满整面墙的流水线</h2></div>
+      <p class="how">把 NPU 的流水线放大成一整面墙。开工前要先让波浪铺满，之后每一拍整面墙一起出饺子。</p>
+      <canvas id="cv-tpu" width="720" height="440" aria-label="TPU 厨房动画"></canvas>
+      <div class="say" id="say-tpu"></div>
+      <div class="stats"><div><span>包好</span><b id="made-tpu">0</b></div><div><span>第一个</span><b id="first-tpu">—</b></div><div><span>跑冰箱</span><b id="trip-tpu">0</b></div><div><span>耗电</span><b id="pow-tpu">0</b></div></div>
+    </article>
+    <article class="lane lpu">
+      <div class="head"><span class="chip">LPU</span><h2>料全摆在台面上的出餐线</h2></div>
+      <p class="how">所有料提前摆在一长排台面上，几乎不跑冰箱。第一个饺子出锅最快，之后稳定地一个接一个。</p>
+      <canvas id="cv-lpu" width="720" height="440" aria-label="LPU 厨房动画"></canvas>
+      <div class="say" id="say-lpu"></div>
+      <div class="stats"><div><span>包好</span><b id="made-lpu">0</b></div><div><span>第一个</span><b id="first-lpu">—</b></div><div><span>跑冰箱</span><b id="trip-lpu">0</b></div><div><span>耗电</span><b id="pow-lpu">0</b></div></div>
+    </article>
+  </section>
+
+  <section class="results">
+    <div><h3>谁包得多</h3><p class="sub">12 秒内包好的总数，越长越好</p><div id="bars-made"></div></div>
+    <div><h3>第一个饺子多久出锅</h3><p class="sub">越短越好，决定你等多久才看到第一个结果</p><div id="bars-first"></div></div>
+    <div><h3>平均每个饺子耗电</h3><p class="sub">越短越省电</p><div id="bars-pow"></div></div>
+    <p class="verdict" id="verdict">比赛进行中……</p>
+    <p class="fine" style="grid-column:1/-1">ISP、DSP、DPU、QPU 没有参赛，因为它们干的不是这种 AI 计算：ISP 修照片，DSP 处理声音，DPU 搬运网络数据，QPU 用量子原理算特定难题。拿它们比包饺子，就像让洗碗机和厨师比切菜。它们各自的本事在下面的图鉴里。另外，不同芯片的规模差别很大，比赛里的数字是为了演示做法差异而设定的。</p>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:14px">
+    <div class="guide-head">
+      <h2 style="font-size:24px">还有哪些「PU」</h2>
+      <p>PU 是 Processing Unit（处理器）的缩写，前面的字母说明它专门干什么。你手机里那一块芯片，其实同时装着 CPU、GPU、NPU、ISP、DSP 好几个。</p>
+    </div>
+    <div class="guide">
+      <div class="pu"><div class="name"><span class="abbr k-cpu">CPU</span><span class="full">中央处理器</span></div>
+        <p class="ana">比喻：一位全能大厨（看上面的比赛）</p>
+        <p>电脑和手机的总指挥，什么活都能干，最擅长逻辑复杂、一步接一步的事。</p>
+        <span class="where">在哪：所有电脑手机。Intel、AMD、苹果 M 系列</span></div>
+      <div class="pu"><div class="name"><span class="abbr k-gpu">GPU</span><span class="full">图形处理器</span></div>
+        <p class="ana">比喻：16 个帮工一起上（看上面的比赛）</p>
+        <p>本来是画游戏画面的，因为能同时算海量小题，现在成了训练 AI 的主力。</p>
+        <span class="where">在哪：显卡、AI 数据中心。英伟达</span></div>
+      <div class="pu"><div class="name"><span class="abbr k-npu">NPU</span><span class="full">神经网络处理器</span></div>
+        <p class="ana">比喻：饺子流水线（看上面的比赛）</p>
+        <p>专门跑 AI 的省电芯片，比如手机里的人像抠图、语音识别、实时翻译。</p>
+        <span class="where">在哪：手机和新款笔记本。苹果神经网络引擎、高通 Hexagon</span></div>
+      <div class="pu hl"><div class="name"><span class="abbr">TPU</span><span class="full">张量处理器</span><span class="tag">你问的这个</span></div>
+        <canvas class="mini" data-scene="tpu" width="640" height="360" aria-label="TPU 动画"></canvas>
+        <p class="ana">比喻：把饺子流水线铺满一整面墙</p>
+        <p>谷歌自己造的 AI 芯片。饺子皮从上往下流，馅料从左往右传，所有工位像波浪一样依次开工。真实的 TPU 一面墙上有上万个工位。</p>
+        <span class="where">在哪：谷歌的数据中心，训练和运行 Gemini 等模型</span></div>
+      <div class="pu"><div class="name"><span class="abbr">LPU</span><span class="full">语言处理器</span></div>
+        <canvas class="mini" data-scene="lpu" width="640" height="360" aria-label="LPU 动画"></canvas>
+        <p class="ana">比喻：料全备在台面上的超长出餐线</p>
+        <p>Groq 公司为大模型设计。它把模型参数直接放在芯片里，几乎不去「冰箱」拿，所以 AI 回答时一个字接一个字出得特别快。</p>
+        <span class="where">在哪：Groq 的云服务</span></div>
+      <div class="pu"><div class="name"><span class="abbr">DPU</span><span class="full">数据处理器</span></div>
+        <canvas class="mini" data-scene="dpu" width="640" height="360" aria-label="DPU 动画"></canvas>
+        <p class="ana">比喻：后门专管收货的仓库管家</p>
+        <p>数据中心里源源不断有数据进出。DPU 负责收货、分拣、上架，大厨（CPU）就能专心做菜，不被打断。</p>
+        <span class="where">在哪：服务器网卡。英伟达 BlueField</span></div>
+      <div class="pu"><div class="name"><span class="abbr">ISP</span><span class="full">图像信号处理器</span></div>
+        <canvas class="mini" data-scene="isp" width="640" height="360" aria-label="ISP 动画"></canvas>
+        <p class="ana">比喻：把刚买回来的菜洗净、调味、摆盘</p>
+        <p>摄像头拍到的原始画面又暗又满是噪点。ISP 一步步降噪、调颜色、提亮，变成你看到的照片。按下快门那一瞬间就做完了。</p>
+        <span class="where">在哪：每部手机和相机</span></div>
+      <div class="pu"><div class="name"><span class="abbr">DSP</span><span class="full">数字信号处理器</span></div>
+        <canvas class="mini" data-scene="dsp" width="640" height="360" aria-label="DSP 动画"></canvas>
+        <p class="ana">比喻：专门对付抽油烟机噪音的人</p>
+        <p>以耳机降噪为例：DSP 听到外面的噪音，马上造一个正好相反的声波。两个一叠加，互相抵消，你耳朵里就安静了。</p>
+        <span class="where">在哪：手机、耳机、音箱</span></div>
+      <div class="pu"><div class="name"><span class="abbr">APU</span><span class="full">加速处理器</span></div>
+        <canvas class="mini" data-scene="apu" width="640" height="360" aria-label="APU 动画"></canvas>
+        <p class="ana">比喻：大厨和帮工挤在同一间小厨房</p>
+        <p>AMD 把 CPU 和 GPU 做在同一块芯片上，共用一台冰箱（内存）。省地方、省电、成本低，很适合游戏机。</p>
+        <span class="where">在哪：PS5、Xbox、Steam Deck 掌机</span></div>
+      <div class="pu"><div class="name"><span class="abbr">QPU</span><span class="full">量子处理器</span></div>
+        <canvas class="mini" data-scene="qpu" width="640" height="360" aria-label="QPU 动画"></canvas>
+        <p class="ana">比喻：还在旋转的硬币</p>
+        <p>普通芯片里每一位不是 0 就是 1，像放平的硬币。量子比特在计算时像转着的硬币，还没定下来；最后一测量才落成 0 或 1。只对少数特定问题有优势，还在实验阶段。</p>
+        <span class="where">在哪：IBM、谷歌等公司的实验室</span></div>
+    </div>
+    <p class="fine">灵感来自 nnn 在 X 上发的 <a href="https://x.com/nnn112358/status/2106833060859981888" style="color:inherit">CPU・GPU・NPU 动画</a>。</p>
+    <p class="fine">动画是比喻，数字是为了好懂而设定的，不是真实芯片的测量值。真实情况里的规律是一致的：GPU 算力最猛也最耗电，NPU 靠「数据少搬运」换来很高的能效，CPU 胜在什么都能做。</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const RACE = 12, HOLD = 3, TRIP = 5, WRAP = 1;
+  let t = 0, playing = true, last = null;
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ----- counts (pure functions of race time) -----
+  const C = {
+    cpu: tt => ({ made: Math.floor(tt), trips: Math.floor(tt) + ((tt % 1) >= 0.35 ? 1 : 0) }),
+    gpu: tt => { const n = Math.floor(tt / 1.5), p = tt % 1.5; return { made: 16 * n, trips: 16 * (n + (p >= 0.6 ? 1 : 0)) }; },
+    npu: tt => { let made = 0; for (let k = 0; k * 0.125 < RACE; k++) if (tt - k * 0.125 >= TRAVEL) made++; return { made, trips: Math.floor(tt) + ((tt % 1) >= 0.3 ? 1 : 0) }; },
+    apu: tt => { const a = C.cpu(tt), n = Math.floor(tt / 1.5), p = tt % 1.5; return { made: a.made + 6 * n, trips: a.trips + 6 * (n + (p >= 0.6 ? 1 : 0)) }; },
+    tpu: tt => ({ made: tt < 1.5 ? 0 : 5 * (Math.floor((tt - 1.5) / 0.25 + 1e-6) + 1), trips: Math.min(24, Math.floor(tt / 0.5) + 1) }),
+    lpu: tt => ({ made: tt < 0.3 ? 0 : Math.floor((tt - 0.3) / 0.1 + 1e-6) + 1, trips: Math.min(3, Math.floor(tt / 4) + 1) }),
+  };
+  const KEYS = ['cpu', 'gpu', 'apu', 'npu', 'tpu', 'lpu'];
+  const BELT0 = 70, BELT1 = 345, SPEED = 130, TRAVEL = (330 - BELT0) / SPEED;
+  const STN = [135, 185, 235, 285];
+  const FIRST = { cpu: 1, gpu: 1.5, apu: 1, npu: TRAVEL, tpu: 1.5, lpu: 0.3 };
+  const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const ease = k => k * k * (3 - 2 * k);
+
+  let col = {};
+  function readColors() {
+    const s = getComputedStyle(document.documentElement);
+    ['ink','muted','line','cell','panel','paper','steel','belt','cpu','gpu','npu','apu','tpu','lpu','f1','f2','f3','f4','bg'].forEach(k => col[k] = s.getPropertyValue('--' + k).trim());
+  }
+  readColors();
+  if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', readColors);
+  new MutationObserver(readColors).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  const ctxs = {};
+  for (const k of KEYS) { const c = document.getElementById('cv-' + k); const x = c.getContext('2d'); x.setTransform(2, 0, 0, 2, 0, 0); ctxs[k] = x; }
+
+  // ----- drawing helpers -----
+  function fridge(g, busy) {
+    g.fillStyle = col.steel; g.beginPath(); g.roundRect(12, 40, 50, 130, 6); g.fill();
+    g.strokeStyle = col.panel; g.lineWidth = 2; g.beginPath(); g.moveTo(12, 92); g.lineTo(62, 92); g.stroke();
+    g.fillStyle = col.panel; g.fillRect(52, 60, 3, 20); g.fillRect(52, 105, 3, 30);
+    g.fillStyle = col.muted; g.font = '15px "Noto Sans SC",sans-serif'; g.textAlign = 'center'; g.fillText('冰箱', 37, 190); g.fillText('(内存)', 37, 208);
+    if (busy) { g.fillStyle = col.f1; g.beginPath(); g.arc(37, 30, 4, 0, 7); g.fill(); }
+  }
+  function person(g, x, y, c, s = 1, arm = 0) {
+    g.fillStyle = c; g.beginPath(); g.roundRect(x - 8 * s, y - 2 * s, 16 * s, 18 * s, 6 * s); g.fill();
+    g.fillStyle = col.paper; g.beginPath(); g.arc(x, y - 9 * s, 6 * s, 0, 7); g.fill();
+    g.strokeStyle = c; g.lineWidth = 1.5 * s; g.stroke();
+    if (arm) { g.strokeStyle = c; g.lineWidth = 3 * s; g.lineCap = 'round'; g.beginPath(); g.moveTo(x + 6 * s, y + 4 * s); g.lineTo(x + 14 * s, y + 4 * s + arm * 4 * s); g.stroke(); }
+  }
+  function hat(g, x, y, s = 1) { g.fillStyle = col.paper; g.strokeStyle = col.muted; g.lineWidth = 1; g.beginPath(); g.roundRect(x - 6 * s, y - 24 * s, 12 * s, 8 * s, 3 * s); g.fill(); g.stroke(); }
+  function dumpling(g, x, y, s = 1) {
+    g.fillStyle = col.paper; g.strokeStyle = col.muted; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x - 8 * s, y); g.quadraticCurveTo(x, y - 12 * s, x + 8 * s, y); g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); for (let i = -1; i <= 1; i++) { g.moveTo(x + i * 3 * s, y - 6 * s); g.lineTo(x + i * 3 * s, y - 3.5 * s); } g.stroke();
+  }
+  function crate(g, x, y) { g.fillStyle = col.f3; g.fillRect(x - 5, y - 5, 10, 8); }
+  function pile(g, n, x0, y0, cols, maxShow, s = 0.8) {
+    const shown = Math.min(n, maxShow);
+    for (let i = 0; i < shown; i++) dumpling(g, x0 + (i % cols) * 14, y0 - Math.floor(i / cols) * 9, s);
+    if (n > maxShow) { g.fillStyle = col.ink; g.font = '600 15px "JetBrains Mono",monospace'; g.textAlign = 'left'; g.fillText('+' + (n - maxShow), x0 + cols * 14 - 4, y0 - 2); }
+  }
+  function clear(g) { g.clearRect(0, 0, 360, 220); }
+
+  // ----- CPU scene -----
+  function drawCPU(tt) {
+    const g = ctxs.cpu; clear(g);
+    const p = tt >= RACE ? 0.99 : tt % 1;
+    fridge(g, p > 0.25 && p < 0.4);
+    g.fillStyle = col.steel; g.fillRect(205, 140, 90, 8);
+    let x = 250, carry = false, arm = 0, say;
+    if (tt >= RACE) { say = '时间到'; }
+    else if (p < 0.35) { x = lerp(250, 80, ease(p / 0.35)); say = '跑去冰箱拿料……'; }
+    else if (p < 0.7) { x = lerp(80, 250, ease((p - 0.35) / 0.35)); carry = true; say = '拿回来……'; }
+    else { arm = Math.sin(p * 60); say = '包！'; }
+    person(g, x, 118, col.cpu, 1.3, arm); hat(g, x, 118, 1.3);
+    if (carry) crate(g, x + 16, 122);
+    if (!carry && p >= 0.7 && tt < RACE) dumpling(g, 268, 138, 1);
+    pile(g, C.cpu(Math.min(tt, RACE)).made, 300, 205, 4, 16);
+    return say;
+  }
+
+  // ----- GPU scene -----
+  const home = k => ({ x: 175 + (k % 4) * 42, y: 50 + Math.floor(k / 4) * 38 });
+  const door = k => ({ x: 74 + (k % 4) * 8 + (Math.floor(k / 4) % 2) * 4, y: 72 + Math.floor(k / 4) * 22 });
+  function drawGPU(tt) {
+    const g = ctxs.gpu; clear(g);
+    const p = tt >= RACE ? 1.49 : tt % 1.5;
+    fridge(g, p > 0.3 && p < 0.65);
+    let say;
+    for (let k = 0; k < 16; k++) {
+      const h = home(k), d = door(k), delay = k * 0.012;
+      let x = h.x, y = h.y, carry = false, arm = 0;
+      if (tt < RACE) {
+        if (p < 0.6) { const e = ease(clamp((p - delay) / 0.42)); x = lerp(h.x, d.x, e); y = lerp(h.y, d.y, e); }
+        else if (p < 1.2) { const e = ease(clamp((p - 0.6 - delay) / 0.42)); x = lerp(d.x, h.x, e); y = lerp(d.y, h.y, e); carry = true; }
+        else arm = Math.sin(p * 60 + k);
+      }
+      person(g, x, y, col.gpu, 0.85, arm);
+      if (carry) crate(g, x + 11, y + 4);
+      if (p >= 1.2 && tt < RACE) dumpling(g, x + 14, y + 14, 0.7);
+    }
+    if (tt >= RACE) say = '时间到';
+    else if (p < 0.6) { say = '16 个人一起冲向冰箱，门口挤爆了'; }
+    else if (p < 1.2) say = '拿回来……';
+    else say = '16 个一起包！';
+    pile(g, C.gpu(Math.min(tt, RACE)).made, 275, 212, 6, 6, 0.7);
+    return say;
+  }
+
+  // ----- NPU scene -----
+  function drawNPU(tt) {
+    const g = ctxs.npu; clear(g);
+    const T = Math.min(tt, RACE);
+    const p = T % 1;
+    fridge(g, p < 0.3 && tt < RACE);
+    // belt
+    g.fillStyle = col.belt; g.fillRect(BELT0, 150, BELT1 - BELT0, 12);
+    g.strokeStyle = col.muted; g.lineWidth = 1;
+    const off = (T * SPEED) % 16;
+    g.beginPath(); for (let x = BELT0 + off; x < BELT1; x += 16) { g.moveTo(x, 152); g.lineTo(x, 160); } g.stroke();
+    // tray from fridge to belt each second
+    if (tt < RACE && p < 0.3) { const x = lerp(62, BELT0 + 6, p / 0.3); g.fillStyle = col.paper; g.strokeStyle = col.muted; for (let i = 0; i < 3; i++) { g.beginPath(); g.ellipse(x, 140 - i * 3, 7, 2.5, 0, 0, 7); g.fill(); g.stroke(); } }
+    // stations
+    const fills = [col.f1, col.f2, col.f3, col.f4];
+    STN.forEach((sx, i) => {
+      let busy = false;
+      for (let k = 0; k * 0.125 < RACE; k++) { const x = BELT0 + (T - k * 0.125) * SPEED; if (T >= k * 0.125 && Math.abs(x - sx) < 7) busy = true; }
+      person(g, sx, 108, col.npu, 1, busy && tt < RACE ? -1 : 0);
+      g.fillStyle = col.steel; g.beginPath(); g.ellipse(sx + 16, 132, 9, 4, 0, 0, 7); g.fill();
+      g.fillStyle = fills[i]; g.beginPath(); g.ellipse(sx + 16, 130, 7, 3, 0, 0, 7); g.fill();
+    });
+    g.fillStyle = col.muted; g.font = '15px "Noto Sans SC",sans-serif'; g.textAlign = 'center';
+    g.fillText('馅料一直放在手边', 215, 62);
+    // items on belt
+    for (let k = 0; k * 0.125 < RACE; k++) {
+      const age = T - k * 0.125; if (age < 0) continue;
+      const x = BELT0 + age * SPEED; if (x > 332) continue;
+      const passed = STN.filter(s => x >= s).length;
+      if (passed === 4 && x > 300) { dumpling(g, x, 150, 0.8); continue; }
+      g.fillStyle = col.paper; g.strokeStyle = col.muted; g.beginPath(); g.arc(x, 145, 6, 0, 7); g.fill(); g.stroke();
+      for (let i = 0; i < passed; i++) { g.fillStyle = fills[i]; g.beginPath(); g.moveTo(x, 145); g.arc(x, 145, 4, i * Math.PI / 2, (i + 1) * Math.PI / 2); g.fill(); }
+    }
+    pile(g, C.npu(T).made, 270, 212, 6, 6, 0.7);
+    if (tt >= RACE) return '时间到';
+    if (T < TRAVEL) return '第一个饺子还在流水线上……';
+    return '流水线满了，每拍都有饺子出来';
+  }
+
+
+  // ----- APU scene -----
+  function drawAPU(tt) {
+    const g = ctxs.apu; clear(g);
+    const p1 = tt >= RACE ? 0.99 : tt % 1, p = tt >= RACE ? 1.49 : tt % 1.5;
+    fridge(g, (p1 > 0.25 && p1 < 0.4) || (p > 0.3 && p < 0.65));
+    g.setLineDash([5, 4]); g.strokeStyle = col.muted; g.lineWidth = 1; g.beginPath(); g.roundRect(4, 4, 352, 212, 8); g.stroke(); g.setLineDash([]);
+    label(g, '同一块芯片', 300, 22, col.muted, 13);
+    for (let k = 0; k < 6; k++) {
+      const h = { x: 200 + (k % 3) * 44, y: 50 + Math.floor(k / 3) * 44 }, d = door(k), delay = k * 0.015;
+      let x = h.x, y = h.y, carry = false, arm = 0;
+      if (tt < RACE) {
+        if (p < 0.6) { const e = ease(clamp((p - delay) / 0.42)); x = lerp(h.x, d.x, e); y = lerp(h.y, d.y, e); }
+        else if (p < 1.2) { const e = ease(clamp((p - 0.6 - delay) / 0.42)); x = lerp(d.x, h.x, e); y = lerp(d.y, h.y, e); carry = true; }
+        else arm = Math.sin(p * 60 + k);
+      }
+      person(g, x, y, col.gpu, 0.85, arm);
+      if (carry) crate(g, x + 11, y + 4);
+    }
+    let cx = 150, carry = false, arm = 0;
+    if (tt < RACE) {
+      if (p1 < 0.35) cx = lerp(150, 80, ease(p1 / 0.35));
+      else if (p1 < 0.7) { cx = lerp(80, 150, ease((p1 - 0.35) / 0.35)); carry = true; }
+      else arm = Math.sin(p1 * 60);
+    }
+    person(g, cx, 160, col.apu, 1.1, arm); hat(g, cx, 160, 1.1);
+    if (carry) crate(g, cx + 14, 164);
+    pile(g, C.apu(Math.min(tt, RACE)).made, 250, 205, 6, 6, 0.7);
+    if (tt >= RACE) return '时间到';
+    return p < 0.6 ? '大厨和帮工抢同一台冰箱' : p < 1.2 ? '拿回来……' : '6 个帮工一起包，大厨也在包';
+  }
+
+  // ----- TPU scene -----
+  function drawTPU(tt) {
+    const g = ctxs.tpu; clear(g);
+    const T = Math.min(tt, RACE);
+    fridge(g, tt < RACE && T % 0.5 < 0.15);
+    label(g, '饺子皮 ↓', 210, 16, col.muted, 13);
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 8; j++) {
+      const x = 90 + j * 31, y = 24 + i * 27;
+      g.fillStyle = col.cell; g.strokeStyle = col.line; g.lineWidth = 1;
+      g.beginPath(); g.roundRect(x, y, 26, 22, 4); g.fill(); g.stroke();
+      const ph = T * 8 - i - j;
+      if (ph >= 0 && tt < RACE) {
+        const f = (ph / 2) % 1;
+        if (f < 0.5) { g.globalAlpha = 1 - f; g.fillStyle = col.tpu; g.beginPath(); g.roundRect(x, y, 26, 22, 4); g.fill(); g.globalAlpha = 1; }
+      }
+    }
+    label(g, '馅 →', 76, 100, col.muted, 13);
+    pile(g, C.tpu(T).made, 250, 214, 6, 6, 0.7);
+    if (tt >= RACE) return '时间到';
+    return T < 1.5 ? '波浪正在铺满整面墙……' : '整面墙一起开工，每拍出 5 个';
+  }
+
+  // ----- LPU scene -----
+  function drawLPU(tt) {
+    const g = ctxs.lpu; clear(g);
+    const T = Math.min(tt, RACE);
+    fridge(g, tt < RACE && T % 4 < 0.3);
+    label(g, '料全摆在台面上', 215, 22, col.muted, 13);
+    for (let c = 0; c < 4; c++) {
+      const x = 82 + c * 66;
+      for (let r = 0; r < 3; r++) for (let q = 0; q < 5; q++) { g.fillStyle = [col.f1, col.f2, col.f3, col.f4][(r + q + c) % 4]; g.fillRect(x + 4 + q * 11, 40 + r * 13, 8, 8); }
+      g.fillStyle = col.steel; g.fillRect(x, 120, 60, 10);
+      label(g, '芯片' + (c + 1), x + 30, 148, col.muted, 12);
+    }
+    if (tt < RACE) {
+      for (let k = 0; k < 10; k++) { const x = 82 + ((T * 260 + k * 26) % 262); g.fillStyle = col.lpu; g.beginPath(); g.arc(x, 114, 3.5, 0, 7); g.fill(); }
+      if (T >= 0.3) dumpling(g, 346, 128 - Math.abs(Math.sin(T * Math.PI * 10)) * 6, 0.8);
+    }
+    pile(g, C.lpu(T).made, 250, 210, 6, 6, 0.7);
+    if (tt >= RACE) return '时间到';
+    return T < 0.3 ? '开火……' : '第一个 0.3 秒就出锅，之后一个接一个';
+  }
+
+  // ----- DOM readouts -----
+  const $ = id => document.getElementById(id);
+  const NAMES = { cpu: 'CPU', gpu: 'GPU', apu: 'APU', npu: 'NPU', tpu: 'TPU', lpu: 'LPU' };
+  const FINAL = {};
+  KEYS.forEach(k => { const r = C[k](RACE); FINAL[k] = { made: r.made, per: (r.trips * TRIP + r.made * WRAP) / r.made }; });
+  function bars(host, vals, max, fmt) {
+    host.innerHTML = KEYS.map(k => `<div class="bar"><span class="k-${k}">${NAMES[k]}</span><div class="track"><div class="fill f-${k}" style="width:${vals[k] == null ? 0 : 100 * vals[k] / max}%"></div></div><span class="num">${vals[k] == null ? '…' : fmt(vals[k])}</span></div>`).join('');
+  }
+  const best = (obj, dir) => KEYS.reduce((a, k) => (dir * obj[k] > dir * obj[a] ? k : a), KEYS[0]);
+  function readouts(tt) {
+    const T = Math.min(tt, RACE), made = {}, first = {}, per = {};
+    for (const k of KEYS) {
+      const r = C[k](T), pow = r.trips * TRIP + r.made * WRAP;
+      made[k] = r.made; first[k] = T >= FIRST[k] ? FIRST[k] : null; per[k] = r.made ? pow / r.made : null;
+      $('made-' + k).textContent = r.made; $('trip-' + k).textContent = r.trips; $('pow-' + k).textContent = pow;
+      $('first-' + k).textContent = first[k] == null ? '—' : first[k].toFixed(1) + 's';
+    }
+    bars($('bars-made'), made, Math.max(...KEYS.map(k => FINAL[k].made)), v => v + ' 个');
+    bars($('bars-first'), first, 2.2, v => v.toFixed(1) + ' 秒');
+    bars($('bars-pow'), per, 7, v => v.toFixed(1));
+    $('clock').textContent = T.toFixed(1); $('tfill').style.width = (100 * T / RACE) + '%';
+    if (tt < RACE) { $('verdict').textContent = '比赛进行中……（耗电 = 每跑一趟冰箱算 5，每包一个饺子算 1）'; return; }
+    const pm = {}; KEYS.forEach(k => pm[k] = FINAL[k].per);
+    const m = best(made, 1), f = best(FIRST, -1), e = best(pm, -1);
+    $('verdict').textContent = `结果：包得最多的是 ${NAMES[m]}（${made[m]} 个），它把流水线铺满了一整面墙。第一个出锅最快的是 ${NAMES[f]}（${FIRST[f]} 秒），所以用它跑的 AI 聊天，字蹦得特别快。最省电的是 ${NAMES[e]}，每个饺子只花 ${pm[e].toFixed(1)} 度电；NPU 也只要 ${pm.npu.toFixed(1)} 度，而 CPU、GPU、APU 都要 ${pm.gpu.toFixed(0)} 度，差别全在跑冰箱的次数上。GPU 包了 ${made.gpu} 个，量大但费电；CPU 一个人最慢，但它什么菜都会做。`;
+  }
+
+  function frame() {
+    const tt = Math.min(t, RACE);
+    const D = { cpu: drawCPU, gpu: drawGPU, apu: drawAPU, npu: drawNPU, tpu: drawTPU, lpu: drawLPU };
+    for (const k of KEYS) $('say-' + k).textContent = D[k](tt);
+    readouts(tt);
+  }
+  function loop(now) {
+    if (last != null && playing) { t += (now - last) / 1000; if (t > RACE + HOLD) t = 0; }
+    last = now; frame(); requestAnimationFrame(loop);
+  }
+  const play = $('play');
+  play.onclick = () => { if (!playing && t >= RACE) t = 0; playing = !playing; play.textContent = playing ? '❚❚ 暂停' : '▶ 继续'; };
+  $('reset').onclick = () => { t = 0; playing = true; play.textContent = '❚❚ 暂停'; };
+  if (reduce) { playing = false; t = RACE; play.textContent = '▶ 播放'; }
+  else t = 2.2; // open mid-race so the first view already shows every kitchen busy
+  requestAnimationFrame(loop);
+
+  // ----- mini scenes for the field guide -----
+  const minis = [...document.querySelectorAll('canvas.mini')].map(c => { const g = c.getContext('2d'); g.setTransform(2, 0, 0, 2, 0, 0); return { c, g, scene: c.dataset.scene, vis: true }; });
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => es.forEach(e => { const m = minis.find(m => m.c === e.target); if (m) m.vis = e.isIntersecting; }));
+    minis.forEach(m => io.observe(m.c));
+  }
+  const label = (g, s, x, y, c = col.muted, size = 14, align = 'center') => { g.fillStyle = c; g.font = `${size}px "Noto Sans SC",sans-serif`; g.textAlign = align; g.fillText(s, x, y); };
+  const rand = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+
+  const SCENES = {
+    tpu(g, T) {
+      label(g, '饺子皮 ↓', 175, 18);
+      label(g, '馅 →', 22, 100, col.muted, 13);
+      for (let i = 0; i < 5; i++) for (let j = 0; j < 8; j++) {
+        const x = 52 + j * 32, y = 30 + i * 28;
+        const k = T * 6 - i - j, f = k - Math.floor(k / 14) * 14;
+        g.fillStyle = col.cell; g.strokeStyle = col.line; g.lineWidth = 1;
+        g.beginPath(); g.roundRect(x, y, 26, 22, 4); g.fill(); g.stroke();
+        if (f < 3) { g.globalAlpha = 1 - f / 3; g.fillStyle = col.npu; g.beginPath(); g.roundRect(x, y, 26, 22, 4); g.fill(); g.globalAlpha = 1; }
+        if (f < 1) dumpling(g, x + 13, y + 16, 0.7);
+      }
+    },
+    lpu(g, T) {
+      label(g, '料全部备在台面上，不用跑冰箱', 160, 20);
+      for (let c = 0; c < 4; c++) {
+        const x = 14 + c * 74;
+        g.fillStyle = col.steel; g.fillRect(x, 92, 68, 10);
+        for (let r = 0; r < 3; r++) for (let q = 0; q < 5; q++) { g.fillStyle = [col.f1, col.f2, col.f3, col.f4][(r + q + c) % 4]; g.fillRect(x + 6 + q * 12, 40 + r * 14, 8, 8); }
+        label(g, '芯片 ' + (c + 1), x + 34, 120, col.muted, 12);
+      }
+      for (let k = 0; k < 9; k++) { const x = 14 + ((T * 140 + k * 33) % 296); g.fillStyle = col.paper; g.strokeStyle = col.muted; g.beginPath(); g.arc(x, 88, 5, 0, 7); g.fill(); g.stroke(); }
+      const text = '今天天气很好，适合出去走走。';
+      const n = Math.min(text.length, Math.floor((T % 4) * 6));
+      g.fillStyle = col.bg; g.fillRect(14, 140, 296, 30);
+      label(g, text.slice(0, n) + (Math.floor(T * 3) % 2 ? '▍' : ''), 20, 162, col.ink, 16, 'left');
+    },
+    dpu(g, T) {
+      g.fillStyle = col.steel; g.fillRect(14, 70, 60, 90);
+      for (let r = 0; r < 3; r++) { g.fillStyle = col.panel; g.fillRect(14, 96 + r * 22, 60, 2); }
+      label(g, '仓库', 44, 175, col.muted, 12);
+      g.fillStyle = col.belt; g.fillRect(150, 158, 170, 6);
+      label(g, '数据包从网上来 ←', 245, 178, col.muted, 12);
+      for (let k = 0; k < 4; k++) {
+        const u = ((T * 0.45) + k / 4) % 1; let x, y;
+        if (u < 0.55) { x = lerp(325, 205, u / 0.55); y = 150; } else { const e = (u - 0.55) / 0.45; x = lerp(205, 70, e); y = lerp(150, 110 - (k % 3) * 22 + 10, e); }
+        g.fillStyle = col.f4; g.fillRect(x - 7, y - 7, 14, 12); g.strokeStyle = col.paper; g.beginPath(); g.moveTo(x - 7, y - 1); g.lineTo(x + 7, y - 1); g.stroke();
+      }
+      person(g, 205, 128, col.ink, 1, Math.sin(T * 8)); label(g, 'DPU 管家', 205, 108 - 8, col.ink, 12);
+      person(g, 250, 52, col.cpu, 1, Math.sin(T * 14)); hat(g, 250, 52, 1);
+      g.fillStyle = col.steel; g.beginPath(); g.ellipse(275, 64, 12, 5, 0, 0, 7); g.fill();
+      label(g, 'CPU：我只管做菜', 250, 22, col.cpu, 12);
+    },
+    isp(g, T) {
+      const stage = Math.floor(T % 4 / 1), names = ['原始画面', '降噪', '调颜色', '提亮'];
+      for (let s = 0; s < 4; s++) {
+        const x = 12 + s * 76, y = 40, w = 68, h = 56;
+        g.save(); g.beginPath(); g.roundRect(x, y, w, h, 4); g.clip();
+        const dark = s < 3 ? 0.45 : 0; const warm = s >= 2;
+        g.fillStyle = warm ? '#8cc4ec' : '#7d9a8c'; g.fillRect(x, y, w, h);
+        g.fillStyle = warm ? '#f6c445' : '#c9c78a'; g.beginPath(); g.arc(x + 50, y + 16, 8, 0, 7); g.fill();
+        g.fillStyle = warm ? '#4f8a52' : '#4e6458'; g.beginPath(); g.moveTo(x, y + h); g.lineTo(x + 24, y + 26); g.lineTo(x + 44, y + 40); g.lineTo(x + 58, y + 30); g.lineTo(x + w, y + h); g.fill();
+        if (dark) { g.fillStyle = `rgba(0,0,0,${dark})`; g.fillRect(x, y, w, h); }
+        if (s === 0) for (let i = 0; i < 140; i++) { g.fillStyle = rand(i + Math.floor(T * 10) * 7) > 0.5 ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.5)'; g.fillRect(x + rand(i * 3.1 + Math.floor(T * 10)) * w, y + rand(i * 7.3 + Math.floor(T * 10)) * h, 2, 2); }
+        g.restore();
+        g.strokeStyle = s === stage ? col.ink : col.line; g.lineWidth = s === stage ? 3 : 1; g.beginPath(); g.roundRect(x, y, w, h, 4); g.stroke();
+        label(g, names[s], x + w / 2, 118, s === stage ? col.ink : col.muted, 13);
+        if (s < 3) label(g, '→', x + w + 4, 72, col.muted, 13);
+      }
+      label(g, '按下快门的一瞬间，这几步就做完了', 160, 160, col.muted, 13);
+    },
+    dsp(g, T) {
+      const rows = [['外面的噪音', col.f1, 1], ['耳机造的反向声波', col.muted, -1], ['叠加后：安静', col.gpu, 0]];
+      rows.forEach(([name, c, s], r) => {
+        const y0 = 38 + r * 52;
+        label(g, name, 12, y0 - 16, c, 12, 'left');
+        g.strokeStyle = c; g.lineWidth = 2; g.beginPath();
+        for (let x = 0; x <= 296; x += 3) {
+          const n = Math.sin(x * 0.12 + T * 6) * 8 + Math.sin(x * 0.31 + T * 9) * 5 + Math.sin(x * 0.7 + T * 4) * 3;
+          const y = y0 + (s === 0 ? Math.sin(x * 0.5 + T * 20) * 0.6 : s * n);
+          x ? g.lineTo(12 + x, y) : g.moveTo(12 + x, y);
+        }
+        g.stroke();
+      });
+    },
+    apu(g, T) {
+      g.setLineDash([5, 4]); g.strokeStyle = col.muted; g.lineWidth = 1.5; g.beginPath(); g.roundRect(6, 8, 308, 168, 8); g.stroke(); g.setLineDash([]);
+      label(g, '同一块芯片', 270, 26, col.muted, 12);
+      g.save(); g.translate(6, -8); g.scale(0.9, 0.9); fridge(g, Math.floor(T * 2) % 4 === 0); g.restore();
+      person(g, 110, 100, col.cpu, 1.2, Math.sin(T * 12)); hat(g, 110, 100, 1.2); label(g, 'CPU 大厨', 110, 140, col.cpu, 12);
+      for (let k = 0; k < 6; k++) { const x = 180 + (k % 3) * 40, y = 70 + Math.floor(k / 3) * 48; person(g, x, y, col.gpu, 0.85, Math.sin(T * 12 + k)); if (Math.sin(T * 3) > 0) dumpling(g, x + 14, y + 16, 0.6); }
+      label(g, 'GPU 帮工', 220, 160, col.gpu, 12);
+    },
+    qpu(g, T) {
+      const p = T % 4, measured = p > 2.6, bits = [1, 0, 1, 1, 0];
+      for (let k = 0; k < 5; k++) {
+        const x = 40 + k * 60, y = 82;
+        const w = measured ? 22 : Math.max(2, Math.abs(Math.cos(T * 7 + k * 1.3)) * 22);
+        g.fillStyle = col.f3; g.strokeStyle = col.f4; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y, w, 22, 0, 0, 7); g.fill(); g.stroke();
+        if (measured) label(g, String(bits[k]), x, y + 6, col.ink, 18);
+      }
+      label(g, measured ? '测量：每个硬币落定成 0 或 1' : '计算中：每个量子比特都还没定下来', 160, 150, measured ? col.ink : col.muted, 13);
+    },
+  };
+  function miniLoop(now) {
+    const T = now / 1000;
+    for (const m of minis) if (m.vis) { m.g.clearRect(0, 0, 320, 180); SCENES[m.scene](m.g, T); }
+    requestAnimationFrame(miniLoop);
+  }
+  requestAnimationFrame(miniLoop);
+})();
+</script>
+<p class="fine" style="max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:0 40px"><a href="/" style="color:inherit">← 回到首页</a></p>
+</body>
+</html>
