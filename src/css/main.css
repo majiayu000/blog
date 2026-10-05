@@ -227,7 +227,7 @@ input:focus-visible {
 }
 
 .hero .content-frame {
-  padding-block: clamp(4.8rem, 10vw, 7.8rem) clamp(4rem, 8vw, 6.3rem);
+  padding-block: clamp(3.2rem, 7vw, 5rem) clamp(2.8rem, 6vw, 4rem);
 }
 
 .eyebrow {
@@ -252,7 +252,7 @@ input:focus-visible {
   max-width: 13ch;
   margin: 0;
   font-family: var(--display);
-  font-size: clamp(3.2rem, 7.4vw, 5.8rem);
+  font-size: clamp(3rem, 6.6vw, 5rem);
   font-weight: 700;
   line-height: 0.98;
   letter-spacing: -0.055em;
@@ -328,7 +328,7 @@ input:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
-  margin-top: 2.6rem;
+  margin-top: 1.8rem;
   color: var(--faint);
   font-family: var(--mono);
   font-size: 0.72rem;
@@ -337,7 +337,7 @@ input:focus-visible {
 /* Homepage sections */
 
 .home-section {
-  padding-block: clamp(3.8rem, 8vw, 6rem) 1rem;
+  padding-block: clamp(3rem, 6vw, 4.5rem) 1rem;
 }
 
 .home-section--topics {
@@ -393,6 +393,7 @@ input:focus-visible {
 }
 
 .post-card {
+  position: relative;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 1rem;
@@ -423,14 +424,6 @@ input:focus-visible {
   margin-bottom: 1.15rem;
 }
 
-.post-card__type {
-  color: var(--accent);
-  font-family: var(--mono);
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.15em;
-}
-
 .post-card__topic {
   display: inline-flex;
   align-items: center;
@@ -455,7 +448,19 @@ input:focus-visible {
   letter-spacing: -0.025em;
 }
 
-.post-card h2 a:hover {
+/* The title link covers the card; tag links sit above it and stay clickable. */
+.post-card h2 a::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+.post-card h2 a:focus-visible {
+  outline: none;
+}
+
+.post-card:hover h2 a,
+.post-card:focus-within h2 a {
   color: var(--accent);
 }
 
@@ -466,6 +471,8 @@ input:focus-visible {
 }
 
 .post-card__tags {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
@@ -501,9 +508,15 @@ input:focus-visible {
   gap: 0.55rem;
 }
 
-.post-card__read {
+.post-card__arrow {
   color: var(--accent);
-  font-weight: 600;
+  font-size: 0.9rem;
+  transition: transform 0.22s ease;
+}
+
+.post-card:hover .post-card__arrow,
+.post-card:focus-within .post-card__arrow {
+  transform: translateX(4px);
 }
 
 /* One deliberate editor's pick, followed by a denser latest-notes grid. */
@@ -541,7 +554,7 @@ input:focus-visible {
 
 .featured-story__content {
   display: flex;
-  min-height: 27rem;
+  min-height: 22rem;
   flex-direction: column;
   padding: clamp(2rem, 5vw, 3.5rem);
 }
@@ -551,7 +564,7 @@ input:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: clamp(2.5rem, 6vw, 4.5rem);
+  margin-bottom: clamp(2rem, 4.5vw, 3.2rem);
   color: var(--accent);
   font-family: var(--mono);
   font-size: 0.68rem;
@@ -690,10 +703,6 @@ input:focus-visible {
 
 .posts--compact {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.posts--compact .post-card__content {
-  min-height: 22rem;
 }
 
 .posts--compact .post-card__description {
@@ -898,6 +907,82 @@ input:focus-visible {
   font-family: var(--mono);
   font-size: 0.75rem;
   letter-spacing: 0.14em;
+}
+
+.section-label span {
+  color: var(--faint);
+  letter-spacing: 0.04em;
+}
+
+.archive-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.archive-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 1.5rem;
+  padding: 1.1rem 0.75rem;
+  margin-inline: -0.75rem;
+  border-bottom: 1px solid var(--line-2);
+  border-radius: 0.6rem;
+  transition: background-color 0.18s ease;
+}
+
+.archive-row:hover,
+.archive-row:focus-within {
+  background: var(--panel);
+}
+
+.archive-row time,
+.archive-row__meta {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+
+.archive-row__title {
+  font-family: var(--display);
+  font-size: 1.08rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.archive-row__title::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+.archive-row:hover .archive-row__title,
+.archive-row__title:focus-visible {
+  color: var(--accent);
+}
+
+.archive-row__main p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.archive-row__meta {
+  display: flex;
+  gap: 0.9rem;
+  white-space: nowrap;
+}
+
+.archive-row__meta span:last-child {
+  min-width: 3.6rem;
+  text-align: right;
 }
 
 .topic-grid--page {

@@ -13,9 +13,22 @@ navKey: archive
 
   {% if blog.years.length %}
     {% for group in blog.years %}
-      <div class="section-label">{{ group.year }}</div>
-      {% set items = group.posts %}
-      {% include "post-list.njk" %}
+      <div class="section-label">{{ group.year }} <span>· {{ group.posts.length }} 篇</span></div>
+      <ol class="archive-list">
+        {% for post in group.posts %}
+        <li class="archive-row">
+          <time datetime="{{ post.date }}">{{ post.date | cnDate | replace(group.year + ".", "") }}</time>
+          <div class="archive-row__main">
+            <a class="archive-row__title" href="{{ post.url }}">{{ post.title }}</a>
+            {% if post.description %}<p>{{ post.description }}</p>{% endif %}
+          </div>
+          <div class="archive-row__meta">
+            {% if post.topic %}<span>{{ post.topic.title }}</span>{% elif post.tags.length %}<span>{{ post.tags[0] }}</span>{% endif %}
+            {% if post.readingMinutes %}<span>{{ post.readingMinutes }} min</span>{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ol>
     {% endfor %}
   {% else %}
     <p class="empty">还没有文章。</p>
