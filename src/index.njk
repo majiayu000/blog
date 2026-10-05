@@ -51,8 +51,8 @@ navKey: home
         <p>EDITOR'S PICK <b>/ 01</b></p>
         <strong aria-hidden="true">01</strong>
         <dl>
-          <div><dt>FORMAT</dt><dd>深度长文</dd></div>
-          <div><dt>READ</dt><dd>约 {{ blog.featured.readingMinutes }} 分钟</dd></div>
+          <div><dt>PUBLISHED</dt><dd>{{ blog.featured.date | cnDate }}</dd></div>
+          {% if blog.featured.readingMinutes %}<div><dt>READ</dt><dd>约 {{ blog.featured.readingMinutes }} 分钟</dd></div>{% endif %}
         </dl>
         <span>{{ blog.featured.slug }}.html</span>
       </aside>

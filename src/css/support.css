@@ -110,7 +110,26 @@
   }
 
   .hero .content-frame {
-    padding-block: 4.2rem;
+    padding-block: 2.6rem 2.4rem;
+  }
+
+  .archive-row {
+    grid-template-columns: auto 1fr;
+    gap: 0.35rem 0.9rem;
+  }
+
+  .archive-row__main {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .archive-row__meta span:last-child {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .archive-row__main p {
+    -webkit-line-clamp: 2;
   }
 
   .hero h1 {
@@ -190,9 +209,9 @@
     display: none;
   }
 
-  .hero__actions {
-    align-items: stretch;
-    flex-direction: column;
+  .hero__actions .button {
+    flex: 1;
+    padding-inline: 1rem;
   }
 
   .section-heading {
