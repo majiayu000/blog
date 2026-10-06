@@ -19,7 +19,7 @@ video{display:block;width:100%;height:auto;aspect-ratio:16/9;background:#101c15;
 .actions{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:44px}.actions a{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:8px 14px;font-size:14px;text-decoration:none}.actions a:hover{border-color:var(--accent)}
 section{max-width:860px;margin:44px auto 0}h2{font-size:27px;line-height:1.4;margin:0 0 20px}p{margin:0 0 20px}.note{border-left:3px solid var(--sage);padding-left:20px;color:var(--muted)}
 .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;font-size:15px}th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);background:var(--panel);font-weight:500}tr:last-child td{border-bottom:0}td:first-child{width:100px}td:nth-child(2){white-space:nowrap;color:var(--muted)}
-.seek{color:var(--accent);font:14px ui-monospace,monospace;background:none;border:0;cursor:pointer;padding:4px 0;text-decoration:underline;text-underline-offset:4px}
+.seek{color:var(--accent);font:14px ui-monospace,monospace;background:none;border:0;cursor:pointer;padding:4px 0;text-decoration:underline;text-underline-offset:4px}.seek:disabled{opacity:.45;cursor:wait}
 summary{cursor:pointer;color:var(--sage)}.refs{font-size:14px;color:var(--muted);padding-left:22px;overflow-wrap:anywhere}.refs li{padding:4px 0}.small{font-size:14px;color:var(--muted)}
 @media(max-width:600px){main{padding:22px 16px 48px}.eyebrow{margin-top:32px}h1{letter-spacing:0}section{margin-top:32px}th,td{padding:10px 12px}table{font-size:13px}.actions{gap:8px}.actions a{padding:7px 10px}}
 </style>
@@ -33,11 +33,12 @@ summary{cursor:pointer;color:var(--sage)}.refs{font-size:14px;color:var(--muted)
 <p class="lede">把 2012 年的 AlexNet 到 2026 年的模型发布，做成了一部 2 分 22 秒的动态小展览。像素猫、词语连线和去噪画面，分别对应图像识别、注意力和图像生成。可以从头看，也可以点下面的时间跳到某一章。</p>
 <p class="meta">2012 → 2026 · 更新至 2026.10.06 · 1080p / 30 fps</p>
 </header>
-<video id="chronicle" controls playsinline preload="metadata" poster="cover.png" width="1920" height="1080" aria-label="模型编年史动画">
+<video id="chronicle" controls playsinline preload="none" poster="cover.png" width="1920" height="1080" aria-label="模型编年史动画">
 <source src="model-chronicle.mp4" type="video/mp4">
 你的浏览器暂时无法播放此视频，可以<a href="model-chronicle.mp4">下载 MP4</a>观看。
 </video>
 <p class="caption">原配乐，无旁白。橙色年份线跟随章节，2026 为当前终点，右侧的 2027 保持空心。</p>
+<p id="video-status" class="small" role="status">视频正在载入…</p>
 <div class="actions"><a href="model-chronicle.mp4" download>下载视频</a><a href="model-chronicle-project.zip" download>下载可编辑工程</a><a href="#chapters">按章节观看 ↓</a></div>
 <section aria-labelledby="selection">
 <h2 id="selection">这次选了哪些节点</h2>
@@ -107,7 +108,27 @@ summary{cursor:pointer;color:var(--sage)}.refs{font-size:14px;color:var(--muted)
 </main>
 <script>
 const video=document.getElementById('chronicle');
-document.querySelectorAll('button[data-time]').forEach(button=>button.addEventListener('click',()=>{
+const status=document.getElementById('video-status');
+const chapterButtons=document.querySelectorAll('button[data-time]');
+video.controls=false;
+chapterButtons.forEach(button=>button.disabled=true);
+// Pages serves static video ranges as 200. A local Blob gives the player a seekable file.
+fetch(video.querySelector('source').src).then(response=>{
+ if(!response.ok)throw new Error('Video HTTP '+response.status);
+ return response.blob();
+}).then(blob=>{
+ video.addEventListener('loadedmetadata',()=>{
+  chapterButtons.forEach(button=>button.disabled=false);
+  status.textContent='视频已就绪，可以播放或按章节跳转。';
+ },{once:true});
+ video.src=URL.createObjectURL(blob);
+ video.controls=true;
+ video.load();
+}).catch(error=>{
+ status.textContent='视频加载失败，请点击下载视频观看。';
+ console.error('Video load failed',error);
+});
+chapterButtons.forEach(button=>button.addEventListener('click',()=>{
  video.currentTime=Number(button.dataset.time);
  video.scrollIntoView({block:'center'});
  video.play().catch(()=>{video.focus();});
