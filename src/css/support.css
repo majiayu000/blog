@@ -113,6 +113,15 @@
     padding-block: 2.6rem 2.4rem;
   }
 
+  .hero__grid {
+    grid-template-columns: 1fr;
+    gap: 2.4rem;
+  }
+
+  .hero__art svg {
+    max-height: 10rem;
+  }
+
   .archive-row {
     grid-template-columns: auto 1fr;
     gap: 0.35rem 0.9rem;
@@ -212,6 +221,10 @@
   .hero__actions .button {
     flex: 1;
     padding-inline: 1rem;
+  }
+
+  .hero__art {
+    display: none;
   }
 
   .section-heading {

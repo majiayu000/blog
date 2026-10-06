@@ -232,6 +232,52 @@ input:focus-visible {
   font-size: 0.76rem;
 }
 
+/* Hero art: the brand's three blocks and the "/" that the OG image and topic tiles share. */
+
+.hero__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.62fr);
+  align-items: center;
+  gap: clamp(2rem, 6vw, 5rem);
+}
+
+.hero__text {
+  min-width: 0;
+}
+
+.hero__art {
+  position: relative;
+  min-width: 0;
+  animation: fade-up 0.8s 0.12s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.hero__art svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 26rem;
+}
+
+.hero__art-brand {
+  fill: var(--accent);
+}
+
+.hero__art-tint {
+  fill: var(--accent-soft, var(--panel));
+}
+
+.hero__art-ink {
+  fill: var(--fg);
+}
+
+.hero__art-glyph {
+  fill: var(--bg);
+  font-family: var(--display);
+  font-size: 520px;
+  font-weight: 700;
+  letter-spacing: -0.1em;
+}
+
 .hero__actions {
   display: flex;
   flex-wrap: wrap;

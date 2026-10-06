@@ -3,7 +3,8 @@ layout: shell.njk
 navKey: home
 ---
 <section class="hero" aria-labelledby="home-heading">
-  <div class="content-frame">
+  <div class="content-frame hero__grid">
+    <div class="hero__text">
     <p class="eyebrow">// SILENT·STAR — 关于 AI AGENT 的公开笔记<span class="cursor" aria-hidden="true"></span></p>
     <h1 id="home-heading">我在公开构建<br>AI Agent。</h1>
     <p class="hero__english" lang="en">Building AI agents in public.</p>
@@ -17,6 +18,20 @@ navKey: home
       <span>文章 {{ blog.posts.length }}</span>
       <span aria-hidden="true">·</span>
       <span>自 2026 起写作</span>
+    </div>
+    </div>
+    <div class="hero__art" aria-hidden="true">
+      <svg viewBox="0 -24 496 448" preserveAspectRatio="xMaxYMid meet" focusable="false">
+        <defs>
+          <clipPath id="hero-ink-clip"><rect x="176" y="56" width="320" height="360" rx="18"/></clipPath>
+        </defs>
+        <rect class="hero__art-brand" x="16" y="-24" width="144" height="272" rx="16"/>
+        <rect class="hero__art-tint" x="16" y="264" width="144" height="160" rx="14"/>
+        <rect class="hero__art-ink" x="176" y="56" width="320" height="360" rx="18"/>
+        <g clip-path="url(#hero-ink-clip)">
+          <text class="hero__art-glyph" x="226" y="394">/</text>
+        </g>
+      </svg>
     </div>
   </div>
 </section>
