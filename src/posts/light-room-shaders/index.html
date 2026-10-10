@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>光效陈列室：8 个 WebGPU 场景按节拍快切</title>
+<meta name="date" content="2026-10-10">
+<meta name="description" content="用开源库 shaders 叠出 8 个高速 WebGPU 光效场景，按 128 BPM 节拍硬切，可调速、切换并复制每个场景的 React 组件代码。">
+<meta name="tags" content="WebGPU, 着色器, 前端, 运行时">
+<style>
+@font-face { font-family: "Anton"; font-style: normal; font-weight: 400; font-display: swap; src: url("./anton-latin.woff2") format("woff2"); }
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+/* Layout: a VJ deck — one huge stage hard-cutting between 8 GPU scenes on a 128 BPM clock, kinetic type slammed over it, a scene rack + console below. Single dark look by choice. */
+:root {
+  color-scheme: dark;
+  --void: #07060a;
+  --panel: #111018;
+  --white: #f6f3ff;
+  --muted: #8a85a0;
+  --line: #24212f;
+  --hot: #ff2e88;
+  --cyan: #2ee6ff;
+  --font-display: "Anton", Impact, "Arial Narrow", "PingFang SC", sans-serif;
+  --font-body: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --gutter: clamp(16px, 3vw, 40px);
+  --beat: 0.46875s;
+}
+[hidden] { display: none !important; }
+html, body { background: var(--void); color: var(--white); }
+body { font-family: var(--font-body); font-size: 15px; line-height: 1.6; padding-inline: var(--gutter); padding-block: env(safe-area-inset-top, 0px) 56px; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 1400px; margin-inline: auto; }
+
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-block: 14px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.top b { color: var(--white); font-weight: 700; }
+.top .back { color: var(--hot); text-decoration: none; }
+.top .back:hover { text-decoration: underline; }
+.led { display: inline-flex; align-items: center; gap: 8px; }
+.led i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.led[data-on="1"] i { background: var(--hot); box-shadow: 0 0 12px var(--hot); animation: blink var(--beat) steps(1) infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+
+.stage { position: relative; height: clamp(460px, 82vh, 920px); border-radius: 6px; overflow: hidden; background: radial-gradient(80% 80% at 30% 30%, #ff2e8855, transparent 60%), radial-gradient(70% 70% at 80% 80%, #2ee6ff44, transparent 60%), var(--void); isolation: isolate; cursor: crosshair; }
+.stage.pulse { animation: pulse var(--beat) cubic-bezier(.2,.8,.2,1); }
+@keyframes pulse { 0% { transform: scale(1.012); filter: brightness(1.25) saturate(1.2); } 100% { transform: scale(1); filter: none; } }
+.stage canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; opacity: 0; pointer-events: none; }
+.stage canvas.on { opacity: 1; pointer-events: auto; z-index: 1; }
+.stage canvas.in { animation: wipe .38s cubic-bezier(.7,0,.2,1); z-index: 2; }
+@keyframes wipe { from { clip-path: polygon(0 0, 0 0, -20% 100%, -20% 100%); } to { clip-path: polygon(0 0, 120% 0, 100% 100%, -20% 100%); } }
+.flash { position: absolute; inset: 0; background: var(--white); mix-blend-mode: overlay; opacity: 0; z-index: 3; pointer-events: none; }
+.flash.go { animation: flash .32s ease-out; }
+@keyframes flash { 0% { opacity: .9; } 100% { opacity: 0; } }
+
+.hud { position: absolute; inset: 0; z-index: 4; pointer-events: none; display: grid; grid-template-rows: auto 1fr auto; padding: clamp(14px, 2.4vw, 28px); }
+.hud-row { display: flex; justify-content: space-between; gap: 12px; font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--white); mix-blend-mode: difference; }
+.big { align-self: end; font-family: var(--font-display); font-size: clamp(64px, 15vw, 230px); line-height: .82; letter-spacing: -.01em; text-transform: uppercase; color: var(--white); mix-blend-mode: difference; overflow: hidden; padding-bottom: .04em; }
+.big span { display: inline-block; animation: slam .55s cubic-bezier(.16,1,.3,1) both; }
+@keyframes slam { from { transform: translateY(105%) skewY(12deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.sub { font-family: var(--font-body); font-weight: 900; font-size: clamp(18px, 2.6vw, 34px); letter-spacing: .04em; color: var(--white); mix-blend-mode: difference; margin-top: 6px; animation: slam .55s .12s cubic-bezier(.16,1,.3,1) both; }
+.progress { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; z-index: 5; background: #ffffff1a; }
+.progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--hot), var(--cyan)); box-shadow: 0 0 14px var(--hot); }
+.beats { display: flex; gap: 5px; }
+.beats i { width: 14px; height: 6px; background: #ffffff33; }
+.beats i.on { background: var(--white); }
+.loading { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; font-family: var(--font-mono); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--white); background: #07060acc; }
+
+.console { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-block: 16px; border-bottom: 1px solid var(--line); }
+.console .grow { flex: 1 1 auto; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+button { font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: .04em; color: var(--white); background: var(--panel); border: 1px solid var(--line); padding: 8px 14px; border-radius: 3px; cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
+button:hover { border-color: var(--hot); color: var(--hot); }
+button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--white); color: var(--void); border-color: var(--white); }
+
+.notice { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--hot); font-size: 14px; }
+
+.rack { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding-block: 18px; }
+.cue { position: relative; text-align: left; padding: 0; height: 128px; overflow: hidden; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); display: grid; align-content: end; }
+.cue .sw { position: absolute; inset: 0; opacity: .55; transition: opacity .2s, transform .4s; }
+.cue:hover .sw { opacity: .9; transform: scale(1.06); }
+.cue .tx { position: relative; padding: 10px 12px; display: grid; gap: 2px; }
+.cue .n { font-size: 11px; color: var(--white); opacity: .8; }
+.cue .t { font-family: var(--font-display); font-size: 28px; line-height: 1; letter-spacing: .01em; text-transform: uppercase; color: var(--white); }
+.cue[aria-current="true"] { border-color: var(--white); box-shadow: 0 0 0 1px var(--white), 0 0 24px #ff2e8866; }
+.cue[aria-current="true"] .sw { opacity: 1; }
+.cue:hover { color: var(--white); }
+
+.code-wrap { border: 1px solid var(--line); border-radius: 4px; background: var(--panel); overflow: hidden; }
+.code-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.code-head b { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+pre.code { margin: 0; padding: 16px; overflow-x: auto; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.65; color: var(--white); }
+pre.code .t { color: var(--hot); }
+pre.code .p { color: var(--cyan); }
+pre.code .v { color: #c9b8ff; }
+
+.about { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding-block: 28px; color: var(--muted); }
+.about h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 40px; line-height: 1; text-transform: uppercase; color: var(--white); }
+.about p { margin: 0; max-width: 38em; }
+footer { border-top: 1px solid var(--line); padding-top: 16px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+footer a { color: var(--white); }
+
+@media (max-width: 900px) { .rack { grid-template-columns: repeat(2, minmax(0, 1fr)); } .about { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) {
+  .stage.pulse, .stage canvas.in, .flash.go, .big span, .sub, .led[data-on="1"] i { animation: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span><a class="back" href="/">← 博客首页</a> · <b>Light Room</b> · 光效陈列室</span>
+    <span class="led" id="led"><i></i><span id="led-text">Standby</span></span>
+  </header>
+
+  <section class="stage" id="stage" aria-label="实时 GPU 光效舞台">
+    <div class="flash" id="flash"></div>
+    <div class="hud">
+      <div class="hud-row"><span id="hud-no">01 / 08</span><span>128 BPM · WebGPU</span></div>
+      <div></div>
+      <div>
+        <div class="big" id="big"></div>
+        <div class="sub" id="sub"></div>
+        <div class="hud-row" style="margin-top:14px"><span class="beats" id="beats"></span><span id="hud-layers"></span></div>
+      </div>
+    </div>
+    <div class="progress"><i id="bar"></i></div>
+    <div class="loading" id="loading">正在编译着色器…</div>
+  </section>
+
+  <div class="console" role="group" aria-label="控制台">
+    <button type="button" id="play" aria-pressed="true">自动切换 · 开</button>
+    <span class="label">速度</span>
+    <div class="seg" id="speed">
+      <button type="button" id="spd-1" data-m="1" aria-pressed="false">×1</button>
+      <button type="button" id="spd-2" data-m="2" aria-pressed="true">×2</button>
+      <button type="button" id="spd-4" data-m="4" aria-pressed="false">×4</button>
+    </div>
+    <span class="grow"></span>
+    <span class="label">移动光标会影响画面 · 按 ← → 切换场景</span>
+  </div>
+
+  <div class="notice" id="notice" hidden>这台设备的浏览器没有开启 WebGPU，舞台只显示静态底色。换用新版 Chrome、Edge 或 Safari 26 可看到实时效果；每个场景的组件代码照常可以查看和复制。</div>
+
+  <nav class="rack" id="rack" aria-label="场景列表"></nav>
+
+  <section class="code-wrap">
+    <div class="code-head"><b id="code-title">场景组件树</b><button type="button" id="copy">复制 React 代码</button></div>
+    <pre class="code" id="code"></pre>
+  </section>
+
+  <section class="about">
+    <h2>8 个场景<br>按节拍硬切</h2>
+    <p>每个场景是一组叠起来的着色器组件：底层出图形，上层加扭曲，最后统一加辉光、色散和胶片颗粒。8 个场景在启动时一次编好，切换时不重新编译；只有当前场景在跑，显卡同一时刻只渲染一个画面。基于开源库 shaders（WebGPU，MIT 协议）。</p>
+  </section>
+
+  <footer>
+    <span>渲染库：<a href="https://github.com/shader-effects-inc/shaders" target="_blank" rel="noopener">shaders</a> 3.2.469（MIT，<a href="./shaders-LICENSE.txt">许可证</a>），随本页一起托管</span>
+    <span>组件文档：<a href="https://shaders.com/docs/components" target="_blank" rel="noopener">shaders.com/docs/components</a></span>
+  </footer>
+</div>
+
+<script type="module">
+const LIB = new URL("./shaders-3.2.469.js", import.meta.url).href;
+const BPM = 128, BEATS_PER_SCENE = 8;
+const BEAT_MS = 60000 / BPM;
+
+const mouse = (s = 0.15) => ({ type: "mouse-position", smoothing: s, momentum: 0.2 });
+const osc = (min, max, speed) => ({ type: "auto-animate", mode: "ping-pong", outputMin: min, outputMax: max, speed });
+const C = { x: 0.5, y: 0.5 };
+const POST = (glow = 1, ca = 0.35) => [
+  { type: "Glow", props: { intensity: glow, threshold: 0.6, size: 30 } },
+  { type: "ChromaticAberration", props: { strength: ca, angle: 0 } },
+  { type: "FilmGrain", props: { strength: 0.25, bias: 2, animated: true } },
+];
+const RAINBOW = [
+  { color: "#ff2e88", position: 0 }, { color: "#ffb02e", position: 0.3 },
+  { color: "#2ee6ff", position: 0.65 }, { color: "#8a5cff", position: 1 },
+];
+
+const SCENES = [
+  { en: "Warp", zh: "曲速跃迁", sw: "conic-gradient(from 0deg,#ff2e88,#07060a,#2ee6ff,#07060a,#ff2e88)",
+    tree: [
+      { type: "SunBurst", props: { color: "#ffd0ec", background: "#12041c", center: C, rayCount: 36, softness: 0.25, radius: 1.1, feather: 0.5, speed: 1.4 } },
+      { type: "ZoomBlur", props: { intensity: 35, center: C } },
+      ...POST(1.2, 0.5)] },
+  { en: "Mandala", zh: "等离子曼陀罗", sw: "radial-gradient(circle,#ffb02e,#ff2e88 40%,#2a0b3d 75%)",
+    tree: [
+      { type: "Plasma", props: { colorA: "#ff2e88", colorB: "#2ee6ff", density: 2.2, warp: 0.7, intensity: 2.2, contrast: 1.3, speed: 3 } },
+      { type: "Kaleidoscope", props: { segments: 8, center: C, angle: osc(0, 360, 0.2) } },
+      ...POST(1, 0.35)] },
+  { en: "Strands", zh: "霓虹丝束", sw: "linear-gradient(100deg,#ff2e88,#ffb02e,#2ee6ff,#8a5cff)",
+    tree: [
+      { type: "SolidColor", props: { color: "#07060a" } },
+      { type: "Strands", props: { stops: RAINBOW, lineCount: 22, lineWidth: 0.07, softness: 0.08, amplitude: 2, frequency: 0.45, spread: 0.5, colorSpeed: 2, speed: 1.6 } },
+      { type: "Bulge", props: { center: mouse(), strength: 0.6, radius: 0.4 } },
+      ...POST(1.4, 0.45)] },
+  { en: "Glitch", zh: "信号崩坏", sw: "repeating-linear-gradient(0deg,#ff2e88 0 6px,#2ee6ff 6px 10px,#07060a 10px 18px)",
+    tree: [
+      { type: "MeshGradient", props: { colorA: "#2a07c9", colorB: "#ff2e88", colorSpace: "oklch", count: 5, swirl: 0.8, drift: 1, speed: 3 } },
+      { type: "Glitch", props: { intensity: 1, speed: 2, rgbShift: 14, blockDensity: 16, colorBarIntensity: 0.3, scanlineIntensity: 0.35 } },
+      ...POST(0.8, 0.6)] },
+  { en: "Vortex", zh: "漩涡", sw: "repeating-conic-gradient(#ffb02e 0 15deg,#16051f 15deg 30deg)",
+    tree: [
+      { type: "Spiral", props: { colorA: "#14041c", colorB: "#ffb02e", strokeWidth: 0.5, softness: 0.15, scale: 5, center: C, speed: 3 } },
+      { type: "Twirl", props: { center: C, intensity: osc(-1.5, 1.5, 0.3) } },
+      ...POST(1.1, 0.5)] },
+  { en: "Prism", zh: "棱镜光", sw: "linear-gradient(120deg,#07060a 30%,#fff 45%,#ff2e88 52%,#ffb02e 58%,#2ee6ff 66%,#07060a 80%)",
+    tree: [
+      { type: "SolidColor", props: { color: "#05040a" } },
+      { type: "Prism", props: { position: { x: 0.1, y: 0.5 }, splitPosition: C, beamWidth: 0.05, spread: 0.8, intensity: 2, saturation: 1, speed: 0.6 } },
+      { type: "LensFlare", props: { lightPosition: { x: 0.5, y: 0.5 }, intensity: 0.8, ghostIntensity: 0.6, haloIntensity: 0.5, starburstIntensity: 0.6, streakIntensity: 0.6 } },
+      ...POST(1.2, 0.4)] },
+  { en: "Cells", zh: "细胞裂变", sw: "radial-gradient(circle at 30% 30%,#2ee6ff,transparent 40%),radial-gradient(circle at 70% 70%,#ff2e88,transparent 40%),#07060a",
+    tree: [
+      { type: "Voronoi", props: { stops: RAINBOW, colorBorder: "#07060a", scale: 6, edgeIntensity: 0.8, edgeSoftness: 0.08, speed: 2.5 } },
+      { type: "WaveDistortion", props: { strength: 0.15, frequency: 2, speed: 2 } },
+      { type: "Bulge", props: { center: mouse(), strength: 0.6, radius: 0.4 } },
+      ...POST(1, 0.5)] },
+  { en: "Aurora", zh: "极光狂飙", sw: "linear-gradient(180deg,#07060a,#0d3b3a 50%,#3be0a0 75%,#a77be8)",
+    tree: [
+      { type: "Aurora", props: { colorA: "#3be0a0", colorB: "#8a5cff", colorC: "#ff2e88", intensity: 95, curtainCount: 5, waviness: 70, rayDensity: 25, height: 130, speed: 12 } },
+      ...POST(1.2, 0.4)] },
+];
+SCENES.forEach((s, si) => s.tree.forEach((c, ci) => { c.id = `s${si}c${ci}`; if (typeof c.props.speed === "number") c.base = c.props.speed; }));
+
+const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const fmt = v => typeof v === "string" ? `<span class="v">"${esc(v)}"</span>` : `{<span class="v">${esc(JSON.stringify(v).replace(/"([a-zA-Z0-9]+)":/g, "$1: "))}</span>}`;
+function toJSX(tree) {
+  const imports = [...new Set(["Shader", ...tree.map(c => c.type)])].join(", ");
+  const out = [`import { ${imports} } from 'shaders/react'`, "", `&lt;<span class="t">Shader</span> className="w-full h-screen"&gt;`];
+  for (const c of tree) {
+    out.push(`  &lt;<span class="t">${c.type}</span>`);
+    for (const [k, v] of Object.entries(c.props)) out.push(`    <span class="p">${k}</span>=${fmt(v)}`);
+    out.push("  /&gt;");
+  }
+  out.push(`&lt;/<span class="t">Shader</span>&gt;`);
+  return out.join("\n");
+}
+
+const $ = id => document.getElementById(id);
+const stage = $("stage"), big = $("big"), sub = $("sub"), bar = $("bar"), beatsEl = $("beats");
+for (let i = 0; i < BEATS_PER_SCENE; i++) beatsEl.appendChild(document.createElement("i"));
+const rack = $("rack");
+SCENES.forEach((s, i) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "cue"; b.id = `cue-${i}`;
+  b.innerHTML = `<span class="sw" style="background:${s.sw}"></span><span class="tx"><span class="n">${String(i + 1).padStart(2, "0")} · ${s.zh}</span><span class="t">${s.en}</span></span>`;
+  b.addEventListener("click", () => { go(i); restartClock(); });
+  rack.appendChild(b);
+  s.canvas = document.createElement("canvas");
+  s.canvas.setAttribute("aria-hidden", "true");
+  stage.insertBefore(s.canvas, $("flash"));
+});
+
+let cur = -1, instances = [], mult = 2, playing = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+let sceneStart = performance.now();
+if (!playing) { $("play").setAttribute("aria-pressed", "false"); $("play").textContent = "自动切换 · 关"; }
+
+function show(i) {
+  const s = SCENES[i];
+  $("hud-no").textContent = `${String(i + 1).padStart(2, "0")} / ${String(SCENES.length).padStart(2, "0")}`;
+  $("hud-layers").textContent = `${s.tree.length} layers`;
+  big.innerHTML = [...s.en].map((ch, k) => `<span style="animation-delay:${k * 28}ms">${ch}</span>`).join("");
+  sub.textContent = s.zh;
+  sub.style.animation = "none"; void sub.offsetWidth; sub.style.animation = "";
+  rack.querySelectorAll(".cue").forEach((c, k) => c.setAttribute("aria-current", String(k === i)));
+  $("code-title").textContent = `${String(i + 1).padStart(2, "0")} ${s.en} · ${s.zh} · 组件树`;
+  $("code").innerHTML = toJSX(s.tree);
+}
+function go(i) {
+  i = (i + SCENES.length) % SCENES.length;
+  if (i === cur) return;
+  const prev = cur; cur = i;
+  const s = SCENES[i];
+  const inst = instances[i];
+  if (inst) { inst.resume(); const r = stage.getBoundingClientRect(); inst.resize(r.width, r.height); }
+  s.canvas.classList.add("on", "in");
+  setTimeout(() => {
+    s.canvas.classList.remove("in");
+    if (prev >= 0 && prev !== cur) { SCENES[prev].canvas.classList.remove("on"); instances[prev]?.pause(); }
+  }, 400);
+  const f = $("flash"); f.classList.remove("go"); void f.offsetWidth; f.classList.add("go");
+  show(i);
+}
+function restartClock() { sceneStart = performance.now(); lastBeat = -1; }
+
+let lastBeat = -1;
+function tick(now) {
+  const t = now - sceneStart;
+  const beat = Math.floor(t / BEAT_MS);
+  if (playing) {
+    bar.style.width = `${Math.min(100, (t / (BEAT_MS * BEATS_PER_SCENE)) * 100)}%`;
+    if (beat !== lastBeat) {
+      lastBeat = beat;
+      if (beat >= BEATS_PER_SCENE) { restartClock(); lastBeat = 0; go(cur + 1); }
+      [...beatsEl.children].forEach((b, k) => b.classList.toggle("on", k <= lastBeat));
+      stage.classList.remove("pulse"); void stage.offsetWidth; stage.classList.add("pulse");
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+$("play").addEventListener("click", e => {
+  playing = !playing;
+  e.currentTarget.setAttribute("aria-pressed", String(playing));
+  e.currentTarget.textContent = playing ? "自动切换 · 开" : "自动切换 · 关";
+  if (playing) restartClock(); else bar.style.width = "0";
+});
+$("speed").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  mult = Number(b.dataset.m);
+  $("speed").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  SCENES.forEach((s, i) => s.tree.forEach(c => { if (c.base != null) instances[i]?.update(c.id, { speed: c.base * mult / 2 }); }));
+});
+addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") { go(cur + 1); restartClock(); }
+  if (e.key === "ArrowLeft") { go(cur - 1); restartClock(); }
+});
+$("copy").addEventListener("click", async e => {
+  const btn = e.currentTarget, code = $("code");
+  try { await navigator.clipboard.writeText(code.textContent); btn.textContent = "已复制"; }
+  catch { const r = document.createRange(); r.selectNodeContents(code); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "已选中，按 ⌘C 复制"; }
+  setTimeout(() => (btn.textContent = "复制 React 代码"), 1800);
+});
+addEventListener("resize", () => { const r = stage.getBoundingClientRect(); instances[cur]?.resize(r.width, r.height); });
+
+show(0);
+function fail(msg) {
+  $("loading").hidden = true; $("notice").hidden = false;
+  $("led-text").textContent = msg;
+  cur = 0;
+  requestAnimationFrame(tick);
+}
+(async () => {
+  let lib;
+  try { lib = await import(LIB); } catch { return fail("渲染库加载失败"); }
+  if (!(await lib.isWebGPUSupported())) return fail("WebGPU 不可用");
+  const gpu = await lib.createSharedDevice();
+  const r = stage.getBoundingClientRect();
+  let ok = 0;
+  for (let i = 0; i < SCENES.length; i++) {
+    $("loading").textContent = `正在编译着色器 ${i + 1} / ${SCENES.length}`;
+    const s = SCENES[i];
+    try {
+      instances[i] = await lib.createShader(s.canvas, { components: s.tree }, { disableTelemetry: true, observeElement: false, ...(gpu ? { gpu } : {}) });
+      instances[i].resize(r.width, r.height);
+      if (i !== 0) instances[i].pause();
+      ok++;
+    } catch { instances[i] = null; }
+  }
+  if (!ok) return fail("WebGPU 渲染失败");
+  $("loading").hidden = true;
+  $("led").dataset.on = "1";
+  $("led-text").textContent = `Live · ${ok} scenes`;
+  cur = -1; go(0); restartClock();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

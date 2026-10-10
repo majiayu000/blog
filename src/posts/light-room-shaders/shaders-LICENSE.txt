@@ -1,0 +1,142 @@
+Shader Effects License Agreement (v1.5)
+
+Effective Date: July 4, 2026
+Licensor: Shader Effects, Inc., a Delaware C-Corporation (“Shader Effects,” “we,” “us,” or “our”)
+Product: Shaders (including all npm packages, components, presets, generated code, and the design platform at shaders.com), together with our proprietary WebGPU rendering engine and all associated source code, algorithms, shader technology, and designs (collectively, the “Proprietary Technology”)
+
+1. Acceptance
+
+By installing, using, or exporting code from Shaders, you (“Licensee”) agree to be bound by this License Agreement (“Agreement”). If you do not agree, you must not use or deploy Shaders or any of its components.
+
+2. License Grant
+
+The Proprietary Technology is the exclusive intellectual property of Shader Effects, Inc. Subject to payment and compliance with this Agreement, Shader Effects grants you a limited, non-exclusive, non-transferable, worldwide license to use the Proprietary Technology, and to modify and integrate Shaders components and exported code in your own projects, according to the license plan purchased.
+
+Subscription License: You may use and deploy Shaders during your active subscription term. Upon cancellation or expiration, you may continue deploying any version released during your active term indefinitely, but you may not deploy or upgrade to newer versions until the license is renewed.
+
+Lifetime License: You may deploy all versions of Shaders released during the lifetime of the company and while the npm registry continues to host the licensed packages. Shader Effects makes no guarantee of ongoing updates, support, or compatibility beyond reasonable efforts to maintain them.
+
+Shaders is free to use for personal, non-commercial, and evaluation purposes. Commercial and production use — including client work, SaaS products, internal tools, and any public-facing deployment — requires an active Pro or Team license. A Pro license also unlocks additional features such as code export, Pro presets, priority support, and more.
+
+3. License Tiers and Benefits
+
+Free Tier — Limitations:
+
+You may use the Proprietary Technology for non-commercial, personal projects, prototypes, and evaluation only.
+
+You may access the design editor, basic presets, and install the npm package to experiment with Shaders components.
+
+You may not use the Proprietary Technology, or any content or code produced with it, in a commercial or production context, including client work, SaaS products, internal tools, or any public-facing deployment.
+
+You may not sell, license, or redistribute content or code created with Shaders.
+
+You may not modify, decompile, reverse engineer, or attempt to extract the source code of the Proprietary Technology, except to the extent such restriction is prohibited by applicable law.
+
+Pro / Team Tier — Commercial License:
+
+You may use the Proprietary Technology for commercial purposes, including client work, SaaS products, and any public-facing deployment.
+
+You unlock code export, giving you clean, production-ready component code for Vue, React, Svelte, and other supported frameworks directly from the design editor.
+
+You gain access to Pro Presets, an exclusive library of premium, hand-crafted presets not available to free users.
+
+You receive a special role in the official Shaders Discord community with access to Pro-only channels.
+
+You receive priority support: prioritized assistance with technical questions and implementation guidance. Support is limited to answering questions about Shaders usage and troubleshooting. Direct code implementation, extended consulting, and hands-on project work require a separate support contract and may be available upon request for an additional fee.
+
+You may not resell or redistribute the Proprietary Technology itself, or provide direct access to it (including source code, build artifacts, or internal APIs) to any third party outside your organization.
+
+You may not create or power a competing tool, library, or service based on the Proprietary Technology.
+
+Pro benefits are tied to an active subscription. Upon expiration, access to Pro features (including code export and Pro presets) will be restricted, though previously exported code remains licensed per the terms in section 2.
+
+Any use beyond the permissions described above requires explicit written consent from Shader Effects, Inc.
+
+4. Prohibited Uses
+
+You may not:
+
+Resell, sublicense, distribute, or repackage Shaders or its components as standalone items.
+
+Use Shaders to create or power a competing tool, library, or service (including design editors, component libraries, visual-effect builders, or shader packs).
+
+Redistribute Shaders presets (including modified versions of presets from the library) as downloadable files, preset libraries, or code packages. Using presets in your projects (including public websites and applications) is permitted; this restriction applies only to redistribution of the presets themselves.
+
+Modify or remove any copyright, trademark, or attribution notice (including “Powered by Shaders” references) contained within the code.
+
+Alter or circumvent license validation or metadata features.
+
+Publish or share exported Shaders code or presets publicly as a library or downloadable package.
+
+Use Shaders technology in SaaS products, design tools, or developer frameworks without a separate written OEM or partnership agreement with Shader Effects, Inc.
+
+Modify, decompile, reverse engineer, or attempt to extract the source code of the Proprietary Technology, except to the extent such restriction is prohibited by applicable law.
+
+Provide direct access to the Proprietary Technology (including source code, build artifacts, or internal APIs) to any third party outside your organization.
+
+Official open-source projects may use Shaders without a license key only for their promotional or documentation websites, provided Shaders is not a core or monetized part of the project.
+
+5. Telemetry and Privacy
+
+Shaders may automatically collect and transmit limited, anonymous performance and usage data to Shader Effects' servers and third-party analytics services for the purposes of improving performance, reliability, and understanding how the library is used in production environments.
+
+Data Collected:
+- Performance metrics (frame rate, render times, component usage)
+- Domain name where Shaders is deployed (e.g., "example.com", without URL paths)
+- Browser family (e.g., Chrome, Firefox, Safari)
+- Device type (mobile, tablet, or desktop)
+- Renderer type (WebGPU)
+
+This data does not include personal information, IP addresses, user identifiers, or any data that can identify individual end users. Telemetry is sampled at a low rate (typically 1-5% of sessions) and respects Do Not Track browser settings.
+
+Opt-Out:
+You may disable telemetry collection entirely by setting the `disableTelemetry` prop on the Shader component or by configuring your environment to respect user privacy preferences. Even when enabled, telemetry will not collect data from users with Do Not Track enabled in their browser.
+
+By using Shaders, you acknowledge and consent to this limited data collection solely for these operational purposes.
+
+6. Right to Promote Usage
+
+Shader Effects reserves the right to publicly identify and promote organizations, products, or websites that use Shaders in production environments, provided no confidential information is disclosed and the representation is factual.
+
+Licensees may request in writing to opt out of promotional use of their name or logo, and Shader Effects will honor such requests within a reasonable timeframe.
+
+7. Intellectual Property
+
+All rights, title, and interest in Shaders and the Proprietary Technology—including but not limited to source code, algorithms, the rendering engine, design assets, presets, shaders, and trademarks—remain the exclusive property of Shader Effects, Inc.
+Licensees retain ownership of their implementation and integration code, but such work is considered derivative and remains subject to this Agreement.
+
+No ownership or IP rights are transferred under this Agreement. You may not claim or register any intellectual property derived from Shaders or the Proprietary Technology.
+
+8. License Compliance and Revocation
+
+Shader Effects reserves the right to audit compliance and revoke, suspend, or deactivate licenses upon evidence of misuse, redistribution, or breach of this Agreement. Upon termination, you must immediately stop deploying or distributing Shaders in any production environment.
+
+9. Disclaimer of Warranties
+
+SHADERS AND ALL ASSOCIATED COMPONENTS ARE PROVIDED “AS IS,” WITHOUT ANY WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, OR CONTINUOUS AVAILABILITY.
+
+Shader Effects makes no guarantee of uninterrupted access to npm packages, shaders.com, or hosted resources, and assumes no responsibility for maintaining historical versions beyond reasonable efforts.
+
+10. Limitation of Liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, SHADER EFFECTS, INC. SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, BUSINESS INTERRUPTION, OR DAMAGES ARISING FROM THE USE OR INABILITY TO USE SHADERS.
+
+Shader Effects’ total liability under this Agreement shall not exceed the total fees paid by Licensee for the applicable license.
+
+11. Governing Law and Venue
+
+This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware and, where applicable, the State of Florida, without regard to conflict of law principles.
+Any dispute arising from or relating to this Agreement shall be resolved exclusively in the state or federal courts located in either Delaware or Florida, and each party irrevocably consents to the jurisdiction of those courts.
+
+12. Entire Agreement
+
+This Agreement constitutes the entire understanding between Licensee and Shader Effects, Inc. regarding the use of Shaders and supersedes all prior agreements or understandings. Shader Effects reserves the right to update this Agreement, and continued use of Shaders constitutes acceptance of the latest version.
+
+13. Contact
+
+Shader Effects, Inc.
+https://shaders.com
+
+Email: legal@shaders.com
+
+By using Shaders, you acknowledge that you have read, understood, and agree to be bound by the terms of this License Agreement.
