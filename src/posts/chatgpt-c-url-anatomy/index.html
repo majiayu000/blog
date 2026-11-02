@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>为什么 ChatGPT 的网址里有个 /c/？</title>
+<meta name="date" content="2026-11-02">
+<meta name="description" content="从一条 ChatGPT 会话链接拆到聊天产品的网址设计：/c/ 路径前缀、会话 ID 里的 UUID v8 与疑似创建时间、/share/ 分享快照，以及为什么权限只能放在服务器。ID 的时间规律目前只有一个样本。">
+<meta name="tags" content="ChatGPT, Agent 架构, URL 设计, UUID">
+<style>
+:root{
+  --bg:#fbfaf7; --surface:#ffffff; --ink:#1d1d1b; --muted:#6b6a65; --line:#e4e1d9;
+  --accent:#2f5bd3; --code-bg:#f2f0ea;
+  --c-scheme:#8a8a8a; --c-host:#2f7d4f; --c-path:#2f5bd3; --c-query:#b5651d; --c-frag:#9b3fb0;
+  --b-shot:#e6efe9; --b-shot-ink:#2f7d4f;
+  --b-off:#e5ecfb; --b-off-ink:#2f5bd3;
+  --b-obs:#f6ecdf; --b-obs-ink:#9a5418;
+  --b-ex:#efeae3; --b-ex-ink:#6b6a65;
+  --b-todo:#f8e3e3; --b-todo-ink:#b03a3a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16171a; --surface:#1e2024; --ink:#ecebe6; --muted:#a3a29c; --line:#33353b;
+    --accent:#8aa8ff; --code-bg:#25272c;
+    --c-scheme:#9a9a9a; --c-host:#6fcf97; --c-path:#8aa8ff; --c-query:#f0a35e; --c-frag:#d58ae6;
+    --b-shot:#1f3328; --b-shot-ink:#7ed3a0;
+    --b-off:#1f2a44; --b-off-ink:#9db6ff;
+    --b-obs:#3a2c1c; --b-obs-ink:#f0b47a;
+    --b-ex:#2c2b28; --b-ex-ink:#b9b7b0;
+    --b-todo:#3d2222; --b-todo-ink:#f09a9a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16171a; --surface:#1e2024; --ink:#ecebe6; --muted:#a3a29c; --line:#33353b;
+  --accent:#8aa8ff; --code-bg:#25272c;
+  --c-scheme:#9a9a9a; --c-host:#6fcf97; --c-path:#8aa8ff; --c-query:#f0a35e; --c-frag:#d58ae6;
+  --b-shot:#1f3328; --b-shot-ink:#7ed3a0;
+  --b-off:#1f2a44; --b-off-ink:#9db6ff;
+  --b-obs:#3a2c1c; --b-obs-ink:#f0b47a;
+  --b-ex:#2c2b28; --b-ex-ink:#b9b7b0;
+  --b-todo:#3d2222; --b-todo-ink:#f09a9a;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif}
+.wrap{max-width:820px;margin:0 auto;padding:40px 16px 96px}
+header.top{border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:8px}
+.kicker{color:var(--muted);font-size:14px;letter-spacing:.04em}
+h1{font-size:32px;line-height:1.3;margin:8px 0 12px}
+.lede{font-size:18px;color:var(--ink);margin:0}
+h2{font-size:23px;margin:56px 0 12px;padding-top:8px;line-height:1.4}
+h2 .num{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:10px}
+h3{font-size:17px;margin:28px 0 8px}
+p{margin:10px 0}
+a{color:var(--accent)}
+code{font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code-bg);padding:1px 5px;border-radius:4px;word-break:break-all}
+pre{background:var(--code-bg);padding:14px 16px;border-radius:8px;overflow-x:auto;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:14px 0}
+pre code{background:none;padding:0;word-break:normal}
+.table-scroll{overflow-x:auto;margin:14px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:15px;min-width:560px}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:13px;background:var(--bg)}
+tr:last-child td{border-bottom:none}
+td:first-child{white-space:nowrap}
+td code{white-space:nowrap;word-break:normal}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:18px 0}
+.box h3{margin-top:0}
+.key{border-left:4px solid var(--accent)}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0}
+.three .box{margin:0}
+.three b{display:block;font-size:17px;margin-bottom:4px}
+@media (max-width:640px){.three{grid-template-columns:1fr}h1{font-size:26px}}
+.tag{display:inline-block;font-size:12px;line-height:1;padding:4px 7px;border-radius:999px;font-weight:600;white-space:nowrap;vertical-align:1px}
+.t-shot{background:var(--b-shot);color:var(--b-shot-ink)}
+.t-off{background:var(--b-off);color:var(--b-off-ink)}
+.t-obs{background:var(--b-obs);color:var(--b-obs-ink)}
+.t-ex{background:var(--b-ex);color:var(--b-ex-ink)}
+.t-todo{background:var(--b-todo);color:var(--b-todo-ink)}
+.url{font:17px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;overflow-x:auto;white-space:nowrap}
+.url span{border-bottom:3px solid currentColor;padding-bottom:2px}
+.s{color:var(--c-scheme)}.h{color:var(--c-host)}.p{color:var(--c-path)}.q{color:var(--c-query)}.f{color:var(--c-frag)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:0}
+ol.qa li{margin:10px 0}
+ol.qa .a{color:var(--muted)}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+nav.toc{font-size:15px;margin:20px 0 0}
+nav.toc ol{margin:6px 0 0;padding-left:20px;columns:2;column-gap:32px}
+@media (max-width:640px){nav.toc ol{columns:1}}
+footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+/* screenshots */
+.shot{margin:18px 0;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.shot img{display:block;width:100%;height:auto}
+.shot img+img{border-top:1px solid #e6e6e6}
+.shot figcaption{padding:8px 14px;font-size:13px;color:var(--muted);background:var(--surface);border-top:1px solid var(--line)}
+/* figures */
+.fig{margin:22px 0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 14px 10px}
+.fig .canvas{overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:600px;height:auto}
+.fig figcaption{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.6}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif}
+.n{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.n-acc{fill:var(--b-off);stroke:var(--accent);stroke-width:1.5}
+.n-ok{fill:var(--b-shot);stroke:var(--c-host);stroke-width:1.5}
+.n-bad{fill:var(--b-todo);stroke:var(--b-todo-ink);stroke-width:1.5}
+.n-warn{fill:var(--b-obs);stroke:var(--c-query);stroke-width:1.5}
+.n-frag{fill:var(--code-bg);stroke:var(--c-frag);stroke-width:1.5}
+.dash{stroke-dasharray:6 4}
+.t{fill:var(--ink);font-size:14px}
+.tm{fill:var(--muted);font-size:12px}
+.tb{font-weight:600}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace !important;font-size:13px}
+.ln{stroke:var(--muted);stroke-width:1.5;fill:none}
+.ln-acc{stroke:var(--accent);stroke-width:2;fill:none}
+.ln-bad{stroke:var(--b-todo-ink);stroke-width:2;fill:none}
+.ah{fill:var(--muted)}
+.dot{fill:var(--accent)}
+.dot-o{fill:var(--surface);stroke:var(--muted);stroke-width:1.5}
+.c-host{fill:var(--c-host)}.c-path{fill:var(--c-path)}.c-query{fill:var(--c-query)}.c-frag{fill:var(--c-frag)}.c-bad{fill:var(--b-todo-ink)}.c-acc{fill:var(--accent)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+</defs></svg>
+<div class="wrap">
+
+<header class="top">
+  <div class="kicker"><a href="/">← 博客</a> · 核查日期 2026-11-02</div>
+  <h1>为什么 ChatGPT 的网址里有个 /c/？</h1>
+  <p class="lede">从这个小问题出发，讲清聊天产品的网址怎么分工：<b>这是哪段对话</b>、<b>现在怎么看</b>、<b>谁能看</b>。</p>
+</header>
+
+<div class="box small">
+  <b>证据标签</b>：全文统一用标签说明出处，正文就不再逐句加限定。<br>
+  <span class="tag t-shot">截图</span> 真实截图里直接看到的
+  <span class="tag t-off">官方</span> 厂商帮助页或文档写明（写作时打开核对过）
+  <span class="tag t-off">官方*</span> 官方页面有人机验证，打不开，内容依据搜索引擎对该页的摘要
+  <span class="tag t-obs">观察</span> 使用时看到的，没有官方说明
+  <span class="tag t-ex">示例</span> 本文自拟的设计示例
+  <span class="tag t-todo">待验</span> 目前不知道，不当事实讲
+</div>
+
+<!-- 1 -->
+<h2 id="hook"><span class="num">1</span>网址里的 /c/ 是什么</h2>
+<p>这是我刚刚在 ChatGPT 里开的一段对话 <span class="tag t-shot">截图</span>：</p>
+<figure class="shot">
+  <img src="img/address-bar.png" alt="浏览器地址栏：chatgpt.com/c/6ae846b8-7cfc-83e9-abb6-7f3712333364" width="900" height="44">
+  <img src="img/chat-view.png" alt="ChatGPT 对话：用户说“给我五块钱”，ChatGPT 回答精神上先转你 ¥5" width="1230" height="400">
+  <figcaption>真实截图，2026-11-02。已裁掉书签栏和侧边栏。</figcaption>
+</figure>
+<p>为什么中间有个 <code>/c/</code>？后面那串长字符是什么？ChatGPT 已经自动给这段对话起了标题“请求五块钱”，为什么不直接把标题放进网址？</p>
+<div class="box key">
+  <h3>一句话答案</h3>
+  <p><code>/c/</code> 是“会话页面”这一类页面的路径前缀，后面跟的是这段会话的 ID。有了这个前缀，网站的路由就能把会话页和分享页、设置页这些其他页面分开。至于 c 指的是 chat 还是 conversation，OpenAI 没有说明。</p>
+</div>
+<h3>把这串 ID 拆开看</h3>
+<p>按 UUID 的格式读这串 ID，能读出一个意外的结果：</p>
+<figure class="fig">
+<div class="canvas">
+<svg viewBox="0 0 760 250" role="img" aria-label="拆开会话 ID：前 8 位换算成 Unix 秒是 2026-11-02 16:15:52；第 13 位版本号是 8；第 17 位变体是 a">
+  <rect class="n-ok" x="20" y="30" width="97" height="40" rx="6"/>
+  <text class="mono" x="30" y="56" style="font-size:16px"><tspan class="c-host">6ae846b8</tspan></text>
+  <text class="tm mono" x="122" y="56" style="font-size:16px">-</text>
+  <rect class="n" x="132" y="30" width="58" height="40" rx="6"/>
+  <text class="mono t" x="142" y="56" style="font-size:16px">7cfc</text>
+  <text class="tm mono" x="195" y="56" style="font-size:16px">-</text>
+  <rect class="n-acc" x="205" y="30" width="58" height="40" rx="6"/>
+  <text class="mono t" x="215" y="56" style="font-size:16px"><tspan class="c-acc tb">8</tspan>3e9</text>
+  <text class="tm mono" x="268" y="56" style="font-size:16px">-</text>
+  <rect class="n-warn" x="278" y="30" width="58" height="40" rx="6"/>
+  <text class="mono t" x="288" y="56" style="font-size:16px"><tspan class="c-query tb">a</tspan>bb6</text>
+  <text class="tm mono" x="341" y="56" style="font-size:16px">-</text>
+  <rect class="n" x="351" y="30" width="135" height="40" rx="6"/>
+  <text class="mono t" x="361" y="56" style="font-size:16px">7f3712333364</text>
+  <text class="tm" x="502" y="55">← 截图里的会话 ID</text>
+
+  <path class="ln" d="M68 70 V118" marker-end="url(#arr)"/>
+  <path class="ln" d="M220 70 L330 118" marker-end="url(#arr)"/>
+  <path class="ln" d="M293 70 L590 118" marker-end="url(#arr)"/>
+
+  <rect class="n-ok" x="20" y="120" width="230" height="112" rx="10"/>
+  <text class="t tb" x="34" y="146">前 8 位：创建时间？</text>
+  <text class="tm" x="34" y="170">0x6ae846b8 = 1793607352 秒</text>
+  <text class="tm" x="34" y="190">= 2026-11-02 16:15:52</text>
+  <text class="tm" x="34" y="210">比截图只早 1 分钟左右</text>
+
+  <rect class="n-acc" x="265" y="120" width="230" height="112" rx="10"/>
+  <text class="t tb" x="279" y="146">第 13 位：版本号 = 8</text>
+  <text class="tm" x="279" y="170">UUID v8，RFC 9562 留给</text>
+  <text class="tm" x="279" y="190">厂商自定义格式的版本</text>
+  <text class="tm" x="279" y="210">所以它不是随机生成的 v4</text>
+
+  <rect class="n-warn" x="510" y="120" width="230" height="112" rx="10"/>
+  <text class="t tb" x="524" y="146">第 17 位：变体 = a</text>
+  <text class="tm" x="524" y="170">二进制 1010，开头是 10</text>
+  <text class="tm" x="524" y="190">符合 RFC 9562 的标准变体</text>
+  <text class="tm c-bad" x="524" y="210">其余各位：含义没有公开</text>
+</svg>
+</div>
+<figcaption>图 1　把截图里的会话 ID 拆开。版本位和变体位按 <a href="https://www.rfc-editor.org/rfc/rfc9562.html">RFC 9562</a> 读出；“前 8 位是创建时间”是根据这一个样本推出来的：换算结果和截图时间吻合，但还需要更多样本确认 <span class="tag t-todo">待验</span>。</figcaption>
+</figure>
+<p>这说明两件事：</p>
+<ul>
+  <li><b>它不是纯随机的。</b>按这个样本，拿到会话链接的人不用登录，也能大致算出这段对话是什么时候建的。</li>
+  <li><b>别凭“长得像 UUID”就默认它随机。</b>我自己最初就把它当成了 v4，看了版本位才发现不对。</li>
+</ul>
+
+<h3>再往下追一步：分享</h3>
+<p>点回答下面那个向上的箭头（分享），同一段对话会拿到另一条网址：</p>
+<div class="url"><span class="h">chatgpt.com</span><span class="q">/share/{分享 ID}</span></div>
+<figure class="fig">
+<div class="canvas">
+<svg viewBox="0 0 760 240" role="img" aria-label="ChatGPT 同一段对话有两条网址：私有的 /c/ 和分享的 /share/；谁能看由服务器判断，不写在网址里">
+  <rect class="n" x="20" y="28" width="310" height="44" rx="8"/>
+  <text class="mono" x="36" y="55"><tspan class="c-host">chatgpt.com</tspan><tspan class="c-path">/c/6ae846b8-…</tspan></text>
+  <text class="tm" x="36" y="94">私有入口：路径里是会话 ID</text>
+
+  <rect class="n" x="20" y="150" width="310" height="44" rx="8"/>
+  <text class="mono" x="36" y="177"><tspan class="c-host">chatgpt.com</tspan><tspan class="c-query">/share/{分享 ID}</tspan></text>
+  <text class="tm" x="36" y="216">分享入口：一份快照（ID 是否相同待验）</text>
+
+  <path class="ln" d="M330 50 L378 100" marker-end="url(#arr)"/>
+  <path class="ln dash" d="M330 172 L378 142" marker-end="url(#arr)"/>
+
+  <rect class="n-acc" x="380" y="84" width="150" height="72" rx="10"/>
+  <text class="t tb" x="455" y="114" text-anchor="middle">同一段对话</text>
+  <text class="tm" x="455" y="138" text-anchor="middle">身份：是哪段对话</text>
+
+  <rect class="n-ok dash" x="570" y="20" width="170" height="200" rx="10"/>
+  <text class="t tb" x="655" y="58" text-anchor="middle">权限：谁能看</text>
+  <text class="tm" x="655" y="92" text-anchor="middle">/c/ → 只有本人</text>
+  <text class="tm" x="655" y="114" text-anchor="middle">/share/ → 拿到链接的人</text>
+  <text class="tm" x="655" y="136" text-anchor="middle">（个人版）</text>
+  <text class="tm" x="655" y="174" text-anchor="middle">由服务器判断</text>
+  <text class="tm" x="655" y="196" text-anchor="middle">不写在网址里</text>
+</svg>
+</div>
+<figcaption>图 2　同一段对话可以有两个入口，能看的人不一样。第三个问题“状态”（比如当前打开的是哪个面板）放到第 4 节讲。分享 ID 是示意。</figcaption>
+</figure>
+<p>于是又多出两个问题：同一段对话为什么会有两条网址？两条网址里的 ID 是同一个吗？前一个下文会回答，后一个要靠实验。</p>
+<div class="table-scroll"><table>
+<tr><th>片段</th><th>能确定的</th><th>不能确定的</th></tr>
+<tr><td><code>/c/</code> <span class="tag t-shot">截图</span></td><td>固定的路径段，用来标记“这是会话页面”</td><td>c 是 chat 还是 conversation，OpenAI 没有说明。可以当作记忆提示，但别当成定论讲</td></tr>
+<tr><td><code>6ae846b8-…</code> <span class="tag t-shot">截图</span></td><td>会话 ID，是 UUID v8；前 8 位换算出来正好是创建时间</td><td>其余各位的含义；是不是所有会话都这样（目前只有一个样本）</td></tr>
+<tr><td><code>/share/</code> <span class="tag t-off">官方*</span></td><td>OpenAI 帮助页写明，分享链接以 <code>chatgpt.com/share/</code> 开头</td><td>后面的 ID 和 <code>/c/</code> 里的是不是同一个。搜索摘要里说后面跟的是 conversation ID，但写作时既没读到原文也没有实测，先不下结论，验证方法见第 10 节 <span class="tag t-todo">待验</span></td></tr>
+</table></div>
+<p>最后这个问题正好说明一件事：<b>看起来像，不等于就是</b>。两个 ID 外形相同，不能推出它们是同一个对象；就算是同一个，也不能推出拿到分享链接的人能打开 <code>/c/</code> 那条网址。</p>
+<p class="small muted">截图里是真实的会话 ID。按正常设计，别人拿到这条链接也打不开对话（见第 5 节），但能从 ID 算出它的创建时间。</p>
+
+<!-- 2 -->
+<h2 id="anatomy"><span class="num">2</span>网址的五个部分</h2>
+<p>先用一个虚构应用把语法讲清楚 <span class="tag t-ex">示例</span>：</p>
+<div class="url"><span class="s">https://</span><span class="h">example.com</span><span class="p">/c/chat_123</span><span class="q">?view=files</span><span class="f">#msg-7</span></div>
+<div class="legend">
+  <span><i style="background:var(--c-scheme)"></i>协议</span>
+  <span><i style="background:var(--c-host)"></i>主机</span>
+  <span><i style="background:var(--c-path)"></i>路径</span>
+  <span><i style="background:var(--c-query)"></i>查询</span>
+  <span><i style="background:var(--c-frag)"></i>片段</span>
+</div>
+<div class="table-scroll"><table>
+<tr><th>部分</th><th>例子</th><th>在本文约定里负责</th><th>语法要点</th></tr>
+<tr><td>协议</td><td><code>https</code></td><td>用什么方式访问</td><td>地址栏常常不显示，不显示不代表没有</td></tr>
+<tr><td>主机</td><td><code>example.com</code></td><td>访问哪个网站</td><td></td></tr>
+<tr><td>路径</td><td><code>/c/chat_123</code></td><td>打开哪个对象（<b>身份</b>）</td><td>斜杠不对应服务器上的文件夹，一个程序可以接住所有 <code>/c/*</code></td></tr>
+<tr><td>查询</td><td><code>?view=files</code></td><td>怎么看这个对象（<b>状态</b>）</td><td>多个参数用 <code>&amp;</code> 连接</td></tr>
+<tr><td>片段</td><td><code>#msg-7</code></td><td>页面内定位</td><td>浏览器发请求时<b>不会</b>把它发给服务器，但页面脚本能读到它（<a href="https://developer.mozilla.org/en-US/docs/Web/URI/Reference">MDN</a>）</td></tr>
+</table></div>
+<figure class="fig">
+<div class="canvas">
+<svg viewBox="0 0 760 240" role="img" aria-label="浏览器把路径和查询发给服务器，片段 #msg-7 留在浏览器里由页面脚本处理">
+  <rect class="n" x="20" y="20" width="330" height="200" rx="10"/>
+  <text class="t tb" x="40" y="50">浏览器</text>
+  <text class="mono" x="40" y="84"><tspan class="c-host">https://example.com</tspan><tspan class="c-path">/c/chat_123</tspan></text>
+  <text class="mono" x="40" y="106"><tspan class="c-query">?view=files</tspan><tspan class="c-frag">#msg-7</tspan></text>
+  <rect class="n-frag" x="40" y="128" width="290" height="72" rx="8"/>
+  <text class="t tb c-frag" x="185" y="158" text-anchor="middle">#msg-7 不发出去</text>
+  <text class="tm" x="185" y="182" text-anchor="middle">页面脚本读取它，跳到第 7 条消息</text>
+
+  <path class="ln" d="M350 92 H518" marker-end="url(#arr)"/>
+  <text class="tm" x="434" y="80" text-anchor="middle">HTTP 请求</text>
+  <text class="tm mono" x="434" y="116" text-anchor="middle">GET /c/chat_123</text>
+  <text class="tm mono" x="434" y="134" text-anchor="middle">?view=files</text>
+
+  <rect class="n" x="520" y="20" width="220" height="200" rx="10"/>
+  <text class="t tb" x="540" y="50">服务器</text>
+  <text class="tm" x="540" y="82">收到：</text>
+  <text class="mono c-path" x="540" y="106">/c/chat_123</text>
+  <text class="mono c-query" x="540" y="130">view=files</text>
+  <text class="t c-bad" x="540" y="182">收不到 #msg-7</text>
+</svg>
+</div>
+<figcaption>图 3　片段只留在浏览器里。服务器靠路径和查询决定返回什么，靠登录凭证决定能不能返回。</figcaption>
+</figure>
+<p>“路径放身份、查询放状态”是一种好懂的<b>设计约定</b>，不是 URL 标准的强制规定。查询参数也可以用来定位资源，比如 <code>/?conversation=123</code>。</p>
+
+<!-- 3 -->
+<h2 id="identity"><span class="num">3</span>身份：/c/ 与长 ID</h2>
+
+<h3>为什么要有 <code>/c/</code> 这一层</h3>
+<p>网站里不只有会话，还有设置页、分享页、项目页。固定的路径段让路由程序一眼分清“这是哪一类页面”。</p>
+<div class="table-scroll"><table>
+<tr><th>写法</th><th>好处</th><th>代价</th></tr>
+<tr><td><code>/c/{id}</code></td><td>短，好复制</td><td>新读者要先知道 c 的意思</td></tr>
+<tr><td><code>/chat/{id}</code></td><td>一看就懂</td><td>长一点</td></tr>
+<tr><td><code>/{id}</code></td><td>最短</td><td>会和 <code>/settings</code> 这类固定页面名撞车</td></tr>
+<tr><td><code>/?conversation={id}</code></td><td>也能用</td><td>身份和状态挤在一起，读起来费劲</td></tr>
+</table></div>
+<p>真实产品两种写法都有：</p>
+<div class="table-scroll"><table>
+<tr><th>产品</th><th>会话地址</th><th>出处</th></tr>
+<tr><td>ChatGPT</td><td><code>chatgpt.com/c/{uuid}</code></td><td><span class="tag t-obs">观察</span></td></tr>
+<tr><td>Claude 网页</td><td><code>claude.ai/chat/{uuid}</code></td><td><span class="tag t-off">官方</span> <a href="https://platform.claude.com/docs/en/manage-claude/compliance-content-data">Compliance API 文档</a>中的 <code>href</code> 字段</td></tr>
+<tr><td>Claude 桌面</td><td><code>claude://claude.ai/chat/{id}</code><br><code>claude://claude.ai/project/{id}</code></td><td><span class="tag t-off">官方</span> <a href="https://support.claude.com/en/articles/14729294-open-claude-desktop-with-a-link">深链接说明</a>：同一个对象有网页和桌面两种入口</td></tr>
+<tr><td>Gemini</td><td><code>gemini.google.com/app/{id}</code></td><td><span class="tag t-todo">待验</span> 常见的形式，ID 看起来不是 UUID，写作时没有核实</td></tr>
+</table></div>
+<p>结论：选 <code>/c/</code> 还是 <code>/chat/</code> 只是长度和可读性之间的取舍，<b>看不出</b>厂商用了什么框架或数据模型。</p>
+
+<h3>为什么用 ID，不用标题</h3>
+<pre><code>/chat/如何写简历     ← 会重名，改标题就得改地址，中文要编码，标题还会留在浏览器历史里
+/chat/chat_123       ← 改标题、加消息、换模型，地址都不变</code></pre>
+<p>会话是一个长期存在的对象，标题只是它的显示属性。稳定的 ID 放进地址，标题留在页面上显示。</p>
+
+<h3>网址里的 ID 不一定是系统里唯一的 ID</h3>
+<p>Claude 的 Compliance API 给同一个会话返回了两个标识 <span class="tag t-off">官方</span>：</p>
+<pre><code>"id":   "claude_chat_01H5CWunD7RpVJ5bHa8RCkja",
+"href": "https://claude.ai/chat/abcdef01-2345-6789-abcd-ef0123456789"</code></pre>
+<p>接口里用 <code>claude_chat_…</code>，网页地址里用 UUID。这正好说明<b>页面路由和后台接口是两层</b>，不能拿网址去反推后端结构。</p>
+<figure class="fig">
+<div class="canvas">
+<svg viewBox="0 0 760 300" role="img" aria-label="一段会话有四种入口：网页地址、桌面深链接、后台接口 ID、分享快照">
+  <rect class="n-acc" x="300" y="115" width="160" height="70" rx="12"/>
+  <text class="t tb" x="380" y="145" text-anchor="middle">一段会话</text>
+  <text class="tm" x="380" y="168" text-anchor="middle">标题、消息、模型都能变</text>
+
+  <rect class="n" x="20" y="20" width="230" height="64" rx="10"/>
+  <text class="t tb" x="36" y="46">网页地址</text>
+  <text class="mono c-path" x="36" y="70">claude.ai/chat/{uuid}</text>
+
+  <rect class="n" x="20" y="216" width="230" height="64" rx="10"/>
+  <text class="t tb" x="36" y="242">桌面深链接</text>
+  <text class="mono c-path" x="36" y="266" style="font-size:11.5px">claude://claude.ai/chat/{id}</text>
+
+  <rect class="n" x="510" y="20" width="230" height="64" rx="10"/>
+  <text class="t tb" x="526" y="46">后台接口 ID</text>
+  <text class="mono" x="526" y="70" style="fill:var(--muted)">claude_chat_01H5…</text>
+
+  <rect class="n-warn" x="510" y="216" width="230" height="64" rx="10"/>
+  <text class="t tb" x="526" y="242">分享快照（示例）</text>
+  <text class="mono c-query" x="526" y="266">/share/{shareId}</text>
+
+  <path class="ln" d="M250 70 L300 128" marker-end="url(#arr)"/>
+  <path class="ln" d="M250 230 L300 172" marker-end="url(#arr)"/>
+  <path class="ln" d="M510 70 L460 128" marker-end="url(#arr)"/>
+  <path class="ln dash" d="M460 172 L510 230" marker-end="url(#arr)"/>
+  <text class="tm" x="492" y="196">复制一份</text>
+</svg>
+</div>
+<figcaption>图 4　同一个对象可以有多个入口，用的 ID 也不一样。左侧两个和右上角来自 Claude 官方文档；右下角的分享快照是本文自拟的设计，快照是复制出来的一份，不是会话本身。</figcaption>
+</figure>
+
+<div class="box key">
+  <h3>ID 难猜 ≠ 有权限</h3>
+  <p>随机的长 ID 让人很难猜到别人的会话，但服务器仍然要检查：<b>当前登录的这个人</b>能不能读<b>这个会话</b>。“浏览器知道这个 ID”和“账号有权读它”是两回事。（<a href="https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html">OWASP IDOR</a>）</p>
+</div>
+
+<!-- 4 -->
+<h2 id="state"><span class="num">4</span>状态：查询参数与片段</h2>
+<p>同一段对话可以有好几种看法 <span class="tag t-ex">示例</span>：</p>
+<pre><code>/c/chat_123                 打开对话，默认视图
+/c/chat_123?view=files      打开文件面板
+/c/chat_123?message=msg_7   跳到某条消息</code></pre>
+<p>真实产品里也有用查询参数携带状态的例子 <span class="tag t-off">官方</span>：Claude 桌面的 <code>claude://code/new?q=…&amp;folder=…</code> 用 <code>q</code> 预填输入框，用 <code>folder</code> 指定工作文件夹（<a href="https://support.claude.com/en/articles/14729294-open-claude-desktop-with-a-link">深链接说明</a>）。路径说明“去哪里”，查询参数说明“到了以后是什么样”。</p>
+
+<div class="box">
+  <h3>判断一个状态该不该进网址</h3>
+  <p>问自己：<b>把这个地址复制到新标签页打开，应不应该恢复成现在这个样子？</b></p>
+  <p class="small">应该：当前打开的面板、选中的回答、筛选条件。<br>不应该：鼠标悬停、输入框里的草稿、密钥和登录凭证（地址会被复制、记录、分享）。</p>
+</div>
+
+<h3>地址变了，页面为什么不刷新</h3>
+<p>前端可以用 History API 改地址：<code>pushState</code> 新增一条浏览器历史，<code>replaceState</code> 替换当前这条。改地址本身不会发网络请求，也不会触发模型调用。（<a href="https://developer.mozilla.org/en-US/docs/Web/API/History/pushState">MDN</a>）</p>
+<figure class="fig">
+<div class="canvas">
+<svg viewBox="0 0 760 222" role="img" aria-label="新聊天四步：打开新聊天、发出第一条消息、服务器建好会话返回 ID、前端用 replaceState 把地址从 /new 改成 /c/chat_123">
+  <rect class="n" x="20" y="20" width="165" height="64" rx="10"/>
+  <text class="t tb" x="102.5" y="46" text-anchor="middle">① 打开新聊天</text>
+  <text class="tm" x="102.5" y="68" text-anchor="middle">还没有会话</text>
+
+  <rect class="n" x="205" y="20" width="165" height="64" rx="10"/>
+  <text class="t tb" x="287.5" y="46" text-anchor="middle">② 发出第一条消息</text>
+  <text class="tm" x="287.5" y="68" text-anchor="middle">前端提交请求</text>
+
+  <rect class="n" x="390" y="20" width="165" height="64" rx="10"/>
+  <text class="t tb" x="472.5" y="46" text-anchor="middle">③ 服务器建好会话</text>
+  <text class="tm" x="472.5" y="68" text-anchor="middle">返回 chat_123</text>
+
+  <rect class="n-acc" x="575" y="20" width="165" height="64" rx="10"/>
+  <text class="t tb" x="657.5" y="46" text-anchor="middle">④ 前端改地址</text>
+  <text class="tm" x="657.5" y="68" text-anchor="middle">replaceState，不刷新</text>
+
+  <path class="ln" d="M185 52 H203" marker-end="url(#arr)"/>
+  <path class="ln" d="M370 52 H388" marker-end="url(#arr)"/>
+  <path class="ln" d="M555 52 H573" marker-end="url(#arr)"/>
+
+  <text class="tm" x="20" y="112">地址栏</text>
+  <rect class="n" x="40" y="120" width="125" height="32" rx="16"/>
+  <text class="mono" x="102.5" y="141" text-anchor="middle" style="fill:var(--muted)">/new</text>
+  <rect class="n" x="225" y="120" width="125" height="32" rx="16"/>
+  <text class="mono" x="287.5" y="141" text-anchor="middle" style="fill:var(--muted)">/new</text>
+  <rect class="n" x="410" y="120" width="125" height="32" rx="16"/>
+  <text class="mono" x="472.5" y="141" text-anchor="middle" style="fill:var(--muted)">/new</text>
+  <rect class="n-acc" x="585" y="120" width="145" height="32" rx="16"/>
+  <text class="mono c-path" x="657.5" y="141" text-anchor="middle">/c/chat_123</text>
+
+  <text class="tm" x="380" y="190" text-anchor="middle">用 replaceState 而不是 pushState：点后退时不会回到一个空白的“新聊天”页。</text>
+  <text class="tm" x="380" y="210" text-anchor="middle">之后每收到一段生成的文字，都不去动浏览器历史。</text>
+</svg>
+</div>
+<figcaption>图 5　一个可行的流程 <span class="tag t-ex">示例</span>。ID 在哪一步生成、用的是 replace 还是 push，每个产品要单独观察 <span class="tag t-todo">待验</span>。</figcaption>
+</figure>
+<p>两个容易漏掉的设计点：</p>
+<ul>
+  <li><b>浏览器历史 ≠ 聊天记录。</b>要是每收到一段生成的文字就 <code>pushState</code> 一次，后退键就没法用了。</li>
+  <li><b>站内点击能打开 ≠ 直接访问能打开。</b>把 <code>/c/{id}</code> 粘贴到新标签页再刷新，服务器也必须返回应用页面。</li>
+</ul>
+
+<!-- 5 -->
+<h2 id="access"><span class="num">5</span>权限：私有入口与分享入口</h2>
+<p>同一段文字可以从两种入口看到，规则完全不同：</p>
+<ul>
+  <li><b>私有入口</b>（<code>/c/…</code>）：只有本人能读写，服务器看登录身份。</li>
+  <li><b>分享入口</b>（<code>/share/…</code>）：服务器看分享记录，包括范围、内容截到哪一刻、有没有被撤销。</li>
+</ul>
+<p><code>/share/</code> 这几个字决定不了公开与否，它只是一个入口，权限要靠后台执行。</p>
+<figure class="fig">
+<div class="canvas">
+<svg viewBox="0 0 800 412" role="img" aria-label="服务器权限判断流程：私有入口检查登录和所有权，分享入口检查分享是否有效和访问者范围">
+  <rect class="n" x="320" y="16" width="160" height="44" rx="10"/>
+  <text class="t tb" x="400" y="43" text-anchor="middle">请求到达服务器</text>
+
+  <path class="ln" d="M360 60 L262 108" marker-end="url(#arr)"/>
+  <text class="mono c-path" x="300" y="80" text-anchor="end">/c/{id}</text>
+  <path class="ln" d="M440 60 L538 108" marker-end="url(#arr)"/>
+  <text class="mono c-query" x="500" y="80">/share/{shareId}</text>
+
+  <!-- left column -->
+  <rect class="n-acc" x="165" y="110" width="180" height="48" rx="10"/>
+  <text class="t" x="255" y="139" text-anchor="middle">已登录？</text>
+  <rect class="n-acc" x="165" y="200" width="180" height="48" rx="10"/>
+  <text class="t" x="255" y="229" text-anchor="middle">有权读这个会话？</text>
+  <rect class="n-ok" x="165" y="290" width="180" height="48" rx="10"/>
+  <text class="t tb" x="255" y="319" text-anchor="middle">返回会话内容</text>
+  <path class="ln" d="M255 158 V198" marker-end="url(#arr)"/>
+  <text class="tm" x="263" y="184">是</text>
+  <path class="ln" d="M255 248 V288" marker-end="url(#arr)"/>
+  <text class="tm" x="263" y="274">是</text>
+
+  <rect class="n-bad" x="15" y="110" width="120" height="48" rx="10"/>
+  <text class="t" x="75" y="139" text-anchor="middle">跳转登录</text>
+  <rect class="n-bad" x="15" y="200" width="120" height="48" rx="10"/>
+  <text class="t" x="75" y="229" text-anchor="middle">403 / 404</text>
+  <path class="ln" d="M165 134 H137" marker-end="url(#arr)"/>
+  <text class="tm" x="151" y="127" text-anchor="middle">否</text>
+  <path class="ln" d="M165 224 H137" marker-end="url(#arr)"/>
+  <text class="tm" x="151" y="217" text-anchor="middle">否</text>
+
+  <!-- right column -->
+  <rect class="n-warn" x="455" y="110" width="180" height="48" rx="10"/>
+  <text class="t" x="545" y="139" text-anchor="middle">分享还有效（未撤销）？</text>
+  <rect class="n-warn" x="455" y="200" width="180" height="48" rx="10"/>
+  <text class="t" x="545" y="229" text-anchor="middle">访问者在分享范围内？</text>
+  <rect class="n-ok" x="455" y="290" width="180" height="48" rx="10"/>
+  <text class="t tb" x="545" y="319" text-anchor="middle">返回快照和快照时间</text>
+  <path class="ln" d="M545 158 V198" marker-end="url(#arr)"/>
+  <text class="tm" x="553" y="184">是</text>
+  <path class="ln" d="M545 248 V288" marker-end="url(#arr)"/>
+  <text class="tm" x="553" y="274">是</text>
+
+  <rect class="n-bad" x="665" y="110" width="120" height="48" rx="10"/>
+  <text class="t" x="725" y="139" text-anchor="middle">404 链接失效</text>
+  <rect class="n-bad" x="665" y="200" width="120" height="48" rx="10"/>
+  <text class="t" x="725" y="229" text-anchor="middle">403 或去登录</text>
+  <path class="ln" d="M635 134 H663" marker-end="url(#arr)"/>
+  <text class="tm" x="649" y="127" text-anchor="middle">否</text>
+  <path class="ln" d="M635 224 H663" marker-end="url(#arr)"/>
+  <text class="tm" x="649" y="217" text-anchor="middle">否</text>
+
+  <text class="t tb" x="400" y="380" text-anchor="middle">两条路都要检查。ID 再难猜，也不能跳过这一步。</text>
+  <text class="tm" x="400" y="402" text-anchor="middle">分享范围举例：公开、仅本组织、仅本工作区（见下表）</text>
+</svg>
+</div>
+<figcaption>图 6　私有入口和分享入口的权限判断 <span class="tag t-ex">示例</span>。没有权限时返回 404 而不是 403，可以不让对方知道这个会话存在。</figcaption>
+</figure>
+
+<h3>三家产品的分享规则</h3>
+<div class="table-scroll"><table>
+<tr><th>产品</th><th>分享地址</th><th>内容会不会跟着更新</th><th>谁能看</th><th>撤销</th></tr>
+<tr>
+  <td>ChatGPT <span class="tag t-off">官方*</span></td>
+  <td><code>chatgpt.com/share/…</code></td>
+  <td>快照，截到分享的那一刻；要加进新消息就再分享一次。企业版帮助页新旧版本说法不一致 <span class="tag t-todo">待验</span></td>
+  <td>个人版：有链接就能看，还能把对话导入自己的历史；企业工作区：只限本工作区成员</td>
+  <td>设置 → 数据控制 → 共享链接 → 管理；删除原对话，链接也会一起失效</td>
+</tr>
+<tr>
+  <td>Claude</td>
+  <td>（分享链接）</td>
+  <td>快照：包含分享之前的消息和 artifacts，之后的消息默认不公开；取消分享再重新分享才会刷新</td>
+  <td>个人版：有链接就能看；Team、Enterprise：只限本组织成员，不能公开</td>
+  <td>取消分享</td>
+</tr>
+<tr>
+  <td>Gemini</td>
+  <td><code>g.co/gemini/share/…</code></td>
+  <td>快照：之后修改或继续聊都不会改变分享页</td>
+  <td>有链接就能看，还能转发，<b>也能在自己的账号里接着聊</b></td>
+  <td>设置里删除公开链接；会话从活动记录里删除时，链接也会自动删除</td>
+</tr>
+</table></div>
+<p class="small muted">出处：<a href="https://help.openai.com/en/articles/7925741-chatgpt-shared-links-faq">ChatGPT 分享链接 FAQ</a>、<a href="https://help.openai.com/en/articles/8474715-chatgpt-enterprise-shared-links-faq">ChatGPT 企业版 FAQ</a> <span class="tag t-off">官方*</span>；<a href="https://support.claude.com/en/articles/10593882-share-and-unshare-chats">Claude</a>、<a href="https://support.google.com/gemini/answer/13743730?hl=en">Gemini</a> <span class="tag t-off">官方</span>。OpenAI 帮助页有 Cloudflare 人机验证，写作时没有绕过，ChatGPT 这一行依据的是搜索摘要。三家都没有登录账号实际操作。</p>
+
+<figure class="fig">
+<div class="canvas">
+<svg viewBox="0 0 760 250" role="img" aria-label="分享快照时间线：快照只包含分享前的消息；之后的消息默认不进入；撤销后链接失效，但截图和副本不受影响">
+  <path class="ln" d="M30 120 H730" marker-end="url(#arr)"/>
+  <text class="tm" x="730" y="142" text-anchor="end">时间</text>
+
+  <path class="ln" d="M66 92 V82 H214 V92"/>
+  <text class="t tb" x="140" y="70" text-anchor="middle">快照包含这些</text>
+  <circle class="dot" cx="80" cy="120" r="8"/>
+  <circle class="dot" cx="140" cy="120" r="8"/>
+  <circle class="dot" cx="200" cy="120" r="8"/>
+  <text class="tm" x="140" y="148" text-anchor="middle">分享前的消息</text>
+
+  <path class="ln-acc" d="M260 50 V132"/>
+  <text class="t tb c-acc" x="260" y="40" text-anchor="middle">创建分享</text>
+
+  <circle class="dot-o" cx="320" cy="120" r="8"/>
+  <circle class="dot-o" cx="380" cy="120" r="8"/>
+  <text class="tm" x="350" y="148" text-anchor="middle">之后的消息</text>
+  <text class="tm" x="350" y="166" text-anchor="middle">默认不进快照</text>
+
+  <path class="ln-bad" d="M460 50 V132"/>
+  <text class="t tb c-bad" x="460" y="40" text-anchor="middle">撤销分享</text>
+  <text class="tm" x="600" y="108" text-anchor="middle">再通过链接打开 → 失效</text>
+
+  <text class="tm" x="30" y="196">ChatGPT：再分享一次，才会更新</text>
+  <text class="tm" x="30" y="216">Claude：取消后重新分享，快照才会刷新</text>
+  <text class="tm" x="30" y="236">Gemini：之后接着聊，也不会改变分享页</text>
+
+  <rect class="n-warn" x="500" y="160" width="240" height="84" rx="10"/>
+  <text class="t tb" x="514" y="186">撤销管不到的</text>
+  <text class="tm" x="514" y="210">截图、复制走的文字、</text>
+  <text class="tm" x="514" y="230">别人导入或接着聊出来的副本</text>
+</svg>
+</div>
+<figcaption>图 7　分享快照的生命周期，依据三家的帮助页。ChatGPT 企业版会不会同步之后的新消息，见上表中的待验项。</figcaption>
+</figure>
+
+<h3>两个容易讲错的边界</h3>
+<ul>
+  <li><b>附件“没分享”不等于信息没泄露。</b>Claude 的说明是：附件文件本身和 MCP 工具调用拿到的原始数据不会进入快照。但回答正文可能引用了里面的内容，这些内容会出现在分享页上。</li>
+  <li><b>撤销管得了以后，管不了以前。</b>撤销之后，再通过这个链接访问会失败。但已经截的图、复制走的内容都不受影响。ChatGPT 的说明是，删除链接不会删除别人已经导入到自己历史里的副本；Gemini 也说明，删除链接不会删除第三方网站上的帖子，也不会删除别人继续对话产生的副本。</li>
+</ul>
+
+<div class="box key">
+  <h3>真实案例：一个勾选框，让分享对话进了搜索结果</h3>
+  <p>ChatGPT 曾在分享时提供一个“让搜索引擎可以发现”的勾选框。2025 年 7 月底，Fast Company 发现 Google 收录了 4,500 多条 ChatGPT 分享链接，其中有些包含个人信息。OpenAI 随后在 7 月 31 日移除了这个功能，表示正在和搜索引擎合作删除已收录的内容，但因为缓存，部分内容可能还会短暂出现在搜索结果里。（<a href="https://www.searchenginejournal.com/openai-is-pulling-shared-chatgpt-chats-from-google-search/552671/">Search Engine Journal 报道</a>）</p>
+  <p class="small">这个案例说明两件事：<br>
+  ① <b>网址一样，暴露范围可以不一样。</b>勾没勾那个框，<code>/share/…</code> 这条网址看起来完全相同，区别只记在服务器的分享记录里。这正是“权限不写在网址里”。<br>
+  ② “能打开”“会被收录”“撤销后能从索引里消失”是三个要分别验证的问题。OpenAI 自己也说，撤下功能后已收录的内容不会马上消失。</p>
+</div>
+
+<!-- 6 -->
+<h2 id="agent"><span class="num">6</span>延伸：Agent 多出来的对象</h2>
+<p>会调用工具、能跑长任务的 Agent，在“会话”之外还有其他对象。下面是一个概念模型 <span class="tag t-ex">示例</span>，不代表任何产品的内部结构：</p>
+<figure class="fig">
+<div class="canvas">
+<svg viewBox="0 0 760 250" role="img" aria-label="Agent 对象关系：项目包含会话，会话包含消息和多次执行，执行产生产物">
+  <rect class="n dash" x="20" y="100" width="120" height="50" rx="10"/>
+  <text class="t tb" x="80" y="122" text-anchor="middle">项目</text>
+  <text class="tm" x="80" y="140" text-anchor="middle">需要时才建</text>
+
+  <rect class="n-acc" x="190" y="100" width="140" height="50" rx="10"/>
+  <text class="t tb" x="260" y="122" text-anchor="middle">会话</text>
+  <text class="mono c-path" x="260" y="141" text-anchor="middle" style="font-size:12px">/c/{id}</text>
+
+  <rect class="n" x="400" y="24" width="160" height="50" rx="10"/>
+  <text class="t tb" x="480" y="46" text-anchor="middle">消息 × 很多</text>
+  <text class="tm" x="480" y="64" text-anchor="middle">定位：#msg-7</text>
+
+  <rect class="n" x="400" y="176" width="160" height="50" rx="10"/>
+  <text class="t tb" x="480" y="198" text-anchor="middle">执行 run × 多次</text>
+  <text class="tm" x="480" y="216" text-anchor="middle">进度、失败点、重试</text>
+
+  <rect class="n" x="600" y="176" width="140" height="50" rx="10"/>
+  <text class="t tb" x="670" y="198" text-anchor="middle">产物 × 多个</text>
+  <text class="tm" x="670" y="216" text-anchor="middle">文档、图片</text>
+
+  <rect class="n-bad dash" x="600" y="24" width="140" height="50" rx="10"/>
+  <text class="t tb" x="670" y="46" text-anchor="middle">链接只预填</text>
+  <text class="tm" x="670" y="64" text-anchor="middle">发送由用户确认</text>
+
+  <path class="ln" d="M140 125 H188" marker-end="url(#arr)"/>
+  <path class="ln" d="M330 115 L398 55" marker-end="url(#arr)"/>
+  <path class="ln" d="M330 135 L398 195" marker-end="url(#arr)"/>
+  <path class="ln" d="M560 201 H598" marker-end="url(#arr)"/>
+  <text class="tm" x="164" y="116" text-anchor="middle">包含</text>
+</svg>
+</div>
+<figcaption>图 8　一次会话可以有多次执行，一次执行可以产生多个产物，所以“打开对话”和“恢复某次执行”要分开设计。</figcaption>
+</figure>
+<div class="table-scroll"><table>
+<tr><th>对象</th><th>代表什么</th><th>什么时候值得给它一个独立地址</th></tr>
+<tr><td>会话</td><td>持续交互的上下文</td><td>用户要回到这段对话</td></tr>
+<tr><td>消息</td><td>一次输入或输出</td><td>要精确引用、跳转</td></tr>
+<tr><td>执行 run</td><td>一次任务执行和它的状态</td><td>要看进度、失败在哪一步、重试记录</td></tr>
+<tr><td>产物</td><td>执行生成的文档、图片</td><td>要单独查看、下载或分享</td></tr>
+<tr><td>项目</td><td>多个会话和资料的组织方式</td><td>确实需要项目视图（Claude 桌面有 <code>project/{id}</code> 深链接 <span class="tag t-off">官方</span>）</td></tr>
+</table></div>
+<ul>
+  <li>一个会话可以有多次执行，所以“打开对话”和“恢复某次执行”要分开设计。会话地址没变，并不能说明任务还在后台跑。</li>
+  <li><b>链接只负责准备，不负责执行。</b>Claude 的 <code>claude://claude.ai/new?q=…</code> 只是把文字预填进输入框，由用户自己检查后再发送 <span class="tag t-off">官方</span>。付款、发邮件这类会改变外部世界的操作，绝不能设计成“打开链接就执行”。</li>
+</ul>
+
+<!-- 7 -->
+<h2 id="design"><span class="num">7</span>落地：最小路由方案</h2>
+<p>给一个简单的聊天应用，先做三个入口就够了 <span class="tag t-ex">示例</span>：</p>
+<pre><code>/new                 新建聊天
+/c/{conversationId}  打开自己的会话   → 检查：登录用户有没有权限读这个会话
+/share/{shareId}     打开分享的内容   → 检查：分享记录还在不在、范围对不对</code></pre>
+<p>分享 ID 和会话 ID 分开，这样一个会话可以有多份快照，撤销其中一份也不影响会话本身。分享页上要显示“快照时间”，还要给出撤销入口。这是本方案的设计选择，不代表别的产品一定也这么做。</p>
+<div class="table-scroll"><table>
+<tr><th>信息</th><th>放在哪</th><th>理由</th></tr>
+<tr><td>会话 ID</td><td>路径</td><td>稳定的身份</td></tr>
+<tr><td>当前面板、选中的回答</td><td>查询参数（有恢复需要时才放）</td><td>复制链接后能恢复</td></tr>
+<tr><td>跳到某条消息</td><td>查询参数或片段，<b>二选一</b></td><td>统一用一种方式定位就行</td></tr>
+<tr><td>输入框草稿</td><td>页面状态或本地存储</td><td>不需要分享</td></tr>
+<tr><td>模型选择</td><td>会话或消息的元数据</td><td>需要记录实际用了哪个模型，但不必放进地址</td></tr>
+<tr><td>密钥、凭证、系统提示词</td><td>后台</td><td>地址会被复制、记录、分享</td></tr>
+</table></div>
+<p>项目页、执行记录页等真的需要单独查看时再加。会话地址不挂在项目路径下面，以后把会话移到别的项目，地址也不用改。</p>
+
+<!-- 8 -->
+<h2 id="takeaways"><span class="num">8</span>三条结论</h2>
+<div class="box key">
+  <p><b>1. 路径放身份。</b>用稳定的 ID，不用标题。改标题、加消息、换模型，地址都不该变。</p>
+  <p><b>2. 只把“该恢复”的状态放进网址。</b>判断标准：复制到新标签页打开，应不应该是现在这个样子。草稿、悬停、凭证都不放。</p>
+  <p><b>3. 权限永远在服务器。</b>私有入口查“这个人有没有权读这个会话”，分享入口查“分享记录还在不在、范围对不对”。ID 再难猜也不算权限，<code>/share/</code> 这几个字也不算。</p>
+</div>
+<p>做 Agent 时再加一条：<b>链接只负责准备，不负责执行</b>。打开链接可以预填内容，但发送、付款这类动作必须由用户确认。</p>
+
+<!-- 9 -->
+<h2 id="faq"><span class="num">9</span>常见追问</h2>
+<ol class="qa">
+  <li>ChatGPT 的会话 ID 里藏着什么？<br><span class="a">按截图这个样本：它是 UUID v8，前 8 位换算出来正好是创建时间（Unix 秒），其余各位的含义没有公开。多看几个会话 ID 就能验证这个规律。</span></li>
+  <li>别人拿到我的 <code>/c/</code> 链接，能看到我的对话吗？<br><span class="a">取决于服务器的权限检查，网址本身回答不了。按图 6 的设计，非本人会被拦在“有权读这个会话？”这一步。</span></li>
+  <li>ChatGPT 的分享 ID 和会话 ID 是同一个吗？<br><span class="a">目前不确定，验证方法见第 10 节。</span></li>
+  <li><code>#msg-9</code> 这种片段会发给服务器吗？<br><span class="a">不会。但页面脚本能读到它，也可以自己把它发出去。</span></li>
+  <li>地址变了，页面为什么没刷新？<br><span class="a">前端用 History API 改了地址。改地址本身不发请求，也不会触发模型调用。</span></li>
+  <li>能从网址看出后端用了什么框架或模型吗？<br><span class="a">不能。Claude 的例子说明，网址里的 ID 和接口里的 ID 都可以不一样。</span></li>
+  <li>撤销分享以后，搜索引擎里的结果会消失吗？<br><span class="a">不一定马上消失。OpenAI 在 2025 年那次事件里也说过，缓存的结果可能还会短暂出现。</span></li>
+  <li>Agent 的一次工具调用失败了，会话地址会变吗？<br><span class="a">不一定。要看产品有没有独立的“执行”对象。</span></li>
+</ol>
+
+<!-- 10 -->
+<h2 id="verify"><span class="num">10</span>自己验证</h2>
+<p>文中有几处只能靠实际操作确认。最快的一项是检查会话 ID 里的时间：打开任意一段 ChatGPT 对话，在浏览器控制台运行下面这行，看输出是不是你开始这段对话的时间。</p>
+<pre><code>new Date(parseInt(location.pathname.split('/c/')[1], 16) * 1000)</code></pre>
+<p class="small muted"><code>parseInt</code> 读到第一个 <code>-</code> 就停，所以只取了 ID 的第一组。用截图里的 ID 在 Node 里运行，输出是 <code>Mon Nov 02 2026 16:15:52 GMT+0800</code>。Chrome 第一次在控制台粘贴代码时，会要求先输入 <code>allow pasting</code>。</p>
+<p>其余几项建议用只含测试内容的对话来做。每次记下账号类型、工作区、浏览器和日期，结论只适用于当时的条件。</p>
+<div class="table-scroll"><table>
+<tr><th>实验</th><th>操作</th><th>记录</th><th>能下的结论</th></tr>
+<tr><td>两个 ID</td><td>复制 <code>/c/</code> 地址和 <code>/share/</code> 地址，逐字比较 ID；追加消息后再分享一次，看分享 ID 变不变</td><td>两个 ID、两次分享的 ID</td><td>在这个账号下，分享 ID 和会话 ID 是不是同一个，更新分享会不会换 ID</td></tr>
+<tr><td>ID 何时出现</td><td>新建聊天，发送第一条消息</td><td>发送前、发送后的地址</td><td>ID 在哪个可见阶段出现</td></tr>
+<tr><td>改名</td><td>重命名会话</td><td>前后的标题和地址</td><td>改标题会不会改地址</td></tr>
+<tr><td>直接打开</td><td>把会话地址粘贴到新标签页并刷新；再用无痕窗口打开</td><td>能不能恢复，会不会要求登录</td><td>直接访问和私有权限检查是否正常</td></tr>
+<tr><td>分享范围</td><td>创建分享，用无痕窗口打开</td><td>能看到的消息、附件、登录提示</td><td>这个账号类型下的实际分享范围</td></tr>
+<tr><td>分享更新</td><td>分享后追加一条消息，再打开原分享</td><td>新消息有没有出现</td><td>快照还是实时同步</td></tr>
+<tr><td>撤销</td><td>取消分享后重新打开链接（先清缓存）</td><td>还能不能读</td><td>撤销对后续访问是否生效</td></tr>
+</table></div>
+<p class="small muted">公开分享只用测试内容，做完就撤销。</p>
+
+<!-- B -->
+<h2 id="audit"><span class="num">11</span>证据与未验证项</h2>
+<div class="table-scroll"><table>
+<tr><th>项目</th><th>结论</th></tr>
+<tr><td>不采用的说法</td><td>凭 <code>/c/</code> 推断技术框架；用随机 ID 代替权限检查；因为两个 ID 长得像，就断定分享 ID 等于会话 ID</td></tr>
+<tr><td>待验证</td><td>ChatGPT 会话 ID 前 8 位是不是总等于创建时间（目前 1 个样本）；ChatGPT 分享 ID 和会话 ID 的关系；各产品生成 ID 的时机；Gemini 私有会话地址的格式；ChatGPT 企业版分享是否自动同步新消息</td></tr>
+</table></div>
+<p class="small"><b>已验</b>：从截图里的会话 ID 读出版本位 8、变体位 a，前 8 位 <code>0x6ae846b8</code> 换算为 2026-11-02 16:15:52（UTC+8），和截图时间吻合；写作时打开并读到了 Claude 分享说明、Claude 深链接说明、Claude Compliance API（<code>id</code> 和 <code>href</code> 两种标识）、Gemini 分享说明的原文；ChatGPT 收录事件的经过和 OpenAI 的声明，来自 Search Engine Journal 报道里的引用。<br>
+<b>没验</b>：OpenAI 帮助页有 Cloudflare 人机验证，没有绕过，ChatGPT 的分享规则依据搜索摘要；<code>chatgpt.com/c/</code> 的格式来自截图，没有官方出处；三家产品都没有登录实操；原稿提到的 <code>chatgpt.com/s/</code> 定时任务分享前缀没找到出处，已经删掉。<br>
+<b>相邻情况</b>：个人账号和团队工作区的差别、网页地址和桌面深链接的差别都按官方文档核对过；移动端 App、不同浏览器、临时会话的行为都没有验证。</p>
+
+<footer>文中的 <code>example.com</code> 地址和所有 <code>chat_123</code> 类 ID 都是示例占位符。</footer>
+</div>
+</body>
+</html>
