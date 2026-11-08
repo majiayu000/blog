@@ -58,7 +58,7 @@ a red build beats a site that silently shows wrong metadata.
 links home, but the source article should remain portable and navigable before
 it goes through this site's build.
 
-Every public post must match one of the five curated reading paths in
+Every public post must match one of the six curated reading paths in
 `lib/posts.js`. Raw tags and their existing URLs remain available as a secondary
 index, while the homepage and `/tags/` lead with the stable reading paths.
 Pagefind scans only `posts/*/index.html`, so search results never contain tag,
