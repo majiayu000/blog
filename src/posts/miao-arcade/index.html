@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>喵喵游戏厅：三个能直接玩的像素猫小游戏</title>
+<meta name="date" content="2026-11-08">
+<meta name="description" content="一个动作游戏，两个带肉鸽和赌运气的小游戏，打开就能玩。附上用机器人模拟检查规则的数据：会算计的打法确实赢得更多。">
+<meta name="tags" content="游戏, 小作品, 肉鸽, 像素">
+<style>
+:root{--bg:#f7f4ee;--fg:#24201c;--mut:#6b625a;--line:#ddd5c8;--card:#fff;--acc:#b5532a;--accbg:#f6e6dc;--hd:#ece6dc;--gold:#a87414}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17141a;--fg:#ece6dc;--mut:#a89f96;--line:#3b3540;--card:#211d24;--acc:#e8935f;--accbg:#3a2620;--hd:#2b2630;--gold:#e8b64c}}
+:root[data-theme="dark"]{--bg:#17141a;--fg:#ece6dc;--mut:#a89f96;--line:#3b3540;--card:#211d24;--acc:#e8935f;--accbg:#3a2620;--hd:#2b2630;--gold:#e8b64c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 -apple-system,"PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif}
+main{max-width:860px;margin:0 auto;padding:40px 16px 90px}h1{font-size:30px;line-height:1.3;margin:0 0 12px}h2{font-size:22px;margin:48px 0 10px}
+p{margin:10px 0}.lead{font-size:18px;color:var(--mut)}.src{font-size:13px;color:var(--mut)}a{color:var(--acc)}
+.games{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:22px 0}
+a.g{display:flex;flex-direction:column;gap:6px;padding:18px;border-radius:14px;text-decoration:none;color:inherit;background:var(--card);border:1.5px solid var(--line);transition:transform .12s,border-color .12s}
+a.g:hover{transform:translateY(-3px);border-color:var(--acc)}
+a.g .pic{width:64px;height:64px;image-rendering:pixelated;background:#1a1220;border-radius:10px;padding:6px}
+a.g b{font-size:21px}a.g span{color:var(--mut);font-size:14.5px;line-height:1.6}a.g small{margin-top:auto;color:var(--acc);font-weight:700;font-size:14px}
+.call{background:var(--accbg);border-left:4px solid var(--acc);padding:12px 16px;border-radius:6px;margin:16px 0}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;background:var(--card);font-size:14.5px;margin:12px 0}th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}th{background:var(--hd);font-weight:600}td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+code{font:13.5px ui-monospace,Menlo,monospace;background:var(--hd);padding:1px 5px;border-radius:4px}
+ul{padding-left:22px}li{margin:4px 0}
+</style></head><body><main>
+<p class="src"><a href="/">← 首页</a></p>
+<h1>喵喵游戏厅</h1>
+<p class="lead">三个在浏览器里打开就能玩的小游戏，主角都是同一只像素橘猫。一个是动作游戏，另外两个带肉鸽成长和“赌一把”的选择。筹码全是虚拟的，不涉及真钱，也不能兑换。</p>
+
+<div class="games">
+<a class="g" href="dice/index.html"><img class="pic" src="assets/cat-idle1.png" alt=""><b>九命骰局</b><span>掷 6 颗骰子攒彩池，收手入账，或者再掷一把。按钮上写着这一把爆掉的精确概率。押一条命换双倍，买护符、改骰面，走完 12 夜。</span><small id="d">开一局 →</small></a>
+<a class="g" href="pachinko/index.html"><img class="pic" src="assets/fish-icon.png" alt=""><b>招财弹珠</b><span>投球前先押一个袋子，球在飞的时候还能用猫爪拍它两下。掉进黑袋就清零，被接球猫接住就 ×3。把特殊钉子摆上棋盘，打造自己的得分路线。</span><small id="p">开一局 →</small></a>
+<a class="g" href="yi-miao-zhan/index.html"><img class="pic" src="assets/cat-dash.png" alt=""><b>一喵斩</b><span>按住瞄准，时间变慢，松手斩过去。斩中就刷新，连斩越多越快。</span><small>动作游戏 →</small></a>
+</div>
+
+<p>手机和电脑都能玩。两款赌运气的游戏会自动存档，刷新页面不能反悔；每天还有一局固定种子的“今日局”，同一天打开的骰运或棋运都一样。</p>
+
+<h2>这些游戏是怎么来的</h2>
+<p>美术素材来自开源项目 <a href="https://github.com/aldegad/sprite-gen">sprite-gen</a> 生成的像素精灵：橘猫的待机、冲刺、受伤几帧，加上一条鱼和一个猫王。规则、代码、音效和测试都由 Claude Code 完成。音效是用 WebAudio 现场合成的，整套游戏没有一个音频文件，也不依赖任何外部库。</p>
+<p>两款肉鸽游戏都把规则引擎（<code>engine.js</code>）和界面（<code>ui.js</code>）分开写。引擎里不碰页面，所以同一份规则既能在浏览器里跑，也能直接在 Node 里跑几千局模拟。随机数状态存在每局的存档对象里，这样刷新页面后接着掷出来的点数不会变。</p>
+
+<h2>怎么判断“选择”不是摆设</h2>
+<p>赌运气的游戏最怕玩家怎么选都差不多，那样所谓的决策只是装饰。开工前定下的合格标准是：<b>会算计的打法要明显赢过无脑打法</b>，做不到就改规则，不靠调数值糊过去。检查方法是写几种不同性格的机器人，让每种各打几百到几千局，比较通关率。</p>
+
+<div class="tw"><table>
+<tr><th>《九命骰局》机器人打法（各 2000 局）</th><th>通关率</th></tr>
+<tr><td>按期望决定是否再掷，并会押命</td><td class="n">35.8%</td></tr>
+<tr><td>能再掷就一直掷</td><td class="n">19.8%</td></tr>
+<tr><td>彩池到 300 就收手</td><td class="n">0.2%</td></tr>
+<tr><td>拿到第一口分就收手</td><td class="n">0.1%</td></tr>
+</table></div>
+
+<div class="tw"><table>
+<tr><th>《招财弹珠》机器人打法（各 300 局）</th><th>通关率</th></tr>
+<tr><td>瞄准最好的袋子，并用猫爪拍球</td><td class="n">30.3%</td></tr>
+<tr><td>只瞄准，不拍球</td><td class="n">11.3%</td></tr>
+<tr><td>随机乱投</td><td class="n">10.0%</td></tr>
+<tr><td>从不升级钉子和护符</td><td class="n">0%</td></tr>
+</table></div>
+
+<p>弹珠的第一版没过这个标准。那时乱投的通关率是 46.7%，认真瞄准是 50.3%，一直往正中间投反而有 57%。原因是钉阵太乱，起手位置几乎影响不了落点。于是加了“球飞行中拍一爪”的操作，同时调了弹性、限制押注上限、收紧了金币，才拉开上表里的差距。</p>
+<p>模拟也抓出了几处手玩不容易发现的问题。比如钉子之间原本有一条直通缝，球能一颗钉都不碰就落袋得 0 分，后来把球的半径从 9 加到 11 才堵上。再比如押注最初的赔率是 3.5 倍，贴墙押一个袋子的长期回报能到 1.235，变成了稳赚的刷钱手段，所以改成 3 倍，并按轮数设了上限。</p>
+
+<div class="call">弹珠里的押注目前主要提供刺激，对通关率影响不大：押小注的机器人通关率是 28.3%，不押是 30.3%，差距在随机误差之内。手感好时押注的长期回报约 1.21，随手乱押约 0.70。奖金翻倍也一样，见好就收的打法通关率比“一直赌到输”高将近一倍（31.3% 对 16.7%）。</div>
+
+<h2>还没验证的部分</h2>
+<ul>
+<li>好不好玩、会不会想再开一局，模拟证明不了。上面的数字只说明决策会影响结果，不代表真人喜欢。</li>
+<li>机器人的通关率不等于真人的通关率。真人可能更会算，也可能更容易上头。</li>
+<li>只在 Chromium 里用真实点击跑过完整流程，Safari 和 Firefox 没测过，也没在真机上看过帧率。</li>
+<li>热度难度、骰局的地狱夜和弹珠的无尽模式，后期平衡没有细测。</li>
+</ul>
+<p>如果你玩了，欢迎在下面留言：哪一款更想再开一局，或者卡在了哪一关。</p>
+<p class="src"><a href="/">← 回到首页</a></p>
+</main>
+<script>
+try{const d=JSON.parse(localStorage.getItem('nine-meta')||'{}');if(d.runs)document.getElementById('d').textContent=`最远第 ${d.bestNight} 夜 · 通关 ${d.wins} 次 →`;
+const p=JSON.parse(localStorage.getItem('pachi-meta')||'{}');if(p.runs)document.getElementById('p').textContent=`最远第 ${p.bestRound} 轮 · 通关 ${p.wins} 次 →`;}catch(e){}
+</script>
+</body></html>

@@ -1,0 +1,27 @@
+PALETTE
+. transparent
+n #1A2350
+w #FFFFFF
+l #C4E4F7
+m #7FB2E0
+d #4478BC
+f #2A8CF0
+g #1E56B0
+FRAME icon
+................
+................
+.......nnnn.....
+......nffggnn...
+.nn..nwwllllln..
+.nfnnwwlllnnlln.
+.nffnlmmmnwwnmn.
+..nfgmmmmnwnnmn.
+..nfgmmffmnnmmn.
+.nfgnmffgmmmnnn.
+.ngnndggmmmmddn.
+.nn..ndddddddn..
+......nggnnnn...
+.......nn.......
+................
+................
+END
