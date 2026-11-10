@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>木盘迷宫</title>
+<style>
+  :root {
+    --cream: #f4eadb;
+    --dim: rgba(244, 234, 219, 0.62);
+    --brass: #d9b46c;
+    --serif: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", Georgia, serif;
+    --sans: -apple-system, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #070605; overflow: hidden; }
+  body { color: var(--cream); font-family: var(--sans); -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+  .layer { position: fixed; inset: 0; opacity: 0; pointer-events: none; transition: opacity 0.7s ease; }
+  body[data-state="loading"] #loading,
+  body[data-state="title"] #title,
+  body[data-state="play"] #hud,
+  body[data-state="won"] #hud,
+  body[data-state="won"] #result { opacity: 1; pointer-events: auto; }
+  body[data-state="play"] #hud, body[data-state="won"] #hud { pointer-events: none; }
+  body[data-state="play"] { cursor: none; }
+
+  #loading { display: grid; place-items: center; font-family: var(--serif); letter-spacing: 0.4em; color: var(--dim); font-size: 15px; padding: 16px; text-align: center; }
+
+  /* 标题 */
+  #title { cursor: pointer; background: linear-gradient(90deg, rgba(5, 4, 3, 0.78) 0%, rgba(5, 4, 3, 0.35) 38%, rgba(5, 4, 3, 0) 62%); }
+  .title-block { position: absolute; left: clamp(20px, 7vw, 120px); top: 50%; transform: translateY(-54%); max-width: min(520px, calc(100vw - 40px)); }
+  .eyebrow { font-size: 12px; letter-spacing: 0.5em; color: var(--brass); margin: 0 0 22px; }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(52px, 8.4vw, 118px); line-height: 1.04; letter-spacing: 0.06em; margin: 0; text-shadow: 0 2px 30px rgba(0, 0, 0, 0.6); }
+  .lede { font-family: var(--serif); font-size: clamp(15px, 1.5vw, 19px); line-height: 1.9; color: var(--dim); margin: 26px 0 34px; text-wrap: pretty; }
+  .chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 40px; }
+  .chip { font-family: var(--serif); font-size: 14px; letter-spacing: 0.12em; padding: 9px 18px; border: 1px solid rgba(217, 180, 108, 0.35); border-radius: 999px; color: var(--dim); transition: all 0.25s ease; }
+  .chip:hover { color: var(--cream); border-color: var(--brass); }
+  .chip.on { color: #1a1206; background: var(--brass); border-color: var(--brass); }
+  .begin { display: inline-flex; align-items: center; gap: 14px; font-family: var(--serif); font-size: 17px; letter-spacing: 0.32em; color: var(--cream); animation: breathe 2.6s ease-in-out infinite; }
+  .begin::before { content: ""; width: 44px; height: 1px; background: var(--brass); }
+  @keyframes breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+  .keys { position: absolute; left: clamp(20px, 7vw, 120px); bottom: clamp(18px, 4vh, 44px); font-size: 12px; letter-spacing: 0.14em; color: rgba(244, 234, 219, 0.42); line-height: 1.9; }
+  .credit { position: absolute; right: clamp(16px, 3vw, 40px); bottom: clamp(18px, 4vh, 44px); font-size: 11px; letter-spacing: 0.12em; color: rgba(244, 234, 219, 0.3); text-align: right; }
+
+  /* 游戏中 */
+  .hud-top { position: absolute; top: clamp(14px, 3vh, 30px); left: 0; right: 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; padding: 0 clamp(16px, 3vw, 40px); gap: 12px; }
+  #level-name { font-family: var(--serif); font-size: 15px; letter-spacing: 0.22em; color: var(--dim); }
+  #timer { font-family: var(--serif); font-variant-numeric: tabular-nums; font-size: clamp(26px, 3.2vw, 40px); letter-spacing: 0.08em; text-shadow: 0 1px 18px rgba(0, 0, 0, 0.7); }
+  .right { justify-self: end; display: flex; gap: 22px; align-items: baseline; font-size: 13px; letter-spacing: 0.16em; color: var(--dim); }
+  .right b { font-family: var(--serif); font-weight: 600; font-size: 20px; color: var(--cream); font-variant-numeric: tabular-nums; margin-left: 8px; }
+  .tool { pointer-events: auto; font-size: 12px; letter-spacing: 0.16em; color: var(--dim); cursor: pointer; white-space: nowrap; }
+  .tool:hover { color: var(--cream); }
+  .level-gauge { position: absolute; left: clamp(16px, 3vw, 40px); bottom: clamp(16px, 3.4vh, 34px); display: flex; align-items: center; gap: 16px; }
+  .vial { width: 54px; height: 54px; border-radius: 50%; border: 1px solid rgba(217, 180, 108, 0.55); background: radial-gradient(circle at 50% 40%, rgba(217, 180, 108, 0.16), rgba(0, 0, 0, 0.35)); position: relative; box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.6); }
+  .vial::before { content: ""; position: absolute; inset: 17px; border-radius: 50%; border: 1px solid rgba(244, 234, 219, 0.28); }
+  #bubble { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff8e6, var(--brass) 70%); box-shadow: 0 0 10px rgba(217, 180, 108, 0.6); }
+  .hint { font-size: 11px; letter-spacing: 0.18em; line-height: 1.9; color: rgba(244, 234, 219, 0.4); }
+
+  #toast { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); font-family: var(--serif); font-size: 14px; letter-spacing: 0.24em; padding: 10px 22px; border-radius: 999px; border: 1px solid rgba(217, 180, 108, 0.35); background: rgba(16, 12, 8, 0.78); opacity: 0; transition: opacity 0.35s ease; pointer-events: none; white-space: nowrap; }
+  #toast.on { opacity: 1; }
+
+  /* 通关 */
+  #result { display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(5, 4, 3, 0.5), rgba(5, 4, 3, 0.82)); padding: 16px; }
+  .card { width: min(420px, 100%); padding: 40px 36px 34px; text-align: center; border: 1px solid rgba(217, 180, 108, 0.3); border-radius: 6px; background: rgba(16, 12, 8, 0.72); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); }
+  .card h2 { font-family: var(--serif); font-weight: 600; font-size: 44px; letter-spacing: 0.3em; margin: 0 0 6px 0.3em; }
+  .card .sub { font-size: 12px; letter-spacing: 0.4em; color: var(--brass); margin: 0 0 30px; min-height: 1.2em; }
+  .rows { display: grid; gap: 14px; margin: 0 0 34px; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; letter-spacing: 0.2em; color: var(--dim); border-bottom: 1px solid rgba(244, 234, 219, 0.1); padding-bottom: 12px; }
+  .row span:last-child { font-family: var(--serif); font-size: 22px; letter-spacing: 0.06em; color: var(--cream); font-variant-numeric: tabular-nums; }
+  .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn { font-family: var(--serif); font-size: 15px; letter-spacing: 0.24em; padding: 12px 26px; border-radius: 999px; border: 1px solid rgba(217, 180, 108, 0.45); transition: all 0.2s ease; }
+  .btn:hover { border-color: var(--brass); }
+  .btn.primary { background: var(--brass); color: #1a1206; border-color: var(--brass); }
+  .btn.primary:hover { background: #e8c680; }
+  .for-touch { display: none; }
+  @media (pointer: coarse) { .for-mouse { display: none; } .for-touch { display: inline; } }
+  @media (max-width: 640px) {
+    .keys, .credit { display: none; }
+    #level-name { font-size: 12px; }
+    .right { gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+    .hud-top { grid-template-columns: auto 1fr; }
+    #timer { grid-row: 2; grid-column: 1 / -1; justify-self: center; }
+  }
+  @media (prefers-reduced-motion: reduce) { .begin { animation: none; } }
+</style>
+</head>
+<body data-state="loading">
+<canvas id="scene"></canvas>
+
+<div id="loading" class="layer">正在摆放木盘</div>
+
+<div id="title" class="layer">
+  <div class="title-block">
+    <p class="eyebrow">TILT · LABYRINTH</p>
+    <h1>木盘迷宫</h1>
+    <p class="lede">一只胡桃木盒，一块橡木盘，一颗钢珠。<br>倾斜盘面，绕开每一个洞，把它送进黄铜环。</p>
+    <div class="chips">
+      <button class="chip" data-level="0">第一局</button>
+      <button class="chip" data-level="1">第二局</button>
+      <button class="chip" data-level="2">第三局</button>
+    </div>
+    <div class="begin">点击开始</div>
+  </div>
+  <div class="keys">移动鼠标 / 方向键 / 触屏拖动 — 倾斜木盘<br>R 重来　·　1 2 3 换局　·　M 静音　·　Q 画质　·　Esc 返回</div>
+  <div class="credit">贴图与环境光：Poly Haven（CC0）</div>
+</div>
+
+<div id="hud" class="layer">
+  <div class="hud-top">
+    <div id="level-name"></div>
+    <div id="timer">00:00.0</div>
+    <div class="right"><span>掉洞<b id="falls">0</b></span><button id="again" class="tool">重来</button><button id="back" class="tool">返回</button><button id="mute" class="tool">声音 开</button></div>
+  </div>
+  <div class="level-gauge">
+    <div class="vial"><div id="bubble"></div></div>
+    <div class="hint"><span class="for-mouse">移动鼠标倾斜木盘，气泡回到中心即为水平<br>R 重来　·　Esc 返回　·　M 静音</span><span class="for-touch">按住屏幕拖动，倾斜木盘<br>气泡回到中心即为水平</span></div>
+  </div>
+</div>
+
+<div id="result" class="layer">
+  <div class="card">
+    <h2>通关</h2>
+    <p class="sub"><span id="r-new" hidden>新 纪 录</span></p>
+    <div class="rows">
+      <div class="row"><span>用时</span><span id="r-time">—</span></div>
+      <div class="row"><span>掉洞</span><span id="r-falls">—</span></div>
+      <div class="row"><span>最佳</span><span id="r-best">—</span></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="retry">再来一次</button>
+      <button class="btn primary" id="next">下一局</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="dist/game.js"></script>
+</body>
+</html>
