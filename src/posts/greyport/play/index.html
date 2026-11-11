@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>灰港 GREYPORT</title>
+<style>
+  :root {
+    --ink: #eef0ee; --dim: rgba(238, 240, 238, 0.62); --faint: rgba(238, 240, 238, 0.32);
+    --t0: #f08a2c; --t1: #39b3e6; --warn: #ffcf4a; --bad: #ff4b3a; --panel: rgba(10, 13, 15, 0.72);
+    --sans: "DIN Alternate", "Avenir Next Condensed", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #050607; overflow: hidden; }
+  body { color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+  .layer { position: fixed; inset: 0; display: none; }
+  body[data-state="loading"] #loading, body[data-state="menu"] #menu, body[data-state="paused"] #pause, body[data-state="end"] #end { display: block; }
+  body[data-state="play"] #hud, body[data-state="paused"] #hud, body[data-state="end"] #hud { display: block; }
+  body[data-state="play"] { cursor: none; }
+  #hud { pointer-events: none; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); }
+
+  #loading { display: none; place-items: center; text-align: center; letter-spacing: 0.4em; color: var(--dim); font-size: 14px; }
+  body[data-state="loading"] #loading { display: grid; }
+
+  /* 准星 */
+  #crosshair { position: absolute; left: 50%; top: 50%; --gap: 6px; }
+  #crosshair i { position: absolute; background: #dfffe0; box-shadow: 0 0 2px rgba(0, 0, 0, 0.9); }
+  #crosshair .t, #crosshair .b { width: 2px; height: 9px; left: -1px; }
+  #crosshair .l, #crosshair .r { height: 2px; width: 9px; top: -1px; }
+  #crosshair .t { bottom: var(--gap); } #crosshair .b { top: var(--gap); }
+  #crosshair .l { right: var(--gap); } #crosshair .r { left: var(--gap); }
+  #crosshair .dot { width: 2px; height: 2px; left: -1px; top: -1px; }
+  #hitmark { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; opacity: 0; transform: rotate(45deg); }
+  #hitmark::before, #hitmark::after { content: ""; position: absolute; background: linear-gradient(90deg, #fff 0 32%, transparent 32% 68%, #fff 68%); }
+  #hitmark::before { left: 0; right: 0; top: 12px; height: 2px; }
+  #hitmark::after { top: 0; bottom: 0; left: 12px; width: 2px; background: linear-gradient(180deg, #fff 0 32%, transparent 32% 68%, #fff 68%); }
+  #hitmark.kill::before { background: linear-gradient(90deg, var(--bad) 0 32%, transparent 32% 68%, var(--bad) 68%); }
+  #hitmark.kill::after { background: linear-gradient(180deg, var(--bad) 0 32%, transparent 32% 68%, var(--bad) 68%); }
+  #scope-lines { position: absolute; inset: 0; display: none; }
+  #scope-lines::before, #scope-lines::after { content: ""; position: absolute; background: rgba(0, 0, 0, 0.85); }
+  #scope-lines::before { left: 0; right: 0; top: 50%; height: 1px; }
+  #scope-lines::after { top: 0; bottom: 0; left: 50%; width: 1px; }
+  .dmg { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+  .dmg::before { content: ""; position: absolute; left: -46px; top: -150px; width: 92px; height: 26px; border-top: 5px solid var(--bad); border-radius: 50% 50% 0 0 / 100% 100% 0 0; filter: drop-shadow(0 0 6px rgba(255, 60, 40, 0.8)); }
+
+  /* 顶部比分 */
+  #topbar { position: absolute; top: clamp(8px, 2vh, 18px); left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; gap: 2px; font-variant-numeric: tabular-nums; }
+  #topbar .side { min-width: 132px; padding: 6px 14px; background: var(--panel); display: flex; align-items: center; gap: 12px; font-size: 13px; letter-spacing: 0.18em; }
+  #topbar .side b { font-size: 28px; font-weight: 700; letter-spacing: 0; }
+  #topbar .a { border-bottom: 3px solid var(--t0); justify-content: flex-end; } #topbar .a b { color: var(--t0); }
+  #topbar .d { border-bottom: 3px solid var(--t1); } #topbar .d b { color: var(--t1); }
+  #topbar .mid { min-width: 92px; padding: 4px 10px; background: rgba(10, 13, 15, 0.86); text-align: center; }
+  #clock { font-size: 24px; font-weight: 700; } #clock.hot { color: var(--bad); }
+  #phase { font-size: 10px; letter-spacing: 0.3em; color: var(--dim); white-space: nowrap; }
+  .pips { display: flex; gap: 3px; } .pips i { width: 7px; height: 14px; background: currentColor; opacity: 0.9; } .pips i.dead { opacity: 0.18; }
+  #topbar .a .pips { color: var(--t0); } #topbar .d .pips { color: var(--t1); }
+
+  #radar { position: absolute; left: clamp(8px, 1.6vw, 22px); top: clamp(8px, 2vh, 18px); width: 214px; height: 136px; background: rgba(10, 13, 15, 0.6); border: 1px solid rgba(238, 240, 238, 0.14); }
+  #feed { position: absolute; right: clamp(8px, 1.6vw, 22px); top: clamp(8px, 2vh, 18px); display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 13px; }
+  .kill { padding: 4px 10px; background: var(--panel); display: flex; gap: 8px; align-items: center; letter-spacing: 0.06em; white-space: nowrap; transition: opacity 0.5s; }
+  .kill.me { outline: 1px solid rgba(255, 255, 255, 0.5); background: rgba(40, 20, 12, 0.8); }
+  .kill .w { color: var(--dim); font-size: 11px; letter-spacing: 0.1em; } .kill .hs { color: var(--warn); font-size: 11px; }
+  .c0 { color: var(--t0); } .c1 { color: var(--t1); }
+
+  #vitals { position: absolute; left: clamp(10px, 2vw, 30px); bottom: clamp(10px, 3vh, 28px); display: flex; gap: 22px; align-items: flex-end; }
+  .stat { display: flex; align-items: baseline; gap: 8px; } .stat small { font-size: 11px; letter-spacing: 0.3em; color: var(--dim); }
+  .stat b { font-size: 46px; font-weight: 700; line-height: 0.9; font-variant-numeric: tabular-nums; } #hp.low { color: var(--bad); }
+  .stat.ar b { font-size: 28px; color: var(--dim); }
+  #ammo { position: absolute; right: clamp(10px, 2vw, 30px); bottom: clamp(10px, 3vh, 28px); text-align: right; }
+  #wname { font-size: 12px; letter-spacing: 0.3em; color: var(--dim); }
+  #mag { font-size: 52px; font-weight: 700; line-height: 0.95; font-variant-numeric: tabular-nums; } #mag.low { color: var(--bad); }
+  #reserve { font-size: 22px; color: var(--dim); margin-left: 6px; }
+  #slots { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; font-size: 11px; letter-spacing: 0.08em; }
+  #slots span { padding: 3px 8px; background: var(--panel); color: var(--faint); } #slots span.on { color: #0a0d0f; background: var(--ink); text-shadow: none; } #slots span.off { opacity: 0.35; text-decoration: line-through; }
+  #bombtag { position: absolute; right: clamp(10px, 2vw, 30px); bottom: 150px; padding: 5px 12px; background: rgba(120, 30, 16, 0.85); font-size: 12px; letter-spacing: 0.2em; display: none; }
+
+  #banner { position: absolute; left: 50%; top: 21%; transform: translateX(-50%); text-align: center; opacity: 0; transition: opacity 0.35s; white-space: nowrap; }
+  #banner.on { opacity: 1; } #banner b { display: block; font-size: clamp(26px, 3.4vw, 44px); letter-spacing: 0.26em; margin-right: -0.26em; font-weight: 700; }
+  #banner span { font-size: 13px; letter-spacing: 0.4em; color: var(--dim); }
+  #killmsg { position: absolute; left: 50%; top: 64%; transform: translateX(-50%); text-align: center; opacity: 0; transition: opacity 0.25s; white-space: nowrap; }
+  #killmsg.on { opacity: 1; } #killmsg b { font-size: 22px; letter-spacing: 0.2em; color: var(--warn); } #killmsg span { display: block; font-size: 13px; letter-spacing: 0.18em; color: var(--dim); margin-top: 2px; }
+  #prompt { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); padding: 7px 16px; background: var(--panel); font-size: 13px; letter-spacing: 0.2em; display: none; white-space: nowrap; }
+  #prompt kbd { font: inherit; padding: 1px 7px; margin: 0 4px; background: var(--ink); color: #0a0d0f; text-shadow: none; font-weight: 700; }
+  #progress { position: absolute; left: 50%; top: 62%; width: 260px; margin-left: -130px; display: none; }
+  #progress div { height: 6px; background: rgba(10, 13, 15, 0.8); } #progress i { display: block; height: 100%; background: var(--warn); width: 0; }
+  #progress span { display: block; text-align: center; font-size: 12px; letter-spacing: 0.3em; margin-bottom: 6px; }
+  #dead { position: absolute; left: 50%; bottom: 20%; transform: translateX(-50%); text-align: center; display: none; white-space: nowrap; }
+  #dead b { font-size: 20px; letter-spacing: 0.2em; } #dead span { display: block; font-size: 12px; letter-spacing: 0.24em; color: var(--dim); margin-top: 6px; }
+  .tag { position: absolute; transform: translate(-50%, -100%); font-size: 11px; letter-spacing: 0.1em; white-space: nowrap; opacity: 0.85; }
+  .tag::after { content: ""; display: block; width: 0; height: 0; margin: 2px auto 0; border: 4px solid transparent; border-top-color: currentColor; }
+  #fps { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); font-size: 10px; color: var(--faint); letter-spacing: 0.1em; }
+
+  /* 计分板 */
+  #board { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, calc(100vw - 32px)); background: rgba(8, 10, 12, 0.9); padding: 18px 22px; display: none; }
+  #board.on { display: block; }
+  .tables { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } .tables h3 { margin: 0 0 8px; font-size: 13px; letter-spacing: 0.3em; display: flex; justify-content: space-between; }
+  .tables table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .tables td, .tables th { padding: 5px 6px; text-align: right; } .tables td:first-child, .tables th:first-child { text-align: left; }
+  .tables th { font-weight: 400; color: var(--faint); font-size: 10px; letter-spacing: 0.2em; border-bottom: 1px solid rgba(238, 240, 238, 0.14); }
+  .tables tr.me td { background: rgba(238, 240, 238, 0.1); } .tables tr.dead td { opacity: 0.42; }
+
+  /* 菜单 */
+  .veil { background: linear-gradient(90deg, rgba(5, 6, 7, 0.9) 0, rgba(5, 6, 7, 0.62) 34%, rgba(5, 6, 7, 0) 62%); }
+  .col { position: absolute; left: clamp(18px, 6vw, 96px); top: 50%; transform: translateY(-50%); width: min(480px, calc(100vw - 36px)); max-height: calc(100vh - 24px); overflow-y: auto; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.56em; color: var(--t0); margin: 0 0 12px; }
+  h1 { margin: 0; font-size: clamp(54px, 8.4vw, 112px); line-height: 0.95; font-weight: 700; letter-spacing: 0.08em; }
+  h1 small { display: block; font-size: 0.2em; letter-spacing: 0.72em; color: var(--dim); font-weight: 400; margin-top: 14px; }
+  .lede { font-size: 14px; line-height: 1.9; color: var(--dim); margin: 20px 0 22px; max-width: 30em; }
+  .opt { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .opt > span { font-size: 11px; letter-spacing: 0.3em; color: var(--faint); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { padding: 7px 13px; font-size: 13px; letter-spacing: 0.1em; border: 1px solid rgba(238, 240, 238, 0.22); color: var(--dim); transition: all 0.15s; }
+  .chip:hover { color: var(--ink); border-color: var(--ink); } .chip.on { background: var(--ink); color: #0a0d0f; border-color: var(--ink); }
+  .go { margin-top: 16px; padding: 14px 34px; background: var(--t0); color: #140a02; font-size: 16px; font-weight: 700; letter-spacing: 0.4em; } .go:hover { background: #ffa04a; }
+  .ghost { margin: 16px 0 0 10px; padding: 13px 22px; border: 1px solid rgba(238, 240, 238, 0.3); font-size: 14px; letter-spacing: 0.24em; color: var(--dim); } .ghost:hover { color: var(--ink); border-color: var(--ink); }
+  .keys { margin-top: 22px; font-size: 11px; letter-spacing: 0.1em; line-height: 2; color: var(--faint); }
+  .keys b { color: var(--dim); font-weight: 400; }
+  .credit { position: absolute; right: clamp(12px, 2.4vw, 34px); bottom: clamp(10px, 2.4vh, 24px); font-size: 10px; letter-spacing: 0.14em; color: var(--faint); text-align: right; line-height: 1.8; }
+  input[type=range] { width: 100%; accent-color: var(--t0); }
+  h2 { margin: 0 0 18px; font-size: 40px; letter-spacing: 0.3em; font-weight: 700; }
+  #end h2 { font-size: clamp(44px, 7vw, 84px); } #end .sub { font-size: 14px; letter-spacing: 0.36em; color: var(--dim); margin: 0 0 20px; }
+  #end .tables { margin-top: 8px; font-size: 12px; }
+  @media (max-width: 720px) { #radar { width: 150px; height: 96px; } #topbar .side { min-width: 86px; font-size: 11px; } .credit { display: none; } }
+</style>
+</head>
+<body data-state="loading">
+<canvas id="scene"></canvas>
+<div id="loading" class="layer">正在进入灰港</div>
+
+<div id="hud" class="layer">
+  <div id="scope-lines"></div>
+  <div id="tags"></div>
+  <div id="crosshair"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><i class="dot"></i></div>
+  <div id="hitmark"></div>
+  <div id="dmgs"></div>
+  <div id="topbar">
+    <div class="side a"><span class="pips" id="pips0"></span><span>黑潮</span><b id="s0">0</b></div>
+    <div class="mid"><div id="clock">0:00</div><div id="phase"></div></div>
+    <div class="side d"><b id="s1">0</b><span>港卫</span><span class="pips" id="pips1"></span></div>
+  </div>
+  <canvas id="radar" width="428" height="272"></canvas>
+  <div id="feed"></div>
+  <div id="vitals">
+    <div class="stat"><small>生命</small><b id="hp">100</b></div>
+    <div class="stat ar"><small>护甲</small><b id="armor">100</b></div>
+  </div>
+  <div id="bombtag">你携带着炸弹</div>
+  <div id="ammo">
+    <div id="wname"></div>
+    <div><span id="mag">30</span><span id="reserve">/ 90</span></div>
+    <div id="slots"></div>
+  </div>
+  <div id="banner"><b></b><span></span></div>
+  <div id="killmsg"><b></b><span></span></div>
+  <div id="prompt"></div>
+  <div id="progress"><span></span><div><i></i></div></div>
+  <div id="dead"><b></b><span></span></div>
+  <div id="fps"></div>
+</div>
+
+<div id="board"><div class="tables" id="board-tables"></div></div>
+
+<div id="menu" class="layer veil">
+  <div class="col">
+    <p class="eyebrow">TACTICAL SHOOTER · 5 V 5</p>
+    <h1>灰港<small>GREYPORT</small></h1>
+    <p class="lede">两张图，两支小队，三条路线，两个包点。<br>带上你的枪，天亮之前见分晓。</p>
+    <div class="opt"><span>地图</span><div class="chips" data-opt="map"><button class="chip" data-v="greyport">灰港 · 黄昏码头</button><button class="chip" data-v="switchyard">调车场 · 午夜货场</button></div></div>
+    <div class="opt"><span>角色</span><div class="chips" data-opt="cast"><button class="chip" data-v="standard">标准阵容</button><button class="chip" data-v="fun">趣味混搭</button><button class="chip" data-v="monster">怪物乱斗</button><button class="chip" data-v="fantasy">奇幻乱斗</button></div></div>
+    <div class="opt"><span>模式</span><div class="chips" data-opt="mode"><button class="chip" data-v="tdm">团队竞技</button><button class="chip" data-v="bomb">爆破模式</button></div></div>
+    <div class="opt"><span>阵营</span><div class="chips" data-opt="team"><button class="chip" data-v="0">黑潮 · 进攻</button><button class="chip" data-v="1">港卫 · 防守</button></div></div>
+    <div class="opt"><span>主武器</span><div class="chips" data-opt="primary"><button class="chip" data-v="rifle">KR-7 步枪</button><button class="chip" data-v="smg">V9 冲锋枪</button><button class="chip" data-v="sniper">猎隼 狙击</button></div></div>
+    <div class="opt"><span>难度</span><div class="chips" data-opt="difficulty"><button class="chip" data-v="easy">新兵</button><button class="chip" data-v="normal">老兵</button><button class="chip" data-v="hard">精英</button></div></div>
+    <button class="go" id="start">开始部署</button>
+    <div class="keys"><b>WASD</b> 移动　<b>鼠标</b> 瞄准 / 开火 / 右键开镜　<b>空格</b> 跳　<b>C</b> 蹲　<b>Shift</b> 静步<br><b>R</b> 换弹　<b>1 2 3 4</b> / 滚轮 切枪　<b>Q</b> 上一把　<b>G</b> 手雷　<b>E</b> 下包 / 拆包　<b>Tab</b> 计分板　<b>Esc</b> 暂停</div>
+  </div>
+  <div class="credit">贴图与天空：Poly Haven（CC0）　角色模型：Quaternius、KayKit（CC0）<br>场景、武器、音效与代码为原创生成</div>
+</div>
+
+<div id="pause" class="layer veil">
+  <div class="col">
+    <h2>暂停</h2>
+    <div class="opt"><span>灵敏度</span><input type="range" id="sens" min="0.3" max="3" step="0.05"></div>
+    <div class="opt"><span>音量</span><input type="range" id="vol" min="0" max="1" step="0.05"></div>
+    <div class="opt"><span>视野</span><input type="range" id="fov" min="55" max="85" step="1"></div>
+    <div class="opt"><span>画质</span><div class="chips" data-opt="quality"><button class="chip" data-v="low">流畅</button><button class="chip" data-v="standard">标准</button><button class="chip" data-v="high">精细</button></div></div>
+    <div class="opt"><span>主武器</span><div class="chips" data-opt="primary"><button class="chip" data-v="rifle">KR-7 步枪</button><button class="chip" data-v="smg">V9 冲锋枪</button><button class="chip" data-v="sniper">猎隼 狙击</button></div></div>
+    <button class="go" id="resume">继续</button><button class="ghost" id="quit">退出到主菜单</button>
+    <div class="keys">主武器的更换在下次部署时生效</div>
+  </div>
+</div>
+
+<div id="end" class="layer veil">
+  <div class="col">
+    <h2 id="end-title">胜利</h2>
+    <p class="sub" id="end-sub"></p>
+    <div class="tables" id="end-tables"></div>
+    <button class="go" id="again">再来一局</button><button class="ghost" id="tomenu">返回主菜单</button>
+  </div>
+</div>
+
+<script src="dist/game.js"></script>
+</body>
+</html>
