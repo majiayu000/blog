@@ -161,6 +161,8 @@
     width: 352px;
     height: 124px;
     display: block;
+  }
+  .wall.big .b canvas {
     image-rendering: pixelated;
     image-rendering: crisp-edges;
   }
@@ -707,60 +709,43 @@ function createBadgeHelpers(ctx) {
     px(W - 1 - inset, inset, 1, H - inset * 2, stroke);
   };
 
-  const textCache = new Map();
   const txt = (str, x, y, opts = {}) => {
     const {
       color = "#ffffff",
-      size = 9,
-      weight = "900",
+      size = 8.2,
+      weight = "800",
       align = "left",
-      family = '"PingFang SC", "Heiti SC", "Microsoft YaHei", sans-serif',
+      family = '"PingFang SC", "Hiragino Sans GB", "Heiti SC", "Microsoft YaHei", sans-serif',
       shadow = null,
-      threshold = 115
+      maxW = null
     } = opts;
     if (shadow) {
-      txt(str, x + 1, y + 1, { ...opts, color: shadow, shadow: null });
+      txt(str, x + 0.45, y + 0.45, { ...opts, color: shadow, shadow: null });
     }
-    const key = `${str}|${size}|${weight}|${family}|${color}|${threshold}`;
-    let cached = textCache.get(key);
-    if (!cached) {
-      const oc = document.createElement("canvas");
-      oc.width = W;
-      oc.height = H;
-      const octx = oc.getContext("2d", { willReadFrequently: true });
-      octx.imageSmoothingEnabled = false;
-      octx.font = `${weight} ${size}px ${family}`;
-      octx.textBaseline = "top";
-      octx.fillStyle = "#ffffff";
-      octx.fillText(str, 0, 0);
-      const metrics = octx.measureText(str);
-      const tw = Math.min(W, Math.ceil(metrics.width) + 2);
-      const th = Math.min(H, size + 4);
-      const img = octx.getImageData(0, 0, tw, th);
-      const d = img.data;
-      const tc = document.createElement("canvas");
-      tc.width = tc.height = 1;
-      const tctx = tc.getContext("2d");
-      tctx.fillStyle = color;
-      tctx.fillRect(0, 0, 1, 1);
-      const [cr, cg, cb] = tctx.getImageData(0, 0, 1, 1).data;
-      const pts = [];
-      for (let py = 0; py < th; py++) {
-        for (let px_ = 0; px_ < tw; px_++) {
-          const a = d[(py * tw + px_) * 4 + 3];
-          if (a >= threshold) pts.push([px_, py]);
-        }
-      }
-      cached = { pts, tw, color: `rgb(${cr},${cg},${cb})` };
-      textCache.set(key, cached);
+
+    let availLogicalW = maxW;
+    if (!availLogicalW) {
+      if (align === "center") availLogicalW = 2 * Math.min(x - 3, 85 - x);
+      else if (align === "right") availLogicalW = x - 3;
+      else availLogicalW = 85 - x;
     }
-    let ox = Math.round(x);
-    if (align === "center") ox = Math.round(x - cached.tw / 2);
-    else if (align === "right") ox = Math.round(x - cached.tw);
-    ctx.fillStyle = cached.color;
-    for (const [dx, dy] of cached.pts) {
-      ctx.fillRect((ox + dx) * SCALE, (Math.round(y) + dy) * SCALE, SCALE, SCALE);
+    const maxPxW = Math.max(24, Math.floor(availLogicalW * SCALE));
+    let fontPx = Math.round(size * SCALE);
+
+    ctx.save();
+    ctx.font = `${weight} ${fontPx}px ${family}`;
+    let measured = ctx.measureText(str).width;
+    while (measured > maxPxW && fontPx > 12) {
+      fontPx -= 1;
+      ctx.font = `${weight} ${fontPx}px ${family}`;
+      measured = ctx.measureText(str).width;
     }
+    ctx.textBaseline = "middle";
+    ctx.textAlign = align;
+    ctx.fillStyle = color;
+    const drawY = Math.round((y + size * 0.55) * SCALE);
+    ctx.fillText(str, Math.round(x * SCALE), drawY);
+    ctx.restore();
   };
 
   const sprite = (rows, x, y, palette) => {
@@ -791,9 +776,9 @@ const RENDERERS = {
     ];
     h.sprite(heart, 4, 4, { "#": blink ? "#ffee00" : "#ff66b2" });
     h.sprite(heart, 77, 4, { "#": !blink ? "#ffee00" : "#ff66b2" });
-    h.txt("同城热卡 H800", 44, 2, { align: "center", size: 9, color: "#ffffff", shadow: "#6b003e" });
-    h.txt("距你 0.8km · 显存全满", 44, 12, { align: "center", size: 8, color: "#ffee00", shadow: "#6b003e" });
-    h.txt(blink ? "▶ 今晚开炉炼丹吗？◀" : "  今晚开炉炼丹吗？  ", 44, 21, { align: "center", size: 8, color: "#fff07c", shadow: "#6b003e" });
+    h.txt("同城热卡 H800", 44, 2, { align: "center", size: 8.5, color: "#ffffff", shadow: "#6b003e", maxW: 60 });
+    h.txt("距你 0.8km · 显存全满", 44, 12, { align: "center", size: 7.5, color: "#ffee00", shadow: "#6b003e", maxW: 78 });
+    h.txt(blink ? "▶ 今晚开炉炼丹吗？◀" : "今晚开炉炼丹吗？", 44, 21, { align: "center", size: 7.5, color: "#fff07c", shadow: "#6b003e", maxW: 78 });
   },
 
   webuy(h, f) {
@@ -830,32 +815,32 @@ const RENDERERS = {
   injection(h, f) {
     h.bevel("#0b6e69", "#2ca39c", "#053b38");
     const push = f % 6 < 3 ? 2 : 0;
-    h.px(4 + push, 5, 2, 9, "#ffffff");
-    h.px(6 + push, 8, 5 - push, 3, "#d8f3f1");
-    h.px(11, 6, 15, 7, "#ffffff");
-    h.px(13 + push, 7, 11 - push, 5, "#ff4d79");
-    h.dot(14, 7, "#0b6e69");
-    h.dot(17, 7, "#0b6e69");
-    h.dot(20, 7, "#0b6e69");
-    h.px(26, 8, 2, 3, "#ffffff");
-    h.px(28, 9, 5, 1, "#ffffff");
-    if (push > 0) h.dot(34, 9, "#ff4d79");
+    h.px(3 + push, 5, 2, 9, "#ffffff");
+    h.px(5 + push, 8, 5 - push, 3, "#d8f3f1");
+    h.px(10, 6, 14, 7, "#ffffff");
+    h.px(12 + push, 7, 10 - push, 5, "#ff4d79");
+    h.dot(13, 7, "#0b6e69");
+    h.dot(16, 7, "#0b6e69");
+    h.dot(19, 7, "#0b6e69");
+    h.px(24, 8, 2, 3, "#ffffff");
+    h.px(26, 9, 4, 1, "#ffffff");
+    if (push > 0) h.dot(31, 9, "#ff4d79");
 
-    h.txt("免费提示词", 58, 2, { align: "center", size: 9, color: "#ffffff" });
-    h.txt("注入诊所", 58, 11, { align: "center", size: 9, color: "#ffee55" });
-    h.txt("无需预约 · 随到随注", 44, 21, { align: "center", size: 8, color: "#ffffff" });
+    h.txt("免费提示词", 59, 2, { align: "center", size: 8.5, color: "#ffffff", maxW: 50 });
+    h.txt("注入诊所", 59, 11, { align: "center", size: 8.5, color: "#ffee55", maxW: 50 });
+    h.txt("无需预约 · 随到随注", 44, 21, { align: "center", size: 7.5, color: "#ffffff", maxW: 80 });
   },
 
   sharpie(h, f) {
     h.px(0, 0, 88, 31, "#f2efe6");
     h.border(null, "#1d3b78", 1);
-    h.txt("通用", 10, 3, { size: 9, color: "#1d3b78" });
-    h.px(6, 7, 28, 2, "#000000");
-    h.px(8, 6, 24, 1, "#000000");
-    h.txt("超级 ASI!", 42, 2, { size: 10, color: "#000000" });
-    h.txt("人 工 智 能", 44, 12, { align: "center", size: 9, color: "#1d3b78" });
+    h.txt("通用", 8, 3, { size: 8.5, color: "#1d3b78", maxW: 26 });
+    h.px(6, 7, 24, 2, "#000000");
+    h.px(8, 6, 20, 1, "#000000");
+    h.txt("超级 ASI!", 60, 2, { align: "center", size: 9, color: "#000000", maxW: 46 });
+    h.txt("人 工 智 能", 44, 12, { align: "center", size: 8.5, color: "#1d3b78", maxW: 76 });
     h.px(1, 22, 86, 8, "#1d3b78");
-    h.txt("发版说明: 无其他改动", 44, 22, { align: "center", size: 7, color: "#ffffff", threshold: 90 });
+    h.txt("发版说明: 无其他改动", 44, 22, { align: "center", size: 6.8, color: "#ffffff", maxW: 80 });
   },
 
   claude(h, f) {
@@ -910,14 +895,14 @@ const RENDERERS = {
     h.px(12, 18, 3, 1, "#222");
     h.px(8, 22, 12, 5, "#666672");
 
-    h.txt("我的女友 v4.0", 56, 2, { align: "center", size: 8, color: "#ffd6f5" });
+    h.txt("我的女友 v4.0", 56, 2, { align: "center", size: 7.5, color: "#ffd6f5", maxW: 54 });
     h.px(28, 10, 56, 10, "#4a0e17");
     h.px(28, 10, 56, 1, "#ff334b");
     h.px(28, 19, 56, 1, "#ff334b");
     h.px(28, 10, 1, 10, "#ff334b");
     h.px(83, 10, 1, 10, "#ff334b");
-    h.txt("已弃用 DEPRECATED", 56, 11, { align: "center", size: 7, color: "#ff4455", threshold: 90 });
-    h.txt(f % 4 < 2 ? "是否迁移至 v5？[Y/n]" : "是否迁移至 v5？     ", 56, 21, { align: "center", size: 7, color: "#ffea00", threshold: 90 });
+    h.txt("已弃用 DEPRECATED", 56, 11, { align: "center", size: 6.5, color: "#ff5566", maxW: 52 });
+    h.txt(f % 4 < 2 ? "是否迁移至 v5？[Y/n]" : "是否迁移至 v5？", 56, 21, { align: "center", size: 6.8, color: "#ffea00", maxW: 54 });
   },
 
   grok(h, f) {
@@ -956,24 +941,24 @@ const RENDERERS = {
   arcade(h, f) {
     h.px(0, 0, 88, 31, "#000000");
     h.border(null, "#44d9ff", 1);
-    h.txt("额度耗尽 CONTINUE?", 5, 3, { size: 8, color: "#ffffff" });
-    h.txt("请投币 $200", 5, 12, { size: 9, color: "#ffdd00" });
-    h.txt("1 币 = 1 条 PROMPT", 5, 22, { size: 7, color: "#00e5ff", threshold: 90 });
+    h.txt("额度耗尽 CONTINUE?", 4, 3, { size: 7.2, color: "#ffffff", maxW: 58 });
+    h.txt("请投币 $200", 4, 12, { size: 8.5, color: "#ffdd00", maxW: 58 });
+    h.txt("1 币 = 1 条 PROMPT", 4, 22, { size: 6.8, color: "#00e5ff", maxW: 58 });
     const num = String(9 - (Math.floor(f / 2) % 10));
-    h.txt(num, 75, 5, { align: "center", size: 17, color: "#ff3322", family: "monospace" });
+    h.txt(num, 75, 5, { align: "center", size: 17, color: "#ff3322", family: "monospace", maxW: 20 });
   },
 
   vibecard(h, f) {
     h.bevel("#1e1c17", "#635942", "#0d0c09");
     h.border(null, "#4a4231", 1);
-    h.txt("先 VIBE 后付™", 5, 3, { size: 9, color: "#f7e3a1" });
-    h.txt("代码爽写 · 火葬场包月", 5, 13, { size: 7, color: "#ffffff", threshold: 90 });
-    h.txt("技术债分期 0% APR", 5, 22, { size: 7, color: "#b5ab90", threshold: 90 });
-    h.px(69, 6, 13, 10, "#d4af37");
+    h.txt("先 VIBE 后付™", 5, 3, { size: 8.5, color: "#f7e3a1", maxW: 60 });
+    h.txt("代码爽写 · 火葬场包月", 5, 13, { size: 6.8, color: "#ffffff", maxW: 60 });
+    h.txt("技术债分期 0% APR", 5, 22, { size: 6.8, color: "#b5ab90", maxW: 78 });
+    h.px(69, 5, 13, 10, "#d4af37");
     for (let cx = 0; cx < 3; cx++) {
       for (let cy = 0; cy < 3; cy++) {
         const shine = ((cx + cy + f) % 5 === 0) ? "#fff3b0" : "#c59b27";
-        h.px(70 + cx * 4, 7 + cy * 3, 3, 2, shine);
+        h.px(70 + cx * 4, 6 + cy * 3, 3, 2, shine);
       }
     }
   },
@@ -996,12 +981,12 @@ const RENDERERS = {
     h.px(9, my + 6, 6, 6, "#f5e8c7");
     h.px(7, my + 12, 10, 2, "#d9c29c");
 
-    h.px(23, 2, 61, 9, "#110826");
-    h.txt("一本正经胡说八道", 53, 3, { align: "center", size: 8, color: "#ffffff" });
-    h.px(28, 12, 52, 8, "#110826");
-    h.txt("SINCE 2022", 54, 12, { align: "center", size: 8, color: "#ff99ff", family: "monospace" });
-    h.px(24, 21, 60, 8, "#110826");
-    h.txt("温度 TEMP: 2.0", 54, 21, { align: "center", size: 7, color: "#ffea00", threshold: 90 });
+    h.px(22, 2, 63, 9, "#110826");
+    h.txt("一本正经胡说八道", 53.5, 2.5, { align: "center", size: 7.5, color: "#ffffff", maxW: 59 });
+    h.px(27, 12, 54, 8, "#110826");
+    h.txt("SINCE 2022", 54, 12, { align: "center", size: 7.8, color: "#ff99ff", family: "monospace", maxW: 50 });
+    h.px(23, 21, 62, 8, "#110826");
+    h.txt("温度 TEMP: 2.0", 54, 21, { align: "center", size: 6.8, color: "#ffea00", maxW: 58 });
   },
 
   robots(h, f) {
@@ -1222,10 +1207,10 @@ const RENDERERS = {
     ];
     h.sprite(star, 75, 6, { "#": "#ffff66" });
 
-    h.txt("安全架构: 纯靠玄学", 44, 2, { align: "center", size: 8, color: "#ffffff", shadow: "#990044" });
-    h.txt("VIBES SECURED", 44, 11, { align: "center", size: 9, color: "#ffffff", family: "monospace", shadow: "#990044" });
+    h.txt("安全架构: 纯靠玄学", 44, 2, { align: "center", size: 7.5, color: "#ffffff", shadow: "#990044", maxW: 54 });
+    h.txt("VIBES SECURED", 44, 11, { align: "center", size: 8.5, color: "#ffffff", family: "monospace", shadow: "#990044", maxW: 54 });
     h.px(2, 21, 84, 8, "#73002d");
-    h.txt("API KEY: sk-7f3a9c", 44, 21, { align: "center", size: 7, color: "#ffee55", family: "monospace", threshold: 85 });
+    h.txt("API KEY: sk-7f3a9c", 44, 21, { align: "center", size: 7, color: "#ffee55", family: "monospace", maxW: 78 });
   },
 
   allow(h, f) {
@@ -1485,6 +1470,7 @@ function applyTransform(s, tx, ty, lx, ly) {
   wallEl.style.setProperty("--ty", `${ty}px`);
   homeEl.style.setProperty("--lx", `${lx}px`);
   homeEl.style.setProperty("--ly", `${ly}px`);
+  wallEl.classList.toggle("big", s * (window.devicePixelRatio || 1) >= 1);
 }
 
 function layout() {
