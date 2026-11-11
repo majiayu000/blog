@@ -84,60 +84,94 @@
     .hud-top { grid-template-columns: auto 1fr; }
     #timer { grid-row: 2; grid-column: 1 / -1; justify-self: center; }
   }
+  [data-i18n="lede"], [data-i18n="keys"], [data-i18n="mouseHint"], [data-i18n="touchHint"] { white-space: pre-line; }
+  #language { position: fixed; top: max(20px, env(safe-area-inset-top)); right: max(20px, env(safe-area-inset-right)); z-index: 2; padding: 10px 16px; border: 1px solid rgba(217, 180, 108, 0.45); border-radius: 999px; background: rgba(16, 12, 8, 0.72); color: var(--brass); font-size: 14px; }
+  body[data-state="play"] #language { display: none; }
+  button:focus-visible { outline: 2px solid var(--brass); outline-offset: 4px; }
+  html[lang="en"] h1 { font-family: Georgia, serif; font-size: clamp(48px, 6vw, 84px); letter-spacing: -0.025em; }
+  html[lang="en"] .card h2 { font-size: 38px; margin-left: 0; letter-spacing: 0; }
+  html[lang="en"] :is(.lede, .keys, .credit, .begin, .chip, .hint, .right, .tool, .row, .btn, #level-name, #loading, #toast) { letter-spacing: 0.025em; }
+  html[lang="en"] #level-name { max-width: 210px; }
+  html[lang="en"] .hint { max-width: calc(100vw - 110px); }
+  html[lang="en"] #toast { max-width: calc(100vw - 32px); white-space: normal; text-align: center; }
   @media (prefers-reduced-motion: reduce) { .begin { animation: none; } }
+  body[data-state="title"] .credit { bottom: 145px; }
+  #motion-controls { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); z-index: 1; max-width: min(310px, calc(100vw - 32px)); padding: 10px; border: 1px solid rgba(217,180,108,.3); border-radius: 12px; background: rgba(16,12,8,.85); cursor: auto; }
+  #motion-controls button { padding: 10px 12px; color: var(--brass); font-size: 13px; }
+  #motion-controls button:disabled { opacity: .5; cursor: wait; }
+  #motion-status { margin: 4px 0 0; color: var(--dim); font-size: 12px; line-height: 1.5; }
+  body[data-state="loading"] #motion-controls, body[data-state="won"] #motion-controls { display: none; }
+  .motion-hint { display: none; }
+  body[data-motion="on"] .hint > span { display: none; }
+  body[data-motion="on"] .hint > .motion-hint { display: inline; }
+  body[data-state="play"][data-motion="on"] #motion-status { display: none; }
+  body[data-state="play"] .level-gauge { bottom: 88px; }
+  @media (max-width: 640px) and (max-height: 700px) {
+    .title-block { top: 44%; }
+    .lede { margin: 18px 0 20px; }
+    .chips { margin-bottom: 24px; }
+    .eyebrow { margin-bottom: 14px; font-size: 10px; letter-spacing: .3em; }
+    .chip { padding: 9px 14px; }
+  }
 </style>
 </head>
 <body data-state="loading">
 <canvas id="scene"></canvas>
 
-<div id="loading" class="layer">正在摆放木盘</div>
+<div id="loading" class="layer" data-i18n="loading">正在摆放木盘</div>
 
 <div id="title" class="layer">
   <div class="title-block">
     <p class="eyebrow">TILT · LABYRINTH</p>
-    <h1>木盘迷宫</h1>
-    <p class="lede">一只胡桃木盒，一块橡木盘，一颗钢珠。<br>倾斜盘面，绕开每一个洞，把它送进黄铜环。</p>
+    <h1 data-i18n="title">木盘迷宫</h1>
+    <p class="lede" data-i18n="lede">一只胡桃木盒，一块橡木盘，一颗钢珠。<br>倾斜盘面，绕开每一个洞，把它送进黄铜环。</p>
     <div class="chips">
-      <button class="chip" data-level="0">第一局</button>
-      <button class="chip" data-level="1">第二局</button>
-      <button class="chip" data-level="2">第三局</button>
+      <button class="chip" data-level="0" data-i18n="level1">第一局</button>
+      <button class="chip" data-level="1" data-i18n="level2">第二局</button>
+      <button class="chip" data-level="2" data-i18n="level3">第三局</button>
     </div>
-    <div class="begin">点击开始</div>
+    <div class="begin" data-i18n="begin">点击开始</div>
   </div>
-  <div class="keys">移动鼠标 / 方向键 / 触屏拖动 — 倾斜木盘<br>R 重来　·　1 2 3 换局　·　M 静音　·　Q 画质　·　Esc 返回</div>
-  <div class="credit">贴图与环境光：Poly Haven（CC0）</div>
+  <div class="keys" data-i18n="keys">移动鼠标 / 方向键 / 触屏拖动 — 倾斜木盘<br>R 重来　·　1 2 3 换局　·　M 静音　·　Q 画质　·　Esc 返回</div>
+  <div class="credit" data-i18n="credit">贴图与环境光：Poly Haven（CC0）</div>
 </div>
 
 <div id="hud" class="layer">
   <div class="hud-top">
     <div id="level-name"></div>
     <div id="timer">00:00.0</div>
-    <div class="right"><span>掉洞<b id="falls">0</b></span><button id="again" class="tool">重来</button><button id="back" class="tool">返回</button><button id="mute" class="tool">声音 开</button></div>
+    <div class="right"><span><span data-i18n="falls">掉洞</span><b id="falls">0</b></span><button id="again" class="tool" data-i18n="restart">重来</button><button id="back" class="tool" data-i18n="back">返回</button><button id="mute" class="tool">声音 开</button></div>
   </div>
   <div class="level-gauge">
     <div class="vial"><div id="bubble"></div></div>
-    <div class="hint"><span class="for-mouse">移动鼠标倾斜木盘，气泡回到中心即为水平<br>R 重来　·　Esc 返回　·　M 静音</span><span class="for-touch">按住屏幕拖动，倾斜木盘<br>气泡回到中心即为水平</span></div>
+    <div class="hint"><span class="motion-hint" data-i18n="motionHint"></span><span class="for-mouse" data-i18n="mouseHint">移动鼠标倾斜木盘，气泡回到中心即为水平<br>R 重来　·　Esc 返回　·　M 静音</span><span class="for-touch" data-i18n="touchHint">按住屏幕拖动，倾斜木盘<br>气泡回到中心即为水平</span></div>
   </div>
 </div>
 
 <div id="result" class="layer">
   <div class="card">
-    <h2>通关</h2>
-    <p class="sub"><span id="r-new" hidden>新 纪 录</span></p>
+    <h2 data-i18n="complete">通关</h2>
+    <p class="sub"><span id="r-new" data-i18n="record" hidden>新 纪 录</span></p>
     <div class="rows">
-      <div class="row"><span>用时</span><span id="r-time">—</span></div>
-      <div class="row"><span>掉洞</span><span id="r-falls">—</span></div>
-      <div class="row"><span>最佳</span><span id="r-best">—</span></div>
+      <div class="row"><span data-i18n="time">用时</span><span id="r-time">—</span></div>
+      <div class="row"><span data-i18n="falls">掉洞</span><span id="r-falls">—</span></div>
+      <div class="row"><span data-i18n="best">最佳</span><span id="r-best">—</span></div>
     </div>
     <div class="actions">
-      <button class="btn" id="retry">再来一次</button>
-      <button class="btn primary" id="next">下一局</button>
+      <button class="btn" id="retry" data-i18n="retry">再来一次</button>
+      <button class="btn primary" id="next" data-i18n="next">下一局</button>
     </div>
   </div>
 </div>
 
+<button id="language" type="button" aria-label="切换到英文" lang="en">English</button>
+<div id="motion-controls">
+  <button id="motion-toggle" type="button" aria-pressed="false">体感操作</button>
+  <button id="calibrate" type="button" data-i18n="calibrate" hidden>重新校准</button>
+  <p id="motion-status" role="status" aria-live="polite"></p>
+</div>
 <div id="toast"></div>
 
-<script src="dist/game.js"></script>
+<script src="dist/game.js?v=20261111-motion"></script>
 </body>
 </html>

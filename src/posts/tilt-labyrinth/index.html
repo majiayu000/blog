@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>木盘迷宫：倾斜木盘，把钢珠送进黄铜环</title>
 <meta name="date" content="2026-11-10">
-<meta name="description" content="一只胡桃木盒，一块橡木盘，一颗钢珠。用鼠标、方向键或触屏拖动倾斜盘面，绕开陷阱，挑战三关木盘迷宫。打开浏览器就能玩。">
+<meta name="updated" content="2026-11-11">
+<meta name="description" content="一只胡桃木盒，一块橡木盘，一颗钢珠。用鼠标、方向键、触屏拖动或手机体感倾斜盘面，绕开陷阱，挑战三关木盘迷宫。支持中英文切换，打开浏览器就能玩。">
 <meta name="tags" content="游戏, 小作品, 3D">
 <style>
 :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#100e0b;color:#f4eadb;font:16px/1.85 -apple-system,"PingFang SC",sans-serif}main{max-width:960px;margin:auto;padding:36px 24px 72px}a{color:#d9b46c}.back,.note{font-size:14px;color:#b4a899}h1{font:600 clamp(40px,7vw,72px)/1.2 "Songti SC",serif;margin:36px 0 18px}h2{font-size:24px;margin-top:40px}.lead{font-size:19px;color:#c9bca9;max-width:690px}.play{display:inline-block;margin:16px 0 28px;padding:12px 30px;background:#d9b46c;color:#1a1206;text-decoration:none;border-radius:999px;font-weight:600}.play:hover{background:#edca86}.play:focus-visible{outline:3px solid #fff;outline-offset:4px}.cover{display:block;width:100%;height:auto;border-radius:10px;border:1px solid #423525}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #423525}th{color:#d9b46c}p{max-width:760px}
@@ -18,9 +19,12 @@
 <a class="play" href="play/">开始游戏 →</a>
 <a href="play/" aria-label="打开木盘迷宫"><img class="cover" src="cover.png" alt="木盘迷宫游戏画面：木盒中的橡木迷宫、钢珠与黄铜目标环"></a>
 <h2>怎么玩</h2>
+<p>游戏标题页右上角可切换 English / 中文，语言选择会保存在当前浏览器。</p>
 <p>电脑上点击画面开始，移动鼠标控制倾斜方向，也可以用方向键或 WASD。触屏设备上拖动盘面操作。钢珠掉进陷阱会回到起点；送进黄铜环后，可以查看用时、掉落次数和本机最佳成绩，再进入下一关。</p>
 <table><thead><tr><th>操作</th><th>作用</th></tr></thead><tbody>
 <tr><td>鼠标 / 方向键 / WASD / 触屏拖动</td><td>倾斜木盘</td></tr>
+<tr><td>手机体感操作 / Tilt controls</td><td>授权后倾斜手机控制木盘</td></tr>
+<tr><td>重新校准 / Recalibrate</td><td>将当前握持姿势设为水平</td></tr>
 <tr><td>R</td><td>重新开始这一关</td></tr>
 <tr><td>1 / 2 / 3</td><td>切换关卡</td></tr>
 <tr><td>Q</td><td>切换标准 / 高画质</td></tr>
@@ -28,6 +32,9 @@
 <tr><td>Esc</td><td>返回游戏标题</td></tr>
 </tbody></table>
 <p class="note">游戏包含约 11 MB 的脚本、贴图与环境光，首次打开需要稍等。电脑键盘操作更方便；触屏手感和流畅度取决于设备。</p>
+<h2>手机体感怎么玩</h2>
+<p>在手机浏览器打开本页，进入游戏后点右下角「体感操作 / Tilt controls」，允许运动传感器访问，并保持舒适握姿。收到数据后，以当前姿势作为水平；点击开始，轻轻左右、前后倾斜手机控制钢珠。调整握姿后可点「重新校准 / Recalibrate」，也可点「改用拖动 / Use drag controls」回到触屏操作。</p>
+<p class="note">体感需要浏览器支持设备方向传感器和安全连接；本博客使用 HTTPS。权限被拒绝或没有传感器数据时，游戏会提示原因，仍可拖动操作。已通过浏览器模拟检查，真实 iPhone、Android 手机的手感与延迟尚待实测。</p>
 <h2>木纹、钢珠和光</h2>
 <p>木纹与影棚环境光采用 <a href="https://polyhaven.com/">Poly Haven</a> 的 CC0 素材。钢珠会映出身边的木条和洞口，盘面倾斜时，光影也会跟着变化。声音由浏览器实时合成。</p>
 <p><a href="play/">去玩一局 →</a></p>
