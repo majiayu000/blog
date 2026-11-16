@@ -123,6 +123,13 @@
   #end h2 { font-size: clamp(44px, 7vw, 84px); } #end .sub { font-size: 14px; letter-spacing: 0.36em; color: var(--dim); margin: 0 0 20px; }
   #end .tables { margin-top: 8px; font-size: 12px; }
   @media (max-width: 720px) { #radar { width: 150px; height: 96px; } #topbar .side { min-width: 86px; font-size: 11px; } .credit { display: none; } }
+
+  /* 触屏为主的设备：菜单里说明需要键鼠，对局中给一个能点的暂停入口 */
+  .touch-note, #touch-pause { display: none; }
+  .touch-note { margin: 0 0 20px; padding: 10px 14px; max-width: 30em; background: var(--panel); border-left: 3px solid var(--warn); font-size: 13px; line-height: 1.8; }
+  .touch-note a { color: var(--warn); white-space: nowrap; }
+  #touch-pause { position: fixed; left: calc(clamp(8px, 1.6vw, 22px) + env(safe-area-inset-left, 0px)); top: calc(clamp(8px, 2vh, 18px) + 146px); min-width: 56px; min-height: 48px; padding: 0 14px; background: var(--panel); border: 1px solid rgba(238, 240, 238, 0.3); font-size: 13px; letter-spacing: 0.2em; }
+  @media (pointer: coarse) { .touch-note { display: block; } body[data-state="play"] #touch-pause { display: block; } }
 </style>
 </head>
 <body data-state="loading">
@@ -161,12 +168,14 @@
 </div>
 
 <div id="board"><div class="tables" id="board-tables"></div></div>
+<button id="touch-pause" type="button">暂停</button>
 
 <div id="menu" class="layer veil">
   <div class="col">
     <p class="eyebrow">TACTICAL SHOOTER · 5 V 5</p>
     <h1>灰港<small>GREYPORT</small></h1>
     <p class="lede">两张图，两支小队，三条路线，两个包点。<br>带上你的枪，天亮之前见分晓。</p>
+    <p class="touch-note">游戏需要键盘和鼠标，暂不支持触屏：进入对局后无法移动和瞄准。<a href="../#trailer">回文章看实机录像 →</a></p>
     <div class="opt"><span>地图</span><div class="chips" data-opt="map"><button class="chip" data-v="greyport">灰港 · 黄昏码头</button><button class="chip" data-v="switchyard">调车场 · 午夜货场</button></div></div>
     <div class="opt"><span>角色</span><div class="chips" data-opt="cast"><button class="chip" data-v="standard">标准阵容</button><button class="chip" data-v="fun">趣味混搭</button><button class="chip" data-v="monster">怪物乱斗</button><button class="chip" data-v="fantasy">奇幻乱斗</button></div></div>
     <div class="opt"><span>模式</span><div class="chips" data-opt="mode"><button class="chip" data-v="tdm">团队竞技</button><button class="chip" data-v="bomb">爆破模式</button></div></div>
@@ -201,6 +210,14 @@
   </div>
 </div>
 
+<script>
+  // 游戏进暂停只有两条路：指针锁定被解除，或者没锁指针时按 Esc。触屏设备没有键盘，
+  // 多数也锁不了指针，两条都走不到；这个按钮替玩家触发其中一条。
+  document.getElementById("touch-pause").addEventListener("click", () => {
+    if (document.pointerLockElement) document.exitPointerLock();
+    else document.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape" }));
+  });
+</script>
 <script src="dist/game.js"></script>
 </body>
 </html>
