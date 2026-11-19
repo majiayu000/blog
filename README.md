@@ -50,7 +50,8 @@ the posts that will not appear as the lead story; if none are marked, the newest
 post is used so the homepage still has a lead story.
 
 **Fail closed:** a missing title or date, an invalid date, a remote resource,
-or two slugs that collide will *fail the build* and name the offending file.
+a `data-pagefind-body` attribute, or two slugs that collide will *fail the build*
+and name the offending file.
 Nothing is inferred from the directory name and no date is defaulted to today —
 a red build beats a site that silently shows wrong metadata.
 
@@ -62,7 +63,9 @@ Every public post must match one of the six curated reading paths in
 `lib/posts.js`. Raw tags and their existing URLs remain available as a secondary
 index, while the homepage and `/tags/` lead with the stable reading paths.
 Pagefind scans only `posts/*/index.html`, so search results never contain tag,
-archive or topic pages.
+archive or topic pages. Do not add `data-pagefind-body` to a post: once any page
+carries it, Pagefind drops every page that does not, and those posts silently
+disappear from search.
 
 ## Design tokens
 
